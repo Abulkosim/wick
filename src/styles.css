@@ -710,12 +710,14 @@ button:disabled:hover {
 .app-footer {
   padding: 10px 12px 10px 22px;
   min-height: 48px;
+  background: transparent;
 }
 .footer-note {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
+  flex: 1;
   color: var(--tertiary);
   font-size: 13px;
 }
@@ -852,6 +854,7 @@ button:disabled:hover {
 }
 @media(max-width:400px) {
   .preview-stage {
+    display: block;
     padding: 0;
     background: transparent;
     min-height: 100dvh;
@@ -1025,14 +1028,18 @@ button:disabled:hover {
   font-weight: 600;
 }
 .trigger-status {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
   line-height: 1.4;
   color: var(--tertiary);
 }
 .trigger-status .status-dot {
+  display: inline-block;
+  margin: 0 5px 2px 0;
+  vertical-align: middle;
   background: var(--track);
 }
 .trigger-row.running .trigger-status {
@@ -1136,4 +1143,10 @@ button:disabled:hover {
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 0 1.5px var(--surface);
+}
+.footer-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

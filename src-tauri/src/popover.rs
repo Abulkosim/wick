@@ -12,6 +12,7 @@ const POPOVER_MIN_HEIGHT: f64 = 160.0;
 #[derive(Default)]
 pub struct Visibility {
     pub last_blur: Mutex<Option<Instant>>,
+    theme: Mutex<Option<Option<tauri::Theme>>>,
     pub placement: Mutex<PopoverPlacement>,
     content_height: Mutex<Option<f64>>,
 }
@@ -171,6 +172,23 @@ fn fit_backdrop(window: &tauri::WebviewWindow) {
         }
         native.invalidateShadow();
     });
+}
+
+/// Makes the native window, and with it the vibrancy behind the popover, follow Wick's theme
+/// instead of the system appearance. `None` follows the system.
+pub fn set_theme(app: &AppHandle, theme: Option<tauri::Theme>) {
+    let visibility = app.state::<Visibility>();
+    let Ok(mut current) = visibility.theme.lock() else {
+        return;
+    };
+    if *current == Some(theme) {
+        return;
+    }
+    if let Some(window) = app.get_webview_window("main") {
+        if window.set_theme(theme).is_ok() {
+            *current = Some(theme);
+        }
+    }
 }
 
 pub fn fit(app: &AppHandle, height: f64) -> Result<(), String> {

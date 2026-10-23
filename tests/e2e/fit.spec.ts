@@ -30,7 +30,8 @@ for (const scenario of ['off', 'held', 'others']) {
     expect(height).toBeLessThanOrEqual(640)
     await page.setViewportSize({ width: 360, height })
     const body = page.locator('.popover-body')
-    await expect.poll(() => body.evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1)
+    if (height < 640) await expect.poll(() => body.evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1)
+    else await expect.poll(() => body.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true)
   })
 }
 

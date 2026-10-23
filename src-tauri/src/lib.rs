@@ -75,6 +75,7 @@ pub fn run() {
             app.notification()
                 .on_action(move |_| popover::show(&opener, false))?;
             runtime.sync_launch_at_login(app.handle());
+            runtime::publish(app.handle(), &runtime.state());
             let saved = runtime.state().settings.shortcut;
             if let Err(error) = shortcut::replace(app.handle(), None, saved.as_deref()) {
                 eprintln!("wick: {error}");

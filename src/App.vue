@@ -176,7 +176,7 @@ onUnmounted(() => {
           </section>
         </main>
         <footer class="app-footer">
-          <span class="footer-note"><template v-if="footer"><AppIcon :name="footer.icon" :size="15"/>{{ footer.text }}</template></span>
+          <span class="footer-note"><template v-if="footer"><AppIcon :name="footer.icon" :size="15"/><span class="footer-text">{{ footer.text }}</span></template></span>
           <div class="footer-actions">
             <AppTooltip :text="updater.available.value ? 'Settings · update available' : 'Settings'"><button class="icon-button settings-button" :aria-label="updater.available.value ? 'Settings, update available' : 'Open settings'" @click="page = 'settings'"><AppIcon name="settings" :size="16"/><span v-if="updater.available.value" class="update-dot" aria-hidden="true"/></button></AppTooltip>
             <AppTooltip text="Quit Wick"><button class="icon-button" aria-label="Quit Wick" @click="quit"><AppIcon name="power" :size="16"/></button></AppTooltip>

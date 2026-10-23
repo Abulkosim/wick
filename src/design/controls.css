@@ -295,3 +295,7 @@
     transition: none;
   }
 }
+
+.app-switch[data-state="unchecked"] {
+  background: color-mix(in srgb, var(--track), var(--secondary) 16%);
+}
