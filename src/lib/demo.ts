@@ -64,6 +64,7 @@ export function createDemoState(scenario: string | null, now = Date.now()): AppS
       state.session = { mode: 'indefinite', startedAt: now - minutes(12) }
       state.others = [
         { pid: 7710, name: 'caffeinate', display: false, reason: null, parent: 'claude' },
+        { pid: 2585, name: 'Google Chrome', display: true, reason: 'Playing audio in a background tab with a very long title', parent: null },
         { pid: 812, name: 'zoom.us', display: true, reason: 'Zoom meeting', parent: null },
       ]
       break

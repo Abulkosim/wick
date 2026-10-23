@@ -26,6 +26,8 @@ pub struct Held {
     pub assert_type: String,
     pub name: String,
     pub bundle_path: Option<String>,
+    /// The process a system service asserts for, e.g. an app playing audio through coreaudiod.
+    pub on_behalf_of: Option<i32>,
 }
 
 /// Released when dropped. powerd also releases it if Wick exits or crashes.
@@ -150,6 +152,10 @@ pub fn list() -> Result<Vec<Held>, String> {
                 assert_type: text(&entry, "AssertType").unwrap_or_default(),
                 name: text(&entry, "AssertName").unwrap_or_default(),
                 bundle_path: text(&entry, "BundlePath"),
+                on_behalf_of: entry
+                    .find(CFString::new("AssertionOnBehalfOfPID"))
+                    .and_then(|value| value.downcast::<CFNumber>())
+                    .and_then(|value| value.to_i32()),
             });
         }
     }

@@ -14,7 +14,7 @@ defineProps<{ others: Other[]; also: boolean }>()
       <li v-for="other in others" :key="other.pid" class="trigger-row other-row">
         <span class="trigger-mark"><AppIcon :name="other.parent || other.name === 'caffeinate' ? 'terminal' : 'app'" :size="15"/></span>
         <span class="trigger-copy">
-          <AppTooltip :text="`${other.name} · process ${other.pid}`"><span class="trigger-sentence" tabindex="0"><strong>{{ other.name }}</strong></span></AppTooltip>
+          <AppTooltip :text="`${other.name}: ${otherDetail(other)}`"><span class="trigger-sentence" tabindex="0"><strong>{{ other.name }}</strong></span></AppTooltip>
           <span class="trigger-status">{{ otherDetail(other) }}</span>
         </span>
       </li>

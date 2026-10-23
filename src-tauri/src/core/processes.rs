@@ -3,8 +3,18 @@ use serde::Serialize;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Process {
     pub pid: i32,
+    /// The command name `ps` shows (`claude`), even when the binary file is named otherwise.
     pub name: String,
     pub path: Option<String>,
+}
+
+/// `ps`'s command name: `pbi_comm`, unless `pbi_name` is the same name untruncated.
+pub fn command_name(comm: &str, name: &str) -> String {
+    if comm.is_empty() || (name.starts_with(comm) && name.len() > comm.len()) {
+        name.to_string()
+    } else {
+        comm.to_string()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -48,44 +58,144 @@ pub fn running_apps(processes: &[Process]) -> Vec<RunningApp> {
 }
 
 #[cfg(target_os = "macos")]
-pub fn scan() -> Vec<Process> {
+mod native {
     use std::ffi::{c_char, c_int, c_void, CStr};
 
     extern "C" {
         fn proc_listallpids(buffer: *mut c_void, size: c_int) -> c_int;
-        fn proc_name(pid: c_int, buffer: *mut c_void, size: u32) -> c_int;
+        fn proc_pidinfo(
+            pid: c_int,
+            flavor: c_int,
+            arg: u64,
+            buffer: *mut c_void,
+            size: c_int,
+        ) -> c_int;
         fn proc_pidpath(pid: c_int, buffer: *mut c_void, size: u32) -> c_int;
+        fn sysctl(
+            name: *mut c_int,
+            length: u32,
+            old: *mut c_void,
+            old_length: *mut usize,
+            new: *mut c_void,
+            new_length: usize,
+        ) -> c_int;
     }
 
-    let own = std::process::id() as i32;
-    let mut pids = vec![0_i32; 4096];
-    let count = unsafe {
-        proc_listallpids(
-            pids.as_mut_ptr().cast(),
-            (pids.len() * std::mem::size_of::<i32>()) as c_int,
-        )
-    };
-    if count <= 0 {
-        return Vec::new();
-    }
-    pids.truncate(count as usize);
-    let read =
-        |pid: i32, call: unsafe extern "C" fn(c_int, *mut c_void, u32) -> c_int, size: usize| {
-            let mut buffer = vec![0_u8; size];
-            let length = unsafe { call(pid, buffer.as_mut_ptr().cast(), size as u32) };
-            (length > 0).then(|| {
-                unsafe { CStr::from_ptr(buffer.as_ptr().cast::<c_char>()) }
-                    .to_string_lossy()
-                    .into_owned()
-            })
+    /// The basename of argv[0], which is what users typed (`claude`, not `2.1.309`).
+    fn argv0(pid: i32) -> Option<String> {
+        const CTL_KERN: c_int = 1;
+        const KERN_PROCARGS2: c_int = 49;
+        let mut mib = [CTL_KERN, KERN_PROCARGS2, pid];
+        let mut size: usize = 8192;
+        let mut buffer = vec![0_u8; size];
+        let status = unsafe {
+            sysctl(
+                mib.as_mut_ptr(),
+                3,
+                buffer.as_mut_ptr().cast(),
+                &mut size,
+                std::ptr::null_mut(),
+                0,
+            )
         };
-    pids.into_iter()
+        if status != 0 || size <= 4 {
+            return None;
+        }
+        let rest = &buffer[4..size.min(buffer.len())];
+        let after_exec = rest.iter().position(|&byte| byte == 0)?;
+        let start = after_exec + rest[after_exec..].iter().position(|&byte| byte != 0)?;
+        let length = rest[start..].iter().position(|&byte| byte == 0)?;
+        let first = String::from_utf8_lossy(&rest[start..start + length]).into_owned();
+        let name = first
+            .rsplit('/')
+            .next()?
+            .trim_start_matches('-')
+            .to_string();
+        (!name.is_empty()).then_some(name)
+    }
+
+    const PROC_PIDTBSDINFO: c_int = 3;
+    const BSDINFO_SIZE: usize = 136;
+    const PPID: usize = 16;
+    const COMM: std::ops::Range<usize> = 48..64;
+    const NAME: std::ops::Range<usize> = 64..96;
+
+    fn text(bytes: &[u8]) -> String {
+        let end = bytes
+            .iter()
+            .position(|&byte| byte == 0)
+            .unwrap_or(bytes.len());
+        String::from_utf8_lossy(&bytes[..end]).into_owned()
+    }
+
+    /// Parent pid and command name, from `proc_bsdinfo`.
+    pub fn info(pid: i32) -> Option<(i32, String)> {
+        let mut buffer = [0_u8; BSDINFO_SIZE];
+        let size = unsafe {
+            proc_pidinfo(
+                pid,
+                PROC_PIDTBSDINFO,
+                0,
+                buffer.as_mut_ptr().cast(),
+                BSDINFO_SIZE as c_int,
+            )
+        };
+        if size as usize != BSDINFO_SIZE {
+            return None;
+        }
+        let ppid = u32::from_ne_bytes(buffer[PPID..PPID + 4].try_into().ok()?) as i32;
+        let name = argv0(pid)
+            .unwrap_or_else(|| super::command_name(&text(&buffer[COMM]), &text(&buffer[NAME])));
+        (!name.is_empty()).then_some((ppid, name))
+    }
+
+    pub fn path(pid: i32) -> Option<String> {
+        let mut buffer = vec![0_u8; 4096];
+        let length = unsafe { proc_pidpath(pid, buffer.as_mut_ptr().cast(), buffer.len() as u32) };
+        (length > 0).then(|| {
+            unsafe { CStr::from_ptr(buffer.as_ptr().cast::<c_char>()) }
+                .to_string_lossy()
+                .into_owned()
+        })
+    }
+
+    pub fn pids() -> Vec<i32> {
+        let mut pids = vec![0_i32; 4096];
+        let count = unsafe {
+            proc_listallpids(
+                pids.as_mut_ptr().cast(),
+                (pids.len() * std::mem::size_of::<i32>()) as c_int,
+            )
+        };
+        pids.truncate(count.max(0) as usize);
+        pids
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub use native::{info, path};
+
+#[cfg(not(target_os = "macos"))]
+pub fn info(_pid: i32) -> Option<(i32, String)> {
+    None
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn path(_pid: i32) -> Option<String> {
+    None
+}
+
+#[cfg(target_os = "macos")]
+pub fn scan() -> Vec<Process> {
+    let own = std::process::id() as i32;
+    native::pids()
+        .into_iter()
         .filter(|&pid| pid > 0 && pid != own)
         .filter_map(|pid| {
             Some(Process {
                 pid,
-                name: read(pid, proc_name, 64)?,
-                path: read(pid, proc_pidpath, 4096),
+                name: info(pid)?.1,
+                path: path(pid),
             })
         })
         .collect()
@@ -106,6 +216,37 @@ mod tests {
             name: name.into(),
             path: Some(path.into()),
         }
+    }
+
+    #[test]
+    fn command_names_prefer_what_ps_shows() {
+        assert_eq!(command_name("claude", "2.1.309"), "claude");
+        assert_eq!(
+            command_name("a-very-long-com", "a-very-long-command"),
+            "a-very-long-command"
+        );
+        assert_eq!(command_name("", "zsh"), "zsh");
+        assert_eq!(command_name("ffmpeg", "ffmpeg"), "ffmpeg");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn scan_reports_the_command_name_of_a_versioned_binary() {
+        let directory = tempfile::tempdir().unwrap();
+        let versioned = directory.path().join("2.1.309");
+        std::fs::copy("/bin/sleep", &versioned).unwrap();
+        let link = directory.path().join("napper");
+        std::os::unix::fs::symlink(&versioned, &link).unwrap();
+        let mut child = std::process::Command::new(&link).arg("5").spawn().unwrap();
+        let found = (0..20).find_map(|_| {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            scan()
+                .into_iter()
+                .find(|process| process.pid == child.id() as i32)
+        });
+        child.kill().unwrap();
+        let _ = child.wait();
+        assert_eq!(found.unwrap().name, "napper");
     }
 
     #[test]

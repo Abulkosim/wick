@@ -6,7 +6,7 @@ use crate::{
         power::{self, Power},
         processes,
         session::{Request, Session},
-        settings::Settings,
+        settings::{Settings, Theme},
         store::{self, StoredState},
         triggers::{self, Trigger},
     },
@@ -412,7 +412,7 @@ impl Runtime {
         let Ok(held) = assertion::list() else {
             return;
         };
-        let others = others::others(&held, std::process::id() as i32, others::parent_name);
+        let others = others::current(&held);
         if others != self.state().others {
             let _ = self.update(app, |inner, _| {
                 inner.view.others = others;
@@ -497,6 +497,14 @@ fn notify(app: &AppHandle, title: &str) {
 
 pub fn publish(app: &AppHandle, view: &AppState) {
     tray::update(app, view, now_ms());
+    crate::popover::set_theme(
+        app,
+        match view.settings.theme {
+            Theme::System => None,
+            Theme::Light => Some(tauri::Theme::Light),
+            Theme::Dark => Some(tauri::Theme::Dark),
+        },
+    );
     let _ = app.emit("state_changed", view);
 }
 
