@@ -35,6 +35,7 @@ pub struct Settings {
     pub stop_in_low_power_mode: bool,
     pub notify_on_end: bool,
     pub auto_check_updates: bool,
+    pub show_time_left: bool,
 }
 
 pub const BATTERY_THRESHOLDS: std::ops::RangeInclusive<u8> = 5..=80;
@@ -53,6 +54,7 @@ impl Default for Settings {
             stop_in_low_power_mode: false,
             notify_on_end: true,
             auto_check_updates: true,
+            show_time_left: false,
         }
     }
 }
@@ -172,6 +174,13 @@ impl Settings {
                 "autoCheckUpdates",
                 defaults.auto_check_updates,
                 "Check for updates",
+                notes,
+            ),
+            show_time_left: field(
+                &map,
+                "showTimeLeft",
+                defaults.show_time_left,
+                "Time left in the menu bar",
                 notes,
             ),
         };

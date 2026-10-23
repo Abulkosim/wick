@@ -92,8 +92,9 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 
 Mac features first, Windows last, then the release. Presets dropped for now: the duration grid plus "Start keeps awake" already covers them; revisit on demand.
 
-- [ ] **4.1 Countdown beside the tray icon.** Settings → General → "Show time left in the menu bar" (off by default); monospaced digits, minute resolution ("42m", "1h 05m"), nothing when off or indefinite.
+- [x] **4.1 Countdown beside the tray icon.** Settings → General → "Show time left in the menu bar" (off by default); monospaced digits, minute resolution ("42m", "1h 05m"), nothing when off or indefinite.
   Verify: unit tests on the title text; e2e of the setting; real app shows the title (owner screenshot 👤 if no capture).
+  Done 2026-10-23: `tray::title` (unit tested), Margin's monospaced-digit NSStatusItem title, deduped per minute. 👤 look at it in the menu bar.
 - [ ] **4.2 Pause while the screen is locked.** Optional (off by default): release the assertion while locked, take it back on unlock; status "Paused while the screen is locked".
   Verify: pure tests on the decision; lock state read via `CGSessionCopyCurrentDictionary` checked against a live read; e2e of the paused state.
 - [ ] **4.3 Condition triggers.** "Stay awake while on power" and "while an external display is connected", in the same card as app and command triggers.

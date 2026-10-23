@@ -22,6 +22,7 @@ struct Shown {
     revision: u64,
     glyph: Option<Glyph>,
     tooltip: String,
+    title: Option<String>,
 }
 
 #[derive(Default)]
@@ -51,9 +52,45 @@ fn glyph(state: &AppState, now: i64) -> Glyph {
     }
 }
 
+/// Time left beside the icon, when asked for and a timed session is running.
+pub fn title(state: &AppState, now: i64) -> Option<String> {
+    state
+        .settings
+        .show_time_left
+        .then(|| state.session.remaining_ms(now))
+        .flatten()
+        .map(short_duration)
+}
+
+#[cfg(target_os = "macos")]
+fn set_tabular_title(tray: &tauri::tray::TrayIcon, title: Option<&str>) -> bool {
+    use objc2::MainThreadMarker;
+    use objc2_app_kit::{NSFont, NSFontWeightRegular};
+
+    if tray.set_title(title).is_err() {
+        return false;
+    }
+    let _ = tray.with_inner_tray_icon(|tray| {
+        let mtm = MainThreadMarker::new()?;
+        let button = tray.ns_status_item()?.button(mtm)?;
+        let size = NSFont::menuBarFontOfSize(0.0).pointSize();
+        let font =
+            NSFont::monospacedDigitSystemFontOfSize_weight(size, unsafe { NSFontWeightRegular });
+        button.setFont(Some(&font));
+        Some(())
+    });
+    true
+}
+
+#[cfg(not(target_os = "macos"))]
+fn set_tabular_title(tray: &tauri::tray::TrayIcon, title: Option<&str>) -> bool {
+    tray.set_title(title).is_ok()
+}
+
 pub fn update(app: &AppHandle, state: &AppState, now: i64) {
     let glyph = glyph(state, now);
     let tooltip = tooltip(state, now);
+    let title = title(state, now);
     let revision = state.revision;
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
@@ -77,6 +114,9 @@ pub fn update(app: &AppHandle, state: &AppState, now: i64) {
         }
         if shown.tooltip != tooltip && tray.set_tooltip(Some(&tooltip)).is_ok() {
             shown.tooltip = tooltip;
+        }
+        if shown.title != title && set_tabular_title(&tray, title.as_deref()) {
+            shown.title = title;
         }
     });
 }
@@ -122,4 +162,28 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         })
         .build(app)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn title_shows_time_left_only_when_asked_and_timed() {
+        let mut state = AppState {
+            session: Session::For {
+                started_at: 0,
+                ends_at: 42 * 60_000,
+            },
+            ..AppState::default()
+        };
+        assert_eq!(title(&state, 0), None);
+        state.settings.show_time_left = true;
+        assert_eq!(title(&state, 0).as_deref(), Some("42m"));
+        assert_eq!(title(&state, 41 * 60_000 + 1).as_deref(), Some("1m"));
+        state.session = Session::Indefinite { started_at: 0 };
+        assert_eq!(title(&state, 0), None);
+        state.session = Session::Off;
+        assert_eq!(title(&state, 0), None);
+    }
 }

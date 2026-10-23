@@ -65,6 +65,7 @@ function setClick(value: string): void {
           <div><span id="shortcut-label" class="setting-label">Shortcut</span><p>Starts or stops anywhere.</p></div>
           <ShortcutField :model-value="settings.shortcut" labelledby="shortcut-label" :disabled="busy" @update:model-value="patch({ shortcut: $event })"/>
         </div>
+        <div class="setting-row"><div><span id="time-left-label" class="setting-label">Show time left in the menu bar</span><p>Beside the candle, for timed sessions.</p></div><AppSwitch :model-value="settings.showTimeLeft" aria-labelledby="time-left-label" :disabled="busy" @update:model-value="patch({ showTimeLeft: $event })"/></div>
         <div class="setting-row"><span id="login-label" class="setting-label">Launch at login</span><AppSwitch :model-value="settings.launchAtLogin" aria-labelledby="login-label" :disabled="busy" @update:model-value="patch({ launchAtLogin: $event })"/></div>
       </section>
       <section v-if="hasBattery(power)" class="settings-section">

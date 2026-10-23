@@ -81,3 +81,11 @@ test('session notifications can be turned off', async ({ page }) => {
   await toggle.click()
   await expect(toggle).not.toBeChecked()
 })
+
+test('time left in the menu bar is off until turned on', async ({ page }) => {
+  await page.goto('/?demo=1&state=timed&page=settings')
+  const toggle = page.getByRole('switch', { name: 'Show time left in the menu bar' })
+  await expect(toggle).not.toBeChecked()
+  await toggle.click()
+  await expect(toggle).toBeChecked()
+})
