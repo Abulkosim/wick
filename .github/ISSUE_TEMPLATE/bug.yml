@@ -1,0 +1,32 @@
+name: Bug report
+description: Report something Wick did wrong, like sleeping when it shouldn't.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Wick version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: macOS version and Mac
+      placeholder: macOS 26.1, MacBook Air M2, external display
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Sessions, Triggers, Also keeping awake, Battery, Menu bar icon, Settings, Updates, Installation]
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Steps, what you expected, and what happened. If the Mac slept or stayed awake unexpectedly, paste the relevant lines of `pmset -g assertions` and `pmset -g log | grep -i sleep | tail -20`.
+    validations:
+      required: true
