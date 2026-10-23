@@ -2,12 +2,12 @@
 
 # Wick
 
-**Keeps your Mac awake.** On demand, for a set time, or while an app or command is running. A quiet menu bar app for macOS.
+**Keeps your Mac awake.** On demand, for a set time, or while an app or command is running. A quiet menu bar app for macOS, and a tray app for Windows.
 
 [![CI](https://github.com/Abulkosim/wick/actions/workflows/ci.yml/badge.svg)](https://github.com/Abulkosim/wick/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Abulkosim/wick)](https://github.com/Abulkosim/wick/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Abulkosim/wick/total)](https://github.com/Abulkosim/wick/releases)
-[![Platform](https://img.shields.io/badge/platform-macOS%2012%2B-747a87)](docs/install.md)
+[![Platforms](https://img.shields.io/badge/platform-macOS%2012%2B%20%C2%B7%20Windows%2010%2F11-747a87)](docs/install.md)
 [![MIT license](https://img.shields.io/badge/license-MIT-747a87)](LICENSE)
 
 [Download](https://github.com/Abulkosim/wick/releases/latest) · [Install](#install) · [What it does](#what-it-does) · [Privacy](#privacy) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
@@ -18,14 +18,25 @@
 </p>
 
 - **One click.** Start until you stop it, or for 15 minutes, an hour, two hours, until a time, or any length. The menu bar candle burns down as the time runs out.
-- **While something runs.** "Stay awake while **Xcode** is running", or **claude**, **codex**, **ffmpeg**, **xcodebuild**. Wick watches apps and command-line tools alike.
+- **While something runs.** "Stay awake while **Xcode** is running", or **claude**, **codex**, **ffmpeg**, **xcodebuild**. Also on power, with an external display, or on a schedule.
 - **Says what else is awake.** "caffeinate · Started by claude", "Google Chrome · Playing audio". No more `pmset -g assertions`.
 
 ## Install
 
-Download **v0.1.0** from [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest): [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.1.0/Wick_0.1.0_universal.dmg) for macOS 12+, Apple Silicon and Intel.
+Download **v0.2.0** from [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
 
-Wick is not signed with an Apple Developer ID, so the first launch shows a warning. Drag Wick to Applications and open it. When **“Wick” Not Opened** appears, click **Done**, then **System Settings → Privacy & Security → Open Anyway**. Wick lives in the menu bar, with no Dock icon. Step by step, updates and uninstall: [docs/install.md](docs/install.md).
+| Platform | Download |
+| --- | --- |
+| macOS 12+ · Apple Silicon and Intel | [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.2.0/Wick_0.2.0_universal.dmg) |
+| Windows 10/11 x64 | [Setup EXE](https://github.com/Abulkosim/wick/releases/download/v0.2.0/Wick_0.2.0_x64-setup.exe) · [MSI](https://github.com/Abulkosim/wick/releases/download/v0.2.0/Wick_0.2.0_x64_en-US.msi) |
+
+Builds are not signed with an Apple Developer ID or a Windows publisher certificate, so the first launch shows a warning.
+
+**macOS.** Drag Wick to Applications and open it. When **“Wick” Not Opened** appears, click **Done**, then **System Settings → Privacy & Security → Open Anyway**. Wick lives in the menu bar, with no Dock icon.
+
+**Windows.** Run the `-setup.exe`. On **Windows protected your PC**, click **More info → Run anyway**. Smart App Control blocks unsigned apps.
+
+Step by step, updates and uninstall: [docs/install.md](docs/install.md).
 
 Updates are signed and verified in the app. Wick checks once a day and installs only when you choose.
 
@@ -35,9 +46,10 @@ Updates are signed and verified in the app. Wick checks once a day and installs 
 | --- | --- |
 | **Sessions** | Until stopped, 15 min, 1 hour, 2 hours, until a time (rolls to tomorrow), or a custom length up to 7 days. Time left stays right across sleep. |
 | **Display** | Keeps only the system awake by default. **Keep display on** also stops the screen from dimming and locking. |
-| **Triggers** | Stay awake while an app or command runs. Stop pauses it until that app quits. |
+| **Triggers** | Stay awake while an app or command runs, on power, with an external display, or on a weekly schedule. Stop pauses a trigger until it ends. |
 | **Also awake** | Lists other apps holding the Mac awake, with their reason, including audio playing through macOS and `caffeinate` started by a tool. |
 | **Battery** | Stops below a level you choose (20% by default), and optionally in Low Power Mode. |
+| **Screen lock** | Optionally pauses while the screen is locked and resumes on unlock (Mac). |
 | **Lid** | Warns "Closing the lid will sleep your Mac" when that is true, and stays quiet in clamshell mode. |
 | **Shortcut** | A global shortcut you record in Settings starts or stops from any app. |
 | **Notifications** | "Session ended. Your Mac can sleep again." Only when Wick stops on its own. |
@@ -51,9 +63,12 @@ Updates are signed and verified in the app. Wick checks once a day and installs 
 
 |  | Wick | [Amphetamine](https://apps.apple.com/app/amphetamine/id937984704) | [KeepingYouAwake](https://github.com/newmarcel/KeepingYouAwake) | `caffeinate` |
 | --- | :-: | :-: | :-: | :-: |
+| macOS | ✓ | ✓ | ✓ | ✓ |
+| Windows | ✓ | – | – | – |
 | One-click start and timed sessions | ✓ | ✓ | ✓ | – |
 | Until a set time | ✓ | ✓ | – | – |
 | While an app runs | ✓ | ✓ | – | – |
+| On power or with an external display | ✓ | ✓ | display only | – |
 | While a command-line tool runs (`claude`, `ffmpeg`) | ✓ | – | – | `-w pid` |
 | Shows what else keeps the Mac awake | ✓ | – | – | – |
 | Battery guard | ✓ | ✓ | ✓ | – |

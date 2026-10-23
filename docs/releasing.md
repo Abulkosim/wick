@@ -20,6 +20,7 @@ cd src-tauri && cargo fmt --check && cargo clippy --all-targets --locked -- -D w
 
 - Ubuntu: installs the pinned pnpm, checks types, builds the interface, runs unit, release-script and browser tests. On a tag it validates the release inputs first.
 - macOS: checks Rust formatting, runs Clippy and the Rust tests (including live IOKit assertion tests), and builds the universal Apple Silicon/Intel app and DMG.
+- Windows: checks Rust formatting, runs Clippy and the Rust tests, and builds x64 NSIS and MSI installers.
 - On a release tag in `Abulkosim/wick` only, the macOS job signs the updater archive with `TAURI_SIGNING_PRIVATE_KEY`. The release job then:
   - verifies the signature and its signed version, and generates `latest.json`;
   - writes `SHA256SUMS.txt`;
@@ -35,7 +36,7 @@ Actions are pinned to commit SHAs. Builds have read-only repository access; only
 2. Verify `shasum -a 256 -c SHA256SUMS.txt` and the attestations:
 
    ```sh
-   for f in Wick_X.Y.Z_universal.dmg Wick.app.tar.gz latest.json SHA256SUMS.txt; do
+   for f in Wick_X.Y.Z_universal.dmg Wick.app.tar.gz Wick_X.Y.Z_x64-setup.exe Wick_X.Y.Z_x64_en-US.msi latest.json SHA256SUMS.txt; do
      gh attestation verify "$f" --repo Abulkosim/wick
    done
    gh attestation verify Wick_X.Y.Z_universal.dmg --repo Abulkosim/wick --predicate-type https://spdx.dev/Document/v2.3
@@ -65,4 +66,4 @@ It uses the pinned updater plugin and the real public key with a loopback-only s
 
 Local release builds need the signing environment, or `--config '{"bundle":{"createUpdaterArtifacts":false}}'`.
 
-`latest.json` is served from the latest published release. Both Mac architectures use the universal archive. To stop offering a bad release, mark it as a prerelease so the endpoint falls back to the previous release, then ship a fixed patch.
+`latest.json` is served from the latest published release. Both Mac architectures use the universal archive. Windows entries keep the installer family (NSIS or MSI), with NSIS as the generic fallback. To stop offering a bad release, mark it as a prerelease so the endpoint falls back to the previous release, then ship a fixed patch.
