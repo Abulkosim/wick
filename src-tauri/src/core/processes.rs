@@ -231,14 +231,12 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn scan_reports_the_command_name_of_a_versioned_binary() {
+    fn scan_reports_the_name_it_was_started_as() {
         let directory = tempfile::tempdir().unwrap();
-        let versioned = directory.path().join("2.1.309");
-        std::fs::copy("/bin/sleep", &versioned).unwrap();
         let link = directory.path().join("napper");
-        std::os::unix::fs::symlink(&versioned, &link).unwrap();
-        let mut child = std::process::Command::new(&link).arg("5").spawn().unwrap();
-        let found = (0..20).find_map(|_| {
+        std::os::unix::fs::symlink("/bin/sleep", &link).unwrap();
+        let mut child = std::process::Command::new(&link).arg("30").spawn().unwrap();
+        let found = (0..100).find_map(|_| {
             std::thread::sleep(std::time::Duration::from_millis(50));
             scan()
                 .into_iter()

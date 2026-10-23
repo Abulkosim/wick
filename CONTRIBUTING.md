@@ -39,6 +39,8 @@ The running app also takes `wick start [minutes]` and `wick stop` from the comma
 
 ## Test
 
+`scripts/check-all.sh` runs everything below and stops at the first failure.
+
 ```sh
 pnpm build        # type check and frontend assets; native checks need these
 pnpm test
