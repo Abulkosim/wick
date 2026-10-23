@@ -57,3 +57,26 @@ for (const theme of ['light', 'dark'] as const) {
     })
   }
 }
+
+test('adds power and display conditions once each', async ({ page }) => {
+  await page.goto('/?demo=1&state=off')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('radio', { name: 'Condition' }).click()
+  await page.getByRole('radio', { name: 'On power' }).click()
+  await page.locator('.trigger-form').getByRole('button', { name: 'Add' }).click()
+  await expect(page.locator('.trigger-row')).toHaveText([/On power/])
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('radio', { name: 'Condition' }).click()
+  await expect(page.getByRole('radio', { name: 'On power' })).toHaveCount(0)
+  await page.getByRole('radio', { name: 'External display connected' }).click()
+  await page.locator('.trigger-form').getByRole('button', { name: 'Add' }).click()
+  await expect(page.locator('.trigger-row')).toHaveText([/On power/, /External display connected/])
+})
+
+test('a condition holds the Mac awake and pauses until it ends', async ({ page }) => {
+  await page.goto('/?demo=1&state=conditions')
+  await expect(page.getByRole('status')).toContainText('While on power')
+  await expect(page.locator('.trigger-row').first()).toContainText('Plugged in')
+  await page.getByRole('button', { name: 'Stop' }).click()
+  await expect(page.getByRole('status')).toContainText('Paused until you unplug')
+})

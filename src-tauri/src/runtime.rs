@@ -1,7 +1,7 @@
 use crate::{
     core::{
         assertion::{self, Assertion, Kind},
-        lid, lock,
+        display, lid, lock,
         others::{self, Other},
         power::{self, Power},
         processes,
@@ -60,6 +60,8 @@ struct Inner {
     store_path: Option<PathBuf>,
     /// Ids of triggers ignored until they stop matching.
     paused: Vec<String>,
+    /// The trigger holding the Mac awake right now.
+    held_id: Option<String>,
     last_update_check_at: Option<String>,
 }
 
@@ -76,7 +78,7 @@ pub fn now_ms() -> i64 {
 
 fn assertion_name(session: &Session, held_by: Option<&str>) -> String {
     if let (false, Some(name)) = (session.is_on(), held_by) {
-        return format!("Wick: awake while {name} is running");
+        return format!("Wick: awake while {name}");
     }
     match session.ends_at() {
         Some(ends_at) => {
@@ -248,15 +250,15 @@ impl Runtime {
     /// Ends the session. With no session, it pauses the trigger holding the Mac awake.
     pub fn stop(&self, app: &AppHandle) -> Result<AppState, String> {
         self.update(app, |inner, _| {
-            if !inner.view.session.is_on() {
-                if let Some(name) = inner.view.held_by.take() {
-                    let processes = processes::scan();
-                    inner.paused = triggers::active(&inner.view.triggers, &processes)
-                        .into_iter()
-                        .map(|trigger| trigger.id.clone())
-                        .collect();
-                    inner.view.paused_by = Some(name);
-                }
+            if !inner.view.session.is_on() && inner.view.held_by.take().is_some() {
+                inner.paused = inner.view.running.clone();
+                let held = inner.held_id.take();
+                inner.view.paused_by = inner
+                    .view
+                    .triggers
+                    .iter()
+                    .find(|trigger| Some(&trigger.id) == held.as_ref())
+                    .map(|trigger| trigger.until());
             }
             inner.view.session = Session::Off;
             inner.view.notice = None;
@@ -433,12 +435,17 @@ impl Runtime {
 
     fn evaluate_triggers(&self, app: &AppHandle, power: &Power) {
         let state = self.state();
-        let processes = if state.triggers.iter().any(|trigger| trigger.enabled) {
+        let processes = if triggers::needs_processes(&state.triggers) {
             processes::scan()
         } else {
             Vec::new()
         };
-        let active = triggers::active(&state.triggers, &processes);
+        let context = triggers::Context {
+            processes: &processes,
+            on_power: !power.on_battery,
+            external_display: display::external_connected(),
+        };
+        let active = triggers::active(&state.triggers, &context);
         let Ok(paused) = self.inner.lock().map(|inner| inner.paused.clone()) else {
             return;
         };
@@ -447,18 +454,20 @@ impl Runtime {
             .filter(|id| active.iter().any(|trigger| &trigger.id == id))
             .collect();
         let allowed = power::stop_reason(power, &state.settings.guard()).is_none();
-        let held_by = active
+        let holder = active
             .iter()
-            .find(|trigger| allowed && !paused.contains(&trigger.id))
-            .map(|trigger| trigger.name.clone());
+            .find(|trigger| allowed && !paused.contains(&trigger.id));
+        let held_id = holder.map(|trigger| trigger.id.clone());
+        let held_by = holder.map(|trigger| trigger.phrase());
         let paused_by = active
             .iter()
             .find(|trigger| paused.contains(&trigger.id))
-            .map(|trigger| trigger.name.clone());
+            .map(|trigger| trigger.until());
         let running: Vec<String> = active.iter().map(|trigger| trigger.id.clone()).collect();
         if held_by != state.held_by || paused_by != state.paused_by || running != state.running {
             let _ = self.update(app, |inner, _| {
                 inner.paused = paused;
+                inner.held_id = held_id;
                 inner.view.running = running;
                 inner.view.held_by = held_by;
                 inner.view.paused_by = paused_by;
@@ -541,7 +550,7 @@ mod tests {
             "Wick: awake until stopped"
         );
         assert_eq!(
-            assertion_name(&Session::Off, Some("Xcode")),
+            assertion_name(&Session::Off, Some("Xcode is running")),
             "Wick: awake while Xcode is running"
         );
         assert!(assertion_name(

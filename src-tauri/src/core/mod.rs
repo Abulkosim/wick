@@ -1,5 +1,6 @@
 pub mod assertion;
 pub mod candle;
+pub mod display;
 pub mod lid;
 pub mod lock;
 pub mod others;

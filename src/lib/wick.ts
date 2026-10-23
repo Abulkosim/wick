@@ -63,14 +63,14 @@ export function useWick() {
   })
   const stopSession = () => perform('stop_session', undefined, () => {
     if (state.value.session.mode === 'off' && state.value.heldBy) {
-      state.value.pausedBy = state.value.heldBy
+      state.value.pausedBy = state.value.heldBy.replace(/ is running$/, ' quits').replace(/^on power$/, 'you unplug').replace(/^an external display is connected$/, 'the display is disconnected')
       state.value.heldBy = null
     }
     state.value.session = { mode: 'off' }
     state.value.notice = null
   })
   const resumeTriggers = () => perform('resume_triggers', undefined, () => {
-    if (state.value.pausedBy) state.value.heldBy = state.value.pausedBy
+    if (state.value.pausedBy) state.value.heldBy = state.value.pausedBy.replace(/ quits$/, ' is running').replace(/^you unplug$/, 'on power').replace(/^the display is disconnected$/, 'an external display is connected')
     state.value.pausedBy = null
   })
   const saveTriggers = (triggers: Trigger[]) => perform('save_triggers', { triggers }, () => {

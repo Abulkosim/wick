@@ -9,6 +9,18 @@ pub const MAX_TRIGGERS: usize = 24;
 pub enum TriggerKind {
     App,
     Process,
+    /// On the power adapter.
+    Power,
+    /// An external display is connected.
+    Display,
+}
+
+/// What a trigger can look at on each tick.
+#[derive(Default)]
+pub struct Context<'a> {
+    pub processes: &'a [Process],
+    pub on_power: bool,
+    pub external_display: bool,
 }
 
 /// "Stay awake while <name> is running". Apps match by bundle path, processes by name.
@@ -39,6 +51,10 @@ impl Trigger {
             return Err("Name the app or process in 64 characters or fewer.".into());
         }
         match (self.kind, self.path.as_deref()) {
+            (TriggerKind::Power | TriggerKind::Display, None) => Ok(()),
+            (TriggerKind::Power | TriggerKind::Display, Some(_)) => {
+                Err("A condition has no app path.".into())
+            }
             (TriggerKind::App, Some(path))
                 if path.starts_with('/') && path.ends_with(".app") && path.len() <= 1024 =>
             {
@@ -50,8 +66,39 @@ impl Trigger {
         }
     }
 
+    /// "Xcode is running", "on power": completes "Awake while …".
+    pub fn phrase(&self) -> String {
+        match self.kind {
+            TriggerKind::App | TriggerKind::Process => format!("{} is running", self.name.trim()),
+            TriggerKind::Power => "on power".into(),
+            TriggerKind::Display => "an external display is connected".into(),
+        }
+    }
+
+    /// "Xcode quits", "you unplug": completes "Paused until …".
+    pub fn until(&self) -> String {
+        match self.kind {
+            TriggerKind::App | TriggerKind::Process => format!("{} quits", self.name.trim()),
+            TriggerKind::Power => "you unplug".into(),
+            TriggerKind::Display => "the display is disconnected".into(),
+        }
+    }
+
+    pub fn holds(&self, context: &Context) -> bool {
+        self.enabled
+            && match self.kind {
+                TriggerKind::Power => context.on_power,
+                TriggerKind::Display => context.external_display,
+                _ => context
+                    .processes
+                    .iter()
+                    .any(|process| self.matches(process)),
+            }
+    }
+
     pub fn matches(&self, process: &Process) -> bool {
         match self.kind {
+            TriggerKind::Power | TriggerKind::Display => false,
             TriggerKind::App => self
                 .path
                 .as_deref()
@@ -77,6 +124,14 @@ pub fn validate_all(triggers: &[Trigger]) -> Result<(), String> {
         trigger.validate()?;
         if triggers[..index].iter().any(|other| other.id == trigger.id) {
             return Err("Two triggers share an id.".into());
+        }
+        let condition = matches!(trigger.kind, TriggerKind::Power | TriggerKind::Display);
+        if condition
+            && triggers[..index]
+                .iter()
+                .any(|other| other.kind == trigger.kind)
+        {
+            return Err("That condition is already in the list.".into());
         }
     }
     Ok(())
@@ -115,14 +170,18 @@ pub fn recover(value: Option<Value>, notes: &mut Vec<String>) -> Vec<Trigger> {
     triggers
 }
 
-/// Enabled triggers whose app or process is running, in list order.
-pub fn active<'a>(triggers: &'a [Trigger], processes: &[Process]) -> Vec<&'a Trigger> {
+/// Enabled triggers that hold right now, in list order.
+pub fn active<'a>(triggers: &'a [Trigger], context: &Context) -> Vec<&'a Trigger> {
     triggers
         .iter()
-        .filter(|trigger| {
-            trigger.enabled && processes.iter().any(|process| trigger.matches(process))
-        })
+        .filter(|trigger| trigger.holds(context))
         .collect()
+}
+
+pub fn needs_processes(triggers: &[Trigger]) -> bool {
+    triggers.iter().any(|trigger| {
+        trigger.enabled && matches!(trigger.kind, TriggerKind::App | TriggerKind::Process)
+    })
 }
 
 #[cfg(test)]
@@ -208,11 +267,52 @@ mod tests {
             process("claude", "/x/claude"),
             process("ffmpeg", "/x/ffmpeg"),
         ];
-        let active: Vec<&str> = active(&triggers, &processes)
+        let context = Context {
+            processes: &processes,
+            ..Context::default()
+        };
+        let active: Vec<&str> = active(&triggers, &context)
             .iter()
             .map(|trigger| trigger.id.as_str())
             .collect();
         assert_eq!(active, ["a"]);
+    }
+
+    fn condition(id: &str, kind: TriggerKind) -> Trigger {
+        Trigger {
+            id: id.into(),
+            kind,
+            name: "condition".into(),
+            path: None,
+            enabled: true,
+        }
+    }
+
+    #[test]
+    fn conditions_follow_power_and_displays() {
+        let power = condition("p", TriggerKind::Power);
+        let display = condition("d", TriggerKind::Display);
+        let plugged = Context {
+            on_power: true,
+            ..Context::default()
+        };
+        assert!(power.holds(&plugged));
+        assert!(!display.holds(&plugged));
+        let docked = Context {
+            external_display: true,
+            ..Context::default()
+        };
+        assert!(display.holds(&docked));
+        assert!(!power.holds(&docked));
+        assert_eq!(power.phrase(), "on power");
+        assert_eq!(power.until(), "you unplug");
+        assert_eq!(display.until(), "the display is disconnected");
+        assert_eq!(named("x", "claude").phrase(), "claude is running");
+        assert_eq!(named("x", "claude").until(), "claude quits");
+        assert!(validate_all(&[power.clone(), condition("q", TriggerKind::Power)]).is_err());
+        let mut with_path = power;
+        with_path.path = Some("/Applications/X.app".into());
+        assert!(with_path.validate().is_err());
     }
 
     #[test]

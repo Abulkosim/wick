@@ -153,7 +153,7 @@ onUnmounted(() => {
               <h1 class="hero-title">{{ statusTitle }}</h1>
               <p class="hero-detail" :class="{ 'is-notice': !on && !held && state.notice }">{{ statusDetail }}<template v-if="!on && !held && state.pausedBy"> · <button class="text-button inline-action" :disabled="busy" @click="resumeTriggers">Resume</button></template></p>
             </div>
-            <AppTooltip v-if="held" :text="`Ignore ${state.heldBy} until it quits`"><button class="button hero-action" :disabled="busy" @click="stopSession">Stop</button></AppTooltip>
+            <AppTooltip v-if="held" text="Pause this trigger until it ends"><button class="button hero-action" :disabled="busy" @click="stopSession">Stop</button></AppTooltip>
             <button v-else-if="on" class="button hero-action" :disabled="busy" @click="stopSession">Stop</button>
             <AppTooltip v-else :text="startHint"><button class="button button-primary hero-action" :disabled="busy" @click="startSession(startRequest)">Start</button></AppTooltip>
           </section>

@@ -33,7 +33,7 @@ export const powerSchema = z.object({
 
 export const triggerSchema = z.object({
   id: z.string().regex(/^[A-Za-z0-9-]{1,64}$/),
-  kind: z.enum(['app', 'process']),
+  kind: z.enum(['app', 'process', 'power', 'display']),
   name: z.string().min(1).max(64),
   path: z.string().max(1024).optional(),
   enabled: z.boolean(),

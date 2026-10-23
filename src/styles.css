@@ -1150,3 +1150,12 @@ button:disabled:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.condition-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.condition-options .duration-option {
+  white-space: normal;
+  line-height: 1.3;
+}

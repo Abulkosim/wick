@@ -46,7 +46,7 @@ export function title(session: Session, now: number, heldBy: string | null = nul
 export function detail(session: Session, now: number, display: boolean, heldBy: string | null = null, pausedBy: string | null = null): string {
   const screen = display ? ' · Display on' : ''
   switch (session.mode) {
-    case 'off': return heldBy ? `While ${heldBy} is running${screen}` : pausedBy ? `Paused until ${pausedBy} quits` : 'Your Mac sleeps as usual.'
+    case 'off': return heldBy ? `While ${heldBy}${screen}` : pausedBy ? `Paused until ${pausedBy}` : 'Your Mac sleeps as usual.'
     case 'indefinite': return `Until you stop it${screen}`
     case 'until': return `${shortDuration(session.endsAt - now)} left${screen}`
     case 'for': return `Until ${clockTime(session.endsAt, now)}${screen}`

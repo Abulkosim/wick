@@ -98,8 +98,9 @@ Mac features first, Windows last, then the release. Presets dropped for now: the
 - [x] **4.2 Pause while the screen is locked.** Optional (off by default): release the assertion while locked, take it back on unlock; status "Paused while the screen is locked".
   Verify: pure tests on the decision; lock state read via `CGSessionCopyCurrentDictionary` checked against a live read; e2e of the paused state.
   Done 2026-10-23: `core/lock.rs` reads `CGSSessionScreenIsLocked`; reconcile drops the assertion while paused and takes it back on unlock (live IOKit test covers both); timed sessions keep counting by wall clock. Settings → General, off by default. Locking the screen here would interrupt the owner, so the live lock/unlock check is 👤.
-- [ ] **4.3 Condition triggers.** "Stay awake while on power" and "while an external display is connected", in the same card as app and command triggers.
+- [x] **4.3 Condition triggers.** "Stay awake while on power" and "while an external display is connected", in the same card as app and command triggers.
   Verify: pure evaluation tests; external display read checked against `system_profiler` on this Mac; e2e adding both.
+  Done 2026-10-23: `power`/`display` trigger kinds (one each), `Context` evaluation, phrases ("on power", "Paused until you unplug") sent from Rust. External display via `CGGetActiveDisplayList`/`CGDisplayIsBuiltin`, test agrees with `system_profiler`. Live: on battery, a power trigger held nothing (correct). Positive live case pending a plugged-in run.
 - [ ] **4.4 Schedule.** "Keep awake on weekdays 9:00–18:00"-style windows, evaluated each tick with the local clock; shown as held "Until 18:00 (schedule)".
   Verify: unit tests for day/time windows incl. overnight and DST; e2e of the editor.
 - [ ] **4.5 URL scheme and status CLI.** `wick://start?minutes=60`, `wick://start`, `wick://stop`, `wick://toggle`; `wick status` prints JSON for Shortcuts and Raycast.
