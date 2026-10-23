@@ -36,6 +36,7 @@ pub struct Settings {
     pub notify_on_end: bool,
     pub auto_check_updates: bool,
     pub show_time_left: bool,
+    pub pause_when_locked: bool,
 }
 
 pub const BATTERY_THRESHOLDS: std::ops::RangeInclusive<u8> = 5..=80;
@@ -55,6 +56,7 @@ impl Default for Settings {
             notify_on_end: true,
             auto_check_updates: true,
             show_time_left: false,
+            pause_when_locked: false,
         }
     }
 }
@@ -181,6 +183,13 @@ impl Settings {
                 "showTimeLeft",
                 defaults.show_time_left,
                 "Time left in the menu bar",
+                notes,
+            ),
+            pause_when_locked: field(
+                &map,
+                "pauseWhenLocked",
+                defaults.pause_when_locked,
+                "Pause while locked",
                 notes,
             ),
         };

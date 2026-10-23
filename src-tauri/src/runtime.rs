@@ -1,7 +1,7 @@
 use crate::{
     core::{
         assertion::{self, Assertion, Kind},
-        lid,
+        lid, lock,
         others::{self, Other},
         power::{self, Power},
         processes,
@@ -34,6 +34,8 @@ pub struct AppState {
     /// Why Wick last stopped on its own, until the next start.
     pub notice: Option<String>,
     pub power: Power,
+    /// The screen is locked and Wick has let go until it unlocks.
+    pub paused_by_lock: bool,
     /// Whether closing the lid would sleep the Mac; `None` without a lid.
     pub lid_sleeps: Option<bool>,
     pub triggers: Vec<Trigger>,
@@ -99,7 +101,7 @@ impl Inner {
         let held_by = (!session.is_on())
             .then(|| self.view.held_by.clone())
             .flatten();
-        if !session.is_on() && held_by.is_none() {
+        if self.view.paused_by_lock || (!session.is_on() && held_by.is_none()) {
             self.assertion = None;
             self.held_for = None;
             return Ok(());
@@ -345,6 +347,13 @@ impl Runtime {
         let power = power::read();
         self.evaluate_triggers(app, &power);
         self.refresh_others(app);
+        let paused_by_lock = self.state().settings.pause_when_locked && lock::screen_locked();
+        if paused_by_lock != self.state().paused_by_lock {
+            let _ = self.update(app, |inner, _| {
+                inner.view.paused_by_lock = paused_by_lock;
+                Ok(())
+            });
+        }
         let lid_sleeps = lid::closing_sleeps();
         if lid_sleeps != self.state().lid_sleeps {
             let _ = self.update(app, |inner, _| {
@@ -375,6 +384,7 @@ impl Runtime {
         }
         let state = self.state();
         let watching = state.triggers.iter().any(|trigger| trigger.enabled)
+            || state.settings.pause_when_locked
             || app
                 .get_webview_window("main")
                 .and_then(|window| window.is_visible().ok())
@@ -626,5 +636,12 @@ mod tests {
         inner.view.session = Session::Off;
         inner.reconcile(now).unwrap();
         assert!(ours().is_empty());
+        inner.view.session = Session::Indefinite { started_at: now };
+        inner.view.paused_by_lock = true;
+        inner.reconcile(now).unwrap();
+        assert!(ours().is_empty());
+        inner.view.paused_by_lock = false;
+        inner.reconcile(now).unwrap();
+        assert_eq!(ours(), ["PreventUserIdleDisplaySleep"]);
     }
 }

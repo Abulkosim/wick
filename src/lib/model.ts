@@ -22,6 +22,7 @@ export const settingsSchema = z.object({
   notifyOnEnd: z.boolean(),
   autoCheckUpdates: z.boolean(),
   showTimeLeft: z.boolean(),
+  pauseWhenLocked: z.boolean(),
 })
 
 export const powerSchema = z.object({
@@ -56,6 +57,7 @@ export const appStateSchema = z.object({
   notice: z.string().nullable(),
   power: powerSchema,
   lidSleeps: z.boolean().nullable(),
+  pausedByLock: z.boolean(),
   triggers: z.array(triggerSchema),
   running: z.array(z.string()),
   heldBy: z.string().nullable(),
@@ -80,6 +82,6 @@ export type Other = z.infer<typeof otherSchema>
 export type AppState = z.infer<typeof appStateSchema>
 export type StartRequest = z.infer<typeof startRequestSchema>
 
-export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open', launchAtLogin: false, shortcut: null, batteryGuard: true, batteryThreshold: 20, stopInLowPowerMode: false, notifyOnEnd: true, autoCheckUpdates: true, showTimeLeft: false }
+export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open', launchAtLogin: false, shortcut: null, batteryGuard: true, batteryThreshold: 20, stopInLowPowerMode: false, notifyOnEnd: true, autoCheckUpdates: true, showTimeLeft: false, pauseWhenLocked: false }
 
-export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings }, error: null, notice: null, power: { onBattery: false, percent: null, lowPowerMode: false }, lidSleeps: null, triggers: [], running: [], heldBy: null, pausedBy: null, others: [], recovery: null, recovered: [] })
+export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings }, error: null, notice: null, power: { onBattery: false, percent: null, lowPowerMode: false }, lidSleeps: null, pausedByLock: false, triggers: [], running: [], heldBy: null, pausedBy: null, others: [], recovery: null, recovered: [] })

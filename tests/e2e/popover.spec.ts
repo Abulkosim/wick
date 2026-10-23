@@ -73,3 +73,10 @@ for (const theme of ['light', 'dark'] as const) {
     })
   }
 }
+
+test('a locked screen pauses the session', async ({ page }) => {
+  await page.goto('/?demo=1&state=locked')
+  await expect(page.getByRole('status')).toContainText('Paused while the screen is locked')
+  await page.getByRole('button', { name: 'Open settings' }).click()
+  await expect(page.getByRole('switch', { name: 'Pause while the screen is locked' })).toBeChecked()
+})

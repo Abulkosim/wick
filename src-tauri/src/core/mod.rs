@@ -1,6 +1,7 @@
 pub mod assertion;
 pub mod candle;
 pub mod lid;
+pub mod lock;
 pub mod others;
 pub mod power;
 pub mod processes;
