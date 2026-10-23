@@ -68,8 +68,9 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 - [x] **2.7 Lid hint.** Read `AppleClamshellCausesSleep`; show "Closing the lid will sleep your Mac" on portables while awake.
   Verify: fixture tests; real read on this Mac.
   Done 2026-10-23: `AppleClamshellCausesSleep` from `IOPMrootDomain` (only on Macs with `AppleClamshellState`), checked against `ioreg` in a test; reads No here with the external display attached. Footer warns while awake, otherwise shows battery.
-- [ ] **2.8 Every state in the demo bridge.** off, timed, until, indefinite, held by trigger, stopped by battery, others awake, error, recovery, update available.
+- [x] **2.8 Every state in the demo bridge.** off, timed, until, indefinite, held by trigger, stopped by battery, others awake, error, recovery, update available.
   Verify: e2e per state, Chromium + WebKit, light + dark screenshots reviewed.
+  Done 2026-10-23: 16 scenarios in `src/lib/demo.ts` (off, timed, until, indefinite, display, battery, error, recovery, recovered, desktop, held, paused, triggers, others, others-off, clamshell); `states.spec.ts` renders each in both engines and themes with no console errors or horizontal overflow, plus a 340 px phone-width check. Contact sheets reviewed. No permission-needed state exists in v0.1: Wick asks for none (no Location, no Accessibility; the notification plugin never prompts on desktop). Update-available arrives with 2.9.
 - [ ] **2.9 Updater.** Port `updates.rs`, `UpdateSettings.vue`, daily check, signer key (stored outside repo, secret set), `scripts/`.
   Verify: script tests; updater install test against a local build.
 
