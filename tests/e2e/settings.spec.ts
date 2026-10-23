@@ -73,3 +73,11 @@ test('launch at login toggles', async ({ page }) => {
   await toggle.click()
   await expect(toggle).toBeChecked()
 })
+
+test('session notifications can be turned off', async ({ page }) => {
+  await page.goto('/?demo=1&state=off&page=settings')
+  const toggle = page.getByRole('switch', { name: 'When a session ends' })
+  await expect(toggle).toBeChecked()
+  await toggle.click()
+  await expect(toggle).not.toBeChecked()
+})

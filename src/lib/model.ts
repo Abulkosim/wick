@@ -19,6 +19,7 @@ export const settingsSchema = z.object({
   batteryGuard: z.boolean(),
   batteryThreshold: z.number().int().min(5).max(80),
   stopInLowPowerMode: z.boolean(),
+  notifyOnEnd: z.boolean(),
 })
 
 export const powerSchema = z.object({
@@ -50,6 +51,6 @@ export type Power = z.infer<typeof powerSchema>
 export type AppState = z.infer<typeof appStateSchema>
 export type StartRequest = z.infer<typeof startRequestSchema>
 
-export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open', launchAtLogin: false, shortcut: null, batteryGuard: true, batteryThreshold: 20, stopInLowPowerMode: false }
+export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open', launchAtLogin: false, shortcut: null, batteryGuard: true, batteryThreshold: 20, stopInLowPowerMode: false, notifyOnEnd: true }
 
 export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings }, error: null, notice: null, power: { onBattery: false, percent: null, lowPowerMode: false }, recovery: null, recovered: [] })

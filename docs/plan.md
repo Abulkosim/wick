@@ -56,8 +56,9 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 - [x] **2.3 Battery guard.** IOPS notifications; stop (not pause) below threshold on battery; optional stop in Low Power Mode. Status "Stopped: battery below 20%".
   Verify: pure tests on guard; manual unplug check 👤 noted if not testable here.
   Done 2026-10-23: IOPS read every 5 s while awake, 60 s otherwise (no run-loop source needed); stops below the level (default 20%, chips 10/20/30/50) or in Low Power Mode if asked; refuses to start below it with a reason; footer shows "On battery · 82%", nothing on power. Battery section hidden on desktops. This Mac is on AC, so the unplug check is 👤.
-- [ ] **2.4 Notifications.** "Session ended. Your Mac can sleep again." and battery stop. Off switch in Settings → Notifications.
+- [x] **2.4 Notifications.** "Session ended. Your Mac can sleep again." and battery stop. Off switch in Settings → Notifications.
   Verify: unit test on when to send; one real notification seen.
+  Done 2026-10-23: `due()` decides end/guard/power per tick (unit tested); a notification only when Wick ends a session itself, never on manual Stop; clicking it opens the popover. Real app in /Applications: `wick start 1` ended on time, assertion gone. Whether the banner showed is 👤 (owner's screen).
 - [ ] **2.5 App/process trigger.** Sentence builder "Stay awake while **Xcode** is running": pick a running app (NSWorkspace) or type a process name (`claude`, `codex`, `ffmpeg`, `xcodebuild`). Held state shows "Awake while Xcode is running". Manual session wins over triggers; Stop while held offers "Pause triggers for 1h".
   Verify: pure evaluation tests; real run with `sleep 30` as the watched process: assertion appears, then goes.
 - [ ] **2.6 Who else.** `IOPMCopyAssertionsByProcess`, filtered, friendly names: "Zoom is also keeping your Mac awake" with the reason on hover.

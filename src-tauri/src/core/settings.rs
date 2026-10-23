@@ -33,6 +33,7 @@ pub struct Settings {
     pub battery_guard: bool,
     pub battery_threshold: u8,
     pub stop_in_low_power_mode: bool,
+    pub notify_on_end: bool,
 }
 
 pub const BATTERY_THRESHOLDS: std::ops::RangeInclusive<u8> = 5..=80;
@@ -49,6 +50,7 @@ impl Default for Settings {
             battery_guard: true,
             battery_threshold: 20,
             stop_in_low_power_mode: false,
+            notify_on_end: true,
         }
     }
 }
@@ -154,6 +156,13 @@ impl Settings {
                 "stopInLowPowerMode",
                 defaults.stop_in_low_power_mode,
                 "Stop in Low Power Mode",
+                notes,
+            ),
+            notify_on_end: field(
+                &map,
+                "notifyOnEnd",
+                defaults.notify_on_end,
+                "Session notifications",
                 notes,
             ),
         };

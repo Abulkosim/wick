@@ -10,6 +10,7 @@ use popover::Visibility;
 use runtime::Runtime;
 use std::{sync::Arc, time::Instant};
 use tauri::{Manager, WindowEvent};
+use tauri_plugin_notification::NotificationExt;
 
 /// Runs a command-line intent. Returns false when there was none.
 fn perform(app: &tauri::AppHandle, args: &[String]) -> bool {
@@ -39,6 +40,7 @@ pub fn run() {
             Some(vec!["--background"]),
         ))
         .plugin(shortcut::plugin())
+        .plugin(tauri_plugin_notification::init())
         .manage(Visibility::default())
         .manage(tray::Presentation::default())
         .invoke_handler(tauri::generate_handler![
@@ -60,6 +62,9 @@ pub fn run() {
             let runtime = Arc::new(Runtime::new(path));
             app.manage(runtime.clone());
             tray::setup(app.handle())?;
+            let opener = app.handle().clone();
+            app.notification()
+                .on_action(move |_| popover::show(&opener, false))?;
             runtime.sync_launch_at_login(app.handle());
             let saved = runtime.state().settings.shortcut;
             if let Err(error) = shortcut::replace(app.handle(), None, saved.as_deref()) {

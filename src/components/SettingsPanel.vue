@@ -72,6 +72,10 @@ function setClick(value: string): void {
         <div class="setting-row"><div><span id="low-power-label" class="setting-label">Stop in Low Power Mode</span><p>When it turns on while on battery.</p></div><AppSwitch :model-value="settings.stopInLowPowerMode" aria-labelledby="low-power-label" :disabled="busy" @update:model-value="patch({ stopInLowPowerMode: $event })"/></div>
       </section>
       <section class="settings-section">
+        <h2>Notifications</h2>
+        <div class="setting-row"><div><span id="notify-end-label" class="setting-label">When a session ends</span><p>Also when the battery stops it.</p></div><AppSwitch :model-value="settings.notifyOnEnd" aria-labelledby="notify-end-label" :disabled="busy" @update:model-value="patch({ notifyOnEnd: $event })"/></div>
+      </section>
+      <section class="settings-section">
         <h2>Appearance</h2>
         <div class="theme-options"><button v-for="theme in themes" :key="theme.id" class="theme-option" :class="{ selected: settings.theme === theme.id }" :aria-pressed="settings.theme === theme.id" :disabled="busy" @click="patch({ theme: theme.id })"><span class="theme-thumbnail" :class="`thumbnail-${theme.id}`"><span/><span/><span/></span><span><AppIcon :name="theme.icon" :size="13"/>{{ theme.label }}</span><span v-if="settings.theme === theme.id" class="theme-check"><AppIcon name="check" :size="10"/></span></button></div>
       </section>

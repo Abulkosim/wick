@@ -277,27 +277,25 @@ impl Runtime {
         let now = now_ms();
         let power = power::read();
         let state = self.state();
-        if state.session.expired(now) {
-            let _ = self.stop(app);
-        } else if let Some(reason) = state
-            .session
-            .is_on()
-            .then(|| power::stop_reason(&power, &state.settings.guard()))
-            .flatten()
-        {
-            let _ = self.update(app, |inner, _| {
-                inner.view.session = Session::Off;
-                inner.view.notice = Some(reason);
-                inner.view.power = power;
-                Ok(())
-            });
-        } else if state.power != power {
-            let _ = self.update(app, |inner, _| {
-                inner.view.power = power;
-                Ok(())
-            });
-        } else {
-            tray::update(app, &state, now);
+        match due(&state, power, now) {
+            Due::Nothing => tray::update(app, &state, now),
+            Due::Power => {
+                let _ = self.update(app, |inner, _| {
+                    inner.view.power = power;
+                    Ok(())
+                });
+            }
+            Due::End { notice, message } => {
+                let stopped = self.update(app, |inner, _| {
+                    inner.view.session = Session::Off;
+                    inner.view.notice = notice;
+                    inner.view.power = power;
+                    Ok(())
+                });
+                if stopped.is_ok() && state.settings.notify_on_end {
+                    notify(app, &message);
+                }
+            }
         }
         let state = self.state();
         match state.session.remaining_ms(now) {
@@ -306,6 +304,43 @@ impl Runtime {
             None => IDLE_TICK,
         }
     }
+}
+
+#[derive(Debug, PartialEq)]
+enum Due {
+    Nothing,
+    Power,
+    End {
+        notice: Option<String>,
+        message: String,
+    },
+}
+
+fn due(state: &AppState, power: Power, now: i64) -> Due {
+    if state.session.expired(now) {
+        return Due::End {
+            notice: None,
+            message: "Session ended. Your Mac can sleep again.".into(),
+        };
+    }
+    if state.session.is_on() {
+        if let Some(reason) = power::stop_reason(&power, &state.settings.guard()) {
+            return Due::End {
+                message: format!("{reason}. Your Mac can sleep again."),
+                notice: Some(reason),
+            };
+        }
+    }
+    if state.power != power {
+        Due::Power
+    } else {
+        Due::Nothing
+    }
+}
+
+fn notify(app: &AppHandle, title: &str) {
+    use tauri_plugin_notification::NotificationExt;
+    let _ = app.notification().builder().title(title).show();
 }
 
 pub fn publish(app: &AppHandle, view: &AppState) {
@@ -340,6 +375,39 @@ mod tests {
             ends_at: 3_600_000
         })
         .starts_with("Wick: awake until "));
+    }
+
+    #[test]
+    fn due_ends_on_time_or_low_battery() {
+        let battery = Power {
+            on_battery: true,
+            percent: Some(10),
+            low_power_mode: false,
+        };
+        let timed = AppState {
+            session: Session::For {
+                started_at: 0,
+                ends_at: 1000,
+            },
+            ..AppState::default()
+        };
+        assert_eq!(due(&timed, Power::default(), 999), Due::Nothing);
+        assert_eq!(
+            due(&timed, Power::default(), 1000),
+            Due::End {
+                notice: None,
+                message: "Session ended. Your Mac can sleep again.".into()
+            }
+        );
+        assert_eq!(
+            due(&timed, battery, 10),
+            Due::End {
+                notice: Some("Stopped: battery below 20%".into()),
+                message: "Stopped: battery below 20%. Your Mac can sleep again.".into()
+            }
+        );
+        let off = AppState::default();
+        assert_eq!(due(&off, battery, 10), Due::Power);
     }
 
     #[test]
