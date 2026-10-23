@@ -34,8 +34,9 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 
 ## Phase 1 — Alive (M1)
 
-- [ ] **1.1 Assertion core.** `core/assertion.rs`: create/release with type + name + optional timeout; RAII guard released on drop; `core/session.rs` pure state machine (off, timed, until, indefinite) with unit tests for remaining time, wake drift, until-time rolling to tomorrow.
+- [x] **1.1 Assertion core.** `core/assertion.rs`: create/release with type + name + optional timeout; RAII guard released on drop; `core/session.rs` pure state machine (off, timed, until, indefinite) with unit tests for remaining time, wake drift, until-time rolling to tomorrow.
   Verify: unit tests; ignored integration test creates an assertion, reads it back via `IOPMCopyAssertionsByProcess`, drops it, sees it gone.
+  Done 2026-10-23: `core/assertion.rs` (IOKit FFI via core-foundation, `TimeoutActionRelease` backstop, `list()` for who-else) and `core/session.rs` (wall-clock `endsAt`, so time left can't go negative after sleep). The create/read/drop test runs un-ignored on every macOS test run, not just locally.
 - [ ] **1.2 Tray icon.** `core/ring.rs` renders template PNGs at 1x/2x: off, fraction 0–1, full, held-by-trigger dot. Contact sheet in `docs/images/tray/`.
   Verify: render test 16/22/32 px; eyeball sheet on light + dark menu bar.
 - [ ] **1.3 Popover + toggle.** Status line, primary Start/Stop, duration chips (15m, 1h, 2h, Until…, Indefinitely, Custom), "Keep display on" switch. `fit_popover` + ResizeObserver from Margin. Countdown ticks.

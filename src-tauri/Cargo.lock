@@ -4284,6 +4284,8 @@ dependencies = [
 name = "wick"
 version = "0.0.0"
 dependencies = [
+ "chrono",
+ "core-foundation",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
