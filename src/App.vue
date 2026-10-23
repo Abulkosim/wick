@@ -11,6 +11,7 @@ import StatusRing from './components/StatusRing.vue'
 import { useWick } from './lib/wick'
 import { activePreset, detail, fraction, shortDuration, title } from './lib/session'
 import type { StartRequest } from './lib/model'
+import { powerNote } from './lib/power'
 
 const { state, pending, message, now, demo, desktop, startSession, stopSession, setDisplay, saveSettings, resetStore, hideWindow } = useWick()
 const query = new URLSearchParams(location.search)
@@ -26,7 +27,8 @@ const startHint = computed(() => state.value.settings.startMinutes === null ? 'K
 const busy = computed(() => pending.value !== null)
 const on = computed(() => state.value.session.mode !== 'off')
 const statusTitle = computed(() => title(state.value.session, now.value))
-const statusDetail = computed(() => detail(state.value.session, now.value, state.value.settings.keepDisplayOn))
+const statusDetail = computed(() => state.value.session.mode === 'off' && state.value.notice ? state.value.notice : detail(state.value.session, now.value, state.value.settings.keepDisplayOn))
+const footerNote = computed(() => powerNote(state.value.power))
 const ringFraction = computed(() => fraction(state.value.session, now.value))
 const active = computed(() => activePreset(state.value.session))
 const arrowStyle = computed(() => {
@@ -133,7 +135,7 @@ onUnmounted(() => {
             <StatusRing :fraction="ringFraction" :on="on"/>
             <div class="hero-copy" role="status" aria-live="polite">
               <h1 class="hero-title">{{ statusTitle }}</h1>
-              <p class="hero-detail">{{ statusDetail }}</p>
+              <p class="hero-detail" :class="{ 'is-notice': state.session.mode === 'off' && state.notice }">{{ statusDetail }}</p>
             </div>
             <button v-if="on" class="button hero-action" :disabled="busy" @click="stopSession">Stop</button>
             <AppTooltip v-else :text="startHint"><button class="button button-primary hero-action" :disabled="busy" @click="startSession(startRequest)">Start</button></AppTooltip>
@@ -155,14 +157,14 @@ onUnmounted(() => {
           </section>
         </main>
         <footer class="app-footer">
-          <span class="footer-note"/>
+          <span class="footer-note"><template v-if="footerNote"><AppIcon :name="state.power.lowPowerMode ? 'bolt' : 'battery'" :size="15"/>{{ footerNote }}</template></span>
           <div class="footer-actions">
             <AppTooltip text="Settings"><button class="icon-button" aria-label="Settings" @click="page = 'settings'"><AppIcon name="settings" :size="16"/></button></AppTooltip>
             <AppTooltip text="Quit Wick"><button class="icon-button" aria-label="Quit Wick" @click="quit"><AppIcon name="power" :size="16"/></button></AppTooltip>
           </div>
         </footer>
         </template>
-        <SettingsPanel v-else :settings="state.settings" :recovered="state.recovered" :recovery="state.recovery" :busy="busy" :save="saveSettings" :reset="resetStore" @back="page = 'overview'"/>
+        <SettingsPanel v-else :settings="state.settings" :power="state.power" :recovered="state.recovered" :recovery="state.recovery" :busy="busy" :save="saveSettings" :reset="resetStore" @back="page = 'overview'"/>
         <div v-if="demo" class="preview-ribbon"><span class="preview-dot"/>Interface preview<span>Sample data</span></div>
         <Transition name="toast"><div v-if="message" class="toast-message" :class="{ 'toast-error': message.kind === 'error' }" :role="message.kind === 'error' ? 'alert' : 'status'"><AppIcon :name="message.kind === 'error' ? 'alert' : 'check'" :size="15"/><span>{{ message.text }}</span><button class="icon-button" aria-label="Dismiss message" @click="message = null"><AppIcon name="close" :size="13"/></button></div></Transition>
       </div>

@@ -2,6 +2,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { createDemoState } from './demo.ts'
 import { appStateSchema, defaultSettings, initialState, type AppState, type Settings, type StartRequest } from './model.ts'
 import { start } from './session.ts'
+import { stopReason } from './power.ts'
 
 type Command = 'start_session' | 'stop_session' | 'set_display' | 'save_settings' | 'reset_store'
 
@@ -53,8 +54,13 @@ export function useWick() {
     }
   }
 
-  const startSession = (request: StartRequest) => perform('start_session', { request }, () => { state.value.session = start(request, Date.now()) })
-  const stopSession = () => perform('stop_session', undefined, () => { state.value.session = { mode: 'off' } })
+  const startSession = (request: StartRequest) => perform('start_session', { request }, () => {
+    const reason = stopReason(state.value.power, state.value.settings)
+    if (reason) throw new Error(`Not started: ${reason.replace('Stopped: ', '')}. Plug in, or change it in Settings → Battery.`)
+    state.value.session = start(request, Date.now())
+    state.value.notice = null
+  })
+  const stopSession = () => perform('stop_session', undefined, () => { state.value.session = { mode: 'off' }; state.value.notice = null })
   const setDisplay = (display: boolean) => perform('set_display', { display }, () => { state.value.settings = { ...state.value.settings, keepDisplayOn: display } })
   const saveSettings = (settings: Settings) => perform('save_settings', { settings }, () => { state.value.settings = settings; state.value.recovered = [] })
 

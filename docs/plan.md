@@ -53,8 +53,9 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 - [x] **2.2 Launch at login + global shortcut.** autostart plugin (`--background`), global-shortcut plugin; no default shortcut (avoids clashes), recorded in Settings → General.
   Verify: toggle reflects `is_enabled`; shortcut starts/stops in real app.
   Done 2026-10-23: LaunchAgent with `--background`, mirrored from the OS on every launch. Shortcut recorder stores `Alt+Super+KeyW`-style accelerators, needs ⌘/⌃/⌥, shows ⌥⌘W; a taken shortcut keeps the old one and says so. Real app registered `Control+Alt+Super+KeyJ` from settings.json without error. Pressing it and toggling login need Accessibility/clicks here 👤.
-- [ ] **2.3 Battery guard.** IOPS notifications; stop (not pause) below threshold on battery; optional stop in Low Power Mode. Status "Stopped: battery below 20%".
+- [x] **2.3 Battery guard.** IOPS notifications; stop (not pause) below threshold on battery; optional stop in Low Power Mode. Status "Stopped: battery below 20%".
   Verify: pure tests on guard; manual unplug check 👤 noted if not testable here.
+  Done 2026-10-23: IOPS read every 5 s while awake, 60 s otherwise (no run-loop source needed); stops below the level (default 20%, chips 10/20/30/50) or in Low Power Mode if asked; refuses to start below it with a reason; footer shows "On battery · 82%", nothing on power. Battery section hidden on desktops. This Mac is on AC, so the unplug check is 👤.
 - [ ] **2.4 Notifications.** "Session ended. Your Mac can sleep again." and battery stop. Off switch in Settings → Notifications.
   Verify: unit test on when to send; one real notification seen.
 - [ ] **2.5 App/process trigger.** Sentence builder "Stay awake while **Xcode** is running": pick a running app (NSWorkspace) or type a process name (`claude`, `codex`, `ffmpeg`, `xcodebuild`). Held state shows "Awake while Xcode is running". Manual session wins over triggers; Stop while held offers "Pause triggers for 1h".

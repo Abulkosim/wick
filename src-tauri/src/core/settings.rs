@@ -30,7 +30,12 @@ pub struct Settings {
     pub launch_at_login: bool,
     /// An accelerator such as `Alt+Super+KeyW` that starts or stops.
     pub shortcut: Option<String>,
+    pub battery_guard: bool,
+    pub battery_threshold: u8,
+    pub stop_in_low_power_mode: bool,
 }
+
+pub const BATTERY_THRESHOLDS: std::ops::RangeInclusive<u8> = 5..=80;
 
 impl Default for Settings {
     fn default() -> Self {
@@ -41,6 +46,9 @@ impl Default for Settings {
             icon_click: IconClick::Open,
             launch_at_login: false,
             shortcut: None,
+            battery_guard: true,
+            battery_threshold: 20,
+            stop_in_low_power_mode: false,
         }
     }
 }
@@ -71,7 +79,18 @@ impl Settings {
         if let Some(shortcut) = &self.shortcut {
             parse_shortcut(shortcut)?;
         }
+        if !BATTERY_THRESHOLDS.contains(&self.battery_threshold) {
+            return Err("Choose a battery level between 5% and 80%.".into());
+        }
         Ok(())
+    }
+
+    pub fn guard(&self) -> super::power::Guard {
+        super::power::Guard {
+            enabled: self.battery_guard,
+            threshold: self.battery_threshold,
+            stop_in_low_power_mode: self.stop_in_low_power_mode,
+        }
     }
 
     /// Keeps every readable field and notes each one that had to fall back.
@@ -116,6 +135,27 @@ impl Settings {
                 notes,
             ),
             shortcut: field(&map, "shortcut", defaults.shortcut, "Shortcut", notes),
+            battery_guard: field(
+                &map,
+                "batteryGuard",
+                defaults.battery_guard,
+                "Stop on low battery",
+                notes,
+            ),
+            battery_threshold: field(
+                &map,
+                "batteryThreshold",
+                defaults.battery_threshold,
+                "Battery level",
+                notes,
+            ),
+            stop_in_low_power_mode: field(
+                &map,
+                "stopInLowPowerMode",
+                defaults.stop_in_low_power_mode,
+                "Stop in Low Power Mode",
+                notes,
+            ),
         };
         let mut settings = settings;
         if settings
@@ -132,6 +172,10 @@ impl Settings {
         {
             reset_note("Shortcut", notes);
             settings.shortcut = None;
+        }
+        if !BATTERY_THRESHOLDS.contains(&settings.battery_threshold) {
+            reset_note("Battery level", notes);
+            settings.battery_threshold = defaults.battery_threshold;
         }
         settings
     }
@@ -215,6 +259,14 @@ mod tests {
         let settings = Settings::recover(Some(json!({ "shortcut": "Shift+KeyA" })), &mut notes);
         assert_eq!(settings.shortcut, None);
         assert_eq!(notes, ["Shortcut was reset to its default."]);
+    }
+
+    #[test]
+    fn battery_level_out_of_range_falls_back() {
+        let mut notes = Vec::new();
+        let settings = Settings::recover(Some(json!({ "batteryThreshold": 99 })), &mut notes);
+        assert_eq!(settings.battery_threshold, 20);
+        assert_eq!(notes, ["Battery level was reset to its default."]);
     }
 
     #[test]

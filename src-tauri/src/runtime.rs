@@ -1,6 +1,7 @@
 use crate::{
     core::{
         assertion::{self, Assertion, Kind},
+        power::{self, Power},
         session::{Request, Session},
         settings::Settings,
         store::{self, StoredState},
@@ -17,6 +18,7 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::Notify;
 
 const TICK: Duration = Duration::from_secs(5);
+const IDLE_TICK: Duration = Duration::from_secs(60);
 
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -25,6 +27,9 @@ pub struct AppState {
     pub session: Session,
     pub settings: Settings,
     pub error: Option<String>,
+    /// Why Wick last stopped on its own, until the next start.
+    pub notice: Option<String>,
+    pub power: Power,
     /// Set when the settings file can't be read. Saving stays off until the owner resets it.
     pub recovery: Option<String>,
     pub recovered: Vec<String>,
@@ -123,6 +128,7 @@ impl Runtime {
         Self {
             inner: Mutex::new(Inner {
                 view: AppState {
+                    power: power::read(),
                     settings: stored.settings,
                     recovery,
                     recovered: stored.recovered,
@@ -188,8 +194,17 @@ impl Runtime {
     }
 
     pub fn start(&self, app: &AppHandle, request: Request) -> Result<AppState, String> {
+        let power = power::read();
         self.update(app, |inner, _| {
+            inner.view.power = power;
+            if let Some(reason) = power::stop_reason(&power, &inner.view.settings.guard()) {
+                let reason = reason.trim_start_matches("Stopped: ");
+                return Err(format!(
+                    "Not started: {reason}. Plug in, or change it in Settings → Battery."
+                ));
+            }
             inner.view.session = Session::start(request, &chrono::Local::now())?;
+            inner.view.notice = None;
             Ok(())
         })
     }
@@ -197,6 +212,7 @@ impl Runtime {
     pub fn stop(&self, app: &AppHandle) -> Result<AppState, String> {
         self.update(app, |inner, _| {
             inner.view.session = Session::Off;
+            inner.view.notice = None;
             Ok(())
         })
     }
@@ -256,18 +272,39 @@ impl Runtime {
         })
     }
 
-    /// Ends a timed session that has run out and redraws the tray. Returns when to look again.
-    fn tick(&self, app: &AppHandle) -> Option<Duration> {
+    /// Stops when time runs out or the battery guard trips. Returns when to look again.
+    pub fn tick(&self, app: &AppHandle) -> Duration {
         let now = now_ms();
-        let session = self.state().session;
-        if session.expired(now) {
+        let power = power::read();
+        let state = self.state();
+        if state.session.expired(now) {
             let _ = self.stop(app);
-            return None;
+        } else if let Some(reason) = state
+            .session
+            .is_on()
+            .then(|| power::stop_reason(&power, &state.settings.guard()))
+            .flatten()
+        {
+            let _ = self.update(app, |inner, _| {
+                inner.view.session = Session::Off;
+                inner.view.notice = Some(reason);
+                inner.view.power = power;
+                Ok(())
+            });
+        } else if state.power != power {
+            let _ = self.update(app, |inner, _| {
+                inner.view.power = power;
+                Ok(())
+            });
+        } else {
+            tray::update(app, &state, now);
         }
-        tray::update(app, &self.state(), now);
-        session
-            .remaining_ms(now)
-            .map(|ms| TICK.min(Duration::from_millis(ms as u64)))
+        let state = self.state();
+        match state.session.remaining_ms(now) {
+            Some(ms) => TICK.min(Duration::from_millis(ms.max(0) as u64)),
+            None if state.session.is_on() => TICK,
+            None => IDLE_TICK,
+        }
     }
 }
 
@@ -279,7 +316,7 @@ pub fn publish(app: &AppHandle, view: &AppState) {
 pub fn start_ticker(app: AppHandle, runtime: Arc<Runtime>) {
     tauri::async_runtime::spawn(async move {
         loop {
-            let wait = runtime.tick(&app).unwrap_or(Duration::from_secs(3600));
+            let wait = runtime.tick(&app);
             tokio::select! {
                 _ = tokio::time::sleep(wait) => {}
                 _ = runtime.wake.notified() => {}

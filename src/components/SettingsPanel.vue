@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { version } from '../../package.json'
-import type { Settings } from '../lib/model'
+import type { Power, Settings } from '../lib/model'
+import { hasBattery } from '../lib/power'
 import { shortDuration } from '../lib/session'
 import AppIcon from './AppIcon.vue'
 import AppSelect from './ui/AppSelect.vue'
 import AppSwitch from './ui/AppSwitch.vue'
 import ShortcutField from './ShortcutField.vue'
 
-const props = defineProps<{ settings: Settings; recovered: string[]; recovery: string | null; busy: boolean; save: (settings: Settings) => Promise<boolean>; reset: () => Promise<boolean> }>()
+const props = defineProps<{ settings: Settings; power: Power; recovered: string[]; recovery: string | null; busy: boolean; save: (settings: Settings) => Promise<boolean>; reset: () => Promise<boolean> }>()
 defineEmits<{ back: [] }>()
 
 const themes: { id: Settings['theme']; label: string; icon: 'system' | 'sun' | 'moon' }[] = [
@@ -23,6 +24,7 @@ const startOptions = computed(() => {
     ...minutes.map(value => ({ value: String(value), label: value === 15 ? '15 minutes' : value === 60 ? '1 hour' : value === 120 ? '2 hours' : shortDuration(value * 60_000) })),
   ]
 })
+const thresholds = [10, 20, 30, 50]
 const clickOptions: { value: Settings['iconClick']; label: string }[] = [
   { value: 'open', label: 'Shows Wick' },
   { value: 'toggle', label: 'Starts or stops' },
@@ -62,6 +64,12 @@ function setClick(value: string): void {
           <ShortcutField :model-value="settings.shortcut" labelledby="shortcut-label" :disabled="busy" @update:model-value="patch({ shortcut: $event })"/>
         </div>
         <div class="setting-row"><span id="login-label" class="setting-label">Launch at login</span><AppSwitch :model-value="settings.launchAtLogin" aria-labelledby="login-label" :disabled="busy" @update:model-value="patch({ launchAtLogin: $event })"/></div>
+      </section>
+      <section v-if="hasBattery(power)" class="settings-section">
+        <h2>Battery</h2>
+        <div class="setting-row"><div><span id="battery-guard-label" class="setting-label">Stop on low battery</span><p>Only while on battery power.</p></div><AppSwitch :model-value="settings.batteryGuard" aria-labelledby="battery-guard-label" :disabled="busy" @update:model-value="patch({ batteryGuard: $event })"/></div>
+        <div class="threshold-options" :class="{ 'is-disabled': !settings.batteryGuard }" role="group" aria-label="Stop below"><span>Stop below</span><button v-for="threshold in thresholds" :key="threshold" class="threshold-chip" :class="{ selected: settings.batteryThreshold === threshold }" :aria-pressed="settings.batteryThreshold === threshold" :disabled="busy || !settings.batteryGuard" @click="patch({ batteryThreshold: threshold })">{{ threshold }}%</button></div>
+        <div class="setting-row"><div><span id="low-power-label" class="setting-label">Stop in Low Power Mode</span><p>When it turns on while on battery.</p></div><AppSwitch :model-value="settings.stopInLowPowerMode" aria-labelledby="low-power-label" :disabled="busy" @update:model-value="patch({ stopInLowPowerMode: $event })"/></div>
       </section>
       <section class="settings-section">
         <h2>Appearance</h2>

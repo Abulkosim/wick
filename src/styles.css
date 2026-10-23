@@ -916,3 +916,45 @@ button:disabled:hover {
   color: var(--danger);
   line-height: 1.45;
 }
+.threshold-options {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 13px;
+  color: var(--tertiary);
+  font-size: 13px;
+  transition: opacity .18s;
+  flex-wrap: wrap;
+}
+.threshold-options>span:first-child {
+  margin-right: 4px;
+}
+.threshold-options>span:last-child {
+  margin-left: 2px;
+}
+.threshold-options.is-disabled {
+  opacity: .5;
+}
+.threshold-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 5px 7px;
+  font-size: 13px;
+  background: var(--card);
+  font-variant-numeric: tabular-nums;
+  color: var(--secondary);
+}
+.threshold-chip.selected {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+.threshold-options {
+  margin: 8px 0 6px;
+}
+.hero-detail.is-notice {
+  color: var(--warning);
+}

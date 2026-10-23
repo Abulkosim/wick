@@ -1,9 +1,10 @@
 import { initialState, type AppState } from './model.ts'
 
-export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'error', 'recovery', 'recovered'] as const
+export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop'] as const
 
 export function createDemoState(scenario: string | null, now = Date.now()): AppState {
   const state = initialState()
+  state.power = { onBattery: true, percent: 82, lowPowerMode: false }
   const minutes = (value: number): number => value * 60_000
   switch (scenario) {
     case 'timed':
@@ -22,6 +23,13 @@ export function createDemoState(scenario: string | null, now = Date.now()): AppS
     case 'display':
       state.session = { mode: 'indefinite', startedAt: now - minutes(5) }
       state.settings.keepDisplayOn = true
+      break
+    case 'battery':
+      state.power = { onBattery: true, percent: 19, lowPowerMode: false }
+      state.notice = 'Stopped: battery below 20%'
+      break
+    case 'desktop':
+      state.power = { onBattery: false, percent: null, lowPowerMode: false }
       break
     case 'error':
       state.error = 'macOS refused the sleep assertion (IOKit error 0xe00002c2).'

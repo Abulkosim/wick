@@ -16,6 +16,15 @@ export const settingsSchema = z.object({
   iconClick: z.enum(['open', 'toggle']),
   launchAtLogin: z.boolean(),
   shortcut: z.string().max(64).nullable(),
+  batteryGuard: z.boolean(),
+  batteryThreshold: z.number().int().min(5).max(80),
+  stopInLowPowerMode: z.boolean(),
+})
+
+export const powerSchema = z.object({
+  onBattery: z.boolean(),
+  percent: z.number().int().min(0).max(100).nullable(),
+  lowPowerMode: z.boolean(),
 })
 
 export const appStateSchema = z.object({
@@ -23,6 +32,8 @@ export const appStateSchema = z.object({
   session: sessionSchema,
   settings: settingsSchema,
   error: z.string().nullable(),
+  notice: z.string().nullable(),
+  power: powerSchema,
   recovery: z.string().nullable(),
   recovered: z.array(z.string()),
 })
@@ -35,9 +46,10 @@ export const startRequestSchema = z.discriminatedUnion('mode', [
 
 export type Session = z.infer<typeof sessionSchema>
 export type Settings = z.infer<typeof settingsSchema>
+export type Power = z.infer<typeof powerSchema>
 export type AppState = z.infer<typeof appStateSchema>
 export type StartRequest = z.infer<typeof startRequestSchema>
 
-export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open', launchAtLogin: false, shortcut: null }
+export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open', launchAtLogin: false, shortcut: null, batteryGuard: true, batteryThreshold: 20, stopInLowPowerMode: false }
 
-export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings }, error: null, recovery: null, recovered: [] })
+export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings }, error: null, notice: null, power: { onBattery: false, percent: null, lowPowerMode: false }, recovery: null, recovered: [] })
