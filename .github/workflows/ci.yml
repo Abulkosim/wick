@@ -52,7 +52,16 @@ jobs:
           pnpm test
           node --test scripts/*.test.mjs
       - name: Install browser engines
-        run: pnpm exec playwright install --with-deps chromium webkit
+        # Ubuntu's package mirror sometimes stalls; retry instead of waiting out the job timeout.
+        timeout-minutes: 32
+        run: |
+          for attempt in 1 2 3; do
+            if timeout 600 pnpm exec playwright install --with-deps chromium webkit; then
+              exit 0
+            fi
+            echo "Browser install attempt $attempt stalled or failed; retrying."
+          done
+          exit 1
       - name: Run browser tests
         run: pnpm test:e2e
       - name: Preserve browser test results
