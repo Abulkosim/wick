@@ -14,6 +14,8 @@ export const settingsSchema = z.object({
   keepDisplayOn: z.boolean(),
   startMinutes: z.number().int().min(1).max(7 * 24 * 60).nullable(),
   iconClick: z.enum(['open', 'toggle']),
+  launchAtLogin: z.boolean(),
+  shortcut: z.string().max(64).nullable(),
 })
 
 export const appStateSchema = z.object({
@@ -36,6 +38,6 @@ export type Settings = z.infer<typeof settingsSchema>
 export type AppState = z.infer<typeof appStateSchema>
 export type StartRequest = z.infer<typeof startRequestSchema>
 
-export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open' }
+export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open', launchAtLogin: false, shortcut: null }
 
 export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings }, error: null, recovery: null, recovered: [] })

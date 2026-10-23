@@ -3,6 +3,7 @@ mod commands;
 pub mod core;
 mod popover;
 mod runtime;
+mod shortcut;
 mod tray;
 
 use popover::Visibility;
@@ -33,6 +34,11 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_positioner::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--background"]),
+        ))
+        .plugin(shortcut::plugin())
         .manage(Visibility::default())
         .manage(tray::Presentation::default())
         .invoke_handler(tauri::generate_handler![
@@ -54,6 +60,11 @@ pub fn run() {
             let runtime = Arc::new(Runtime::new(path));
             app.manage(runtime.clone());
             tray::setup(app.handle())?;
+            runtime.sync_launch_at_login(app.handle());
+            let saved = runtime.state().settings.shortcut;
+            if let Err(error) = shortcut::replace(app.handle(), None, saved.as_deref()) {
+                eprintln!("wick: {error}");
+            }
             runtime::start_ticker(app.handle().clone(), runtime);
             let args: Vec<String> = std::env::args().collect();
             if !perform(app.handle(), &args) && !args.iter().any(|arg| arg == "--background") {

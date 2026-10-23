@@ -50,8 +50,9 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 - [x] **2.1 Settings store.** Versioned JSON, tolerant per-field load, recovery notes, back up before reset (Margin `store.rs` pattern). Settings panel: General, Battery, Appearance, Notifications, Updates, "Saves automatically".
   Verify: unit tests with corrupt fields keep the rest; e2e of each tab + recovery.
   Done 2026-10-23: `settings.json` v1 (theme, keepDisplayOn, startMinutes, iconClick), 0600, atomic replace; damaged or newer files are never overwritten and saving waits for "Back up and reset"; a recovered file is backed up before the first save. Settings is one scrolling page (General, Appearance) for now; Battery, Notifications and Updates sections arrive with their tasks.
-- [ ] **2.2 Launch at login + global shortcut.** autostart plugin (`--background`), global-shortcut plugin; no default shortcut (avoids clashes), recorded in Settings → General.
+- [x] **2.2 Launch at login + global shortcut.** autostart plugin (`--background`), global-shortcut plugin; no default shortcut (avoids clashes), recorded in Settings → General.
   Verify: toggle reflects `is_enabled`; shortcut starts/stops in real app.
+  Done 2026-10-23: LaunchAgent with `--background`, mirrored from the OS on every launch. Shortcut recorder stores `Alt+Super+KeyW`-style accelerators, needs ⌘/⌃/⌥, shows ⌥⌘W; a taken shortcut keeps the old one and says so. Real app registered `Control+Alt+Super+KeyJ` from settings.json without error. Pressing it and toggling login need Accessibility/clicks here 👤.
 - [ ] **2.3 Battery guard.** IOPS notifications; stop (not pause) below threshold on battery; optional stop in Low Power Mode. Status "Stopped: battery below 20%".
   Verify: pure tests on guard; manual unplug check 👤 noted if not testable here.
 - [ ] **2.4 Notifications.** "Session ended. Your Mac can sleep again." and battery stop. Off switch in Settings → Notifications.

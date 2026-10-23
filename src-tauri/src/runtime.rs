@@ -225,6 +225,16 @@ impl Runtime {
         })
     }
 
+    /// The OS owns launch at login; the setting mirrors it on every launch.
+    pub fn sync_launch_at_login(&self, app: &AppHandle) {
+        use tauri_plugin_autostart::ManagerExt;
+        if let Ok(enabled) = app.autolaunch().is_enabled() {
+            if let Ok(mut inner) = self.inner.lock() {
+                inner.view.settings.launch_at_login = enabled;
+            }
+        }
+    }
+
     pub fn set_display(&self, app: &AppHandle, on: bool) -> Result<AppState, String> {
         let settings = Settings {
             keep_display_on: on,

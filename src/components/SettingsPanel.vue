@@ -5,6 +5,8 @@ import type { Settings } from '../lib/model'
 import { shortDuration } from '../lib/session'
 import AppIcon from './AppIcon.vue'
 import AppSelect from './ui/AppSelect.vue'
+import AppSwitch from './ui/AppSwitch.vue'
+import ShortcutField from './ShortcutField.vue'
 
 const props = defineProps<{ settings: Settings; recovered: string[]; recovery: string | null; busy: boolean; save: (settings: Settings) => Promise<boolean>; reset: () => Promise<boolean> }>()
 defineEmits<{ back: [] }>()
@@ -55,6 +57,11 @@ function setClick(value: string): void {
           <div><label for="icon-click">Clicking the icon</label><p>Right-click shows the menu.</p></div>
           <AppSelect id="icon-click" :model-value="settings.iconClick" :options="clickOptions" :disabled="busy" @update:model-value="setClick"/>
         </div>
+        <div class="setting-row">
+          <div><span id="shortcut-label" class="setting-label">Shortcut</span><p>Starts or stops anywhere.</p></div>
+          <ShortcutField :model-value="settings.shortcut" labelledby="shortcut-label" :disabled="busy" @update:model-value="patch({ shortcut: $event })"/>
+        </div>
+        <div class="setting-row"><span id="login-label" class="setting-label">Launch at login</span><AppSwitch :model-value="settings.launchAtLogin" aria-labelledby="login-label" :disabled="busy" @update:model-value="patch({ launchAtLogin: $event })"/></div>
       </section>
       <section class="settings-section">
         <h2>Appearance</h2>

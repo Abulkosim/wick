@@ -52,3 +52,24 @@ for (const theme of ['light', 'dark'] as const) {
     })
   }
 }
+
+test('records, rejects and removes a shortcut', async ({ page }) => {
+  await page.goto('/?demo=1&state=off&page=settings')
+  const field = page.getByRole('button', { name: 'Shortcut', exact: true })
+  await field.click()
+  await expect(field).toHaveText('Type shortcut…')
+  await page.keyboard.press('Shift+KeyA')
+  await expect(page.getByRole('alert')).toHaveText('Include Command, Control or Option.')
+  await page.keyboard.press('Alt+Meta+KeyW')
+  await expect(field).toHaveText('⌥⌘W')
+  await page.getByRole('button', { name: 'Remove shortcut' }).click()
+  await expect(field).toHaveText('Record shortcut')
+})
+
+test('launch at login toggles', async ({ page }) => {
+  await page.goto('/?demo=1&state=off&page=settings')
+  const toggle = page.getByRole('switch', { name: 'Launch at login' })
+  await expect(toggle).not.toBeChecked()
+  await toggle.click()
+  await expect(toggle).toBeChecked()
+})

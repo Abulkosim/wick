@@ -5,6 +5,7 @@ use crate::{
 };
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_autostart::ManagerExt;
 
 #[tauri::command]
 pub fn get_state(runtime: State<'_, Arc<Runtime>>) -> AppState {
@@ -40,7 +41,41 @@ pub fn save_settings(
     runtime: State<'_, Arc<Runtime>>,
     settings: Settings,
 ) -> Result<AppState, String> {
-    runtime.save_settings(&app, settings)
+    settings.validate()?;
+    let previous = runtime.state().settings;
+    set_launch_at_login(&app, previous.launch_at_login, settings.launch_at_login)?;
+    if let Err(error) = crate::shortcut::replace(
+        &app,
+        previous.shortcut.as_deref(),
+        settings.shortcut.as_deref(),
+    ) {
+        let _ = set_launch_at_login(&app, settings.launch_at_login, previous.launch_at_login);
+        return Err(error);
+    }
+    runtime
+        .save_settings(&app, settings.clone())
+        .inspect_err(|_| {
+            let _ = set_launch_at_login(&app, settings.launch_at_login, previous.launch_at_login);
+            let _ = crate::shortcut::replace(
+                &app,
+                settings.shortcut.as_deref(),
+                previous.shortcut.as_deref(),
+            );
+        })
+}
+
+fn set_launch_at_login(app: &AppHandle, from: bool, to: bool) -> Result<(), String> {
+    if from == to {
+        return Ok(());
+    }
+    let result = if to {
+        app.autolaunch().enable()
+    } else {
+        app.autolaunch().disable()
+    };
+    result.map_err(|_| {
+        "Could not change launch at login. Move Wick to Applications and try again.".into()
+    })
 }
 
 #[tauri::command]

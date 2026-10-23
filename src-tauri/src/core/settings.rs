@@ -27,6 +27,9 @@ pub struct Settings {
     /// What Start, the shortcut and an icon click start. `None` keeps awake until stopped.
     pub start_minutes: Option<u32>,
     pub icon_click: IconClick,
+    pub launch_at_login: bool,
+    /// An accelerator such as `Alt+Super+KeyW` that starts or stops.
+    pub shortcut: Option<String>,
 }
 
 impl Default for Settings {
@@ -36,8 +39,25 @@ impl Default for Settings {
             keep_display_on: false,
             start_minutes: None,
             icon_click: IconClick::Open,
+            launch_at_login: false,
+            shortcut: None,
         }
     }
+}
+
+/// A shortcut needs Command, Control or Option, so it can't swallow normal typing.
+pub fn parse_shortcut(value: &str) -> Result<tauri_plugin_global_shortcut::Shortcut, String> {
+    use tauri_plugin_global_shortcut::{Modifiers, Shortcut};
+    let shortcut: Shortcut = value
+        .parse()
+        .map_err(|_| "That key combination can't be used as a shortcut.".to_string())?;
+    if !shortcut
+        .mods
+        .intersects(Modifiers::SUPER | Modifiers::CONTROL | Modifiers::ALT)
+    {
+        return Err("Include Command, Control or Option in the shortcut.".into());
+    }
+    Ok(shortcut)
 }
 
 impl Settings {
@@ -47,6 +67,9 @@ impl Settings {
             .is_some_and(|minutes| !(1..=MAX_MINUTES).contains(&minutes))
         {
             return Err("Choose a start duration between 1 minute and 7 days.".into());
+        }
+        if let Some(shortcut) = &self.shortcut {
+            parse_shortcut(shortcut)?;
         }
         Ok(())
     }
@@ -85,13 +108,30 @@ impl Settings {
                 "Clicking the icon",
                 notes,
             ),
+            launch_at_login: field(
+                &map,
+                "launchAtLogin",
+                defaults.launch_at_login,
+                "Launch at login",
+                notes,
+            ),
+            shortcut: field(&map, "shortcut", defaults.shortcut, "Shortcut", notes),
         };
-        if settings.validate().is_err() {
+        let mut settings = settings;
+        if settings
+            .start_minutes
+            .is_some_and(|minutes| !(1..=MAX_MINUTES).contains(&minutes))
+        {
             reset_note("Start duration", notes);
-            return Self {
-                start_minutes: defaults.start_minutes,
-                ..settings
-            };
+            settings.start_minutes = defaults.start_minutes;
+        }
+        if settings
+            .shortcut
+            .as_deref()
+            .is_some_and(|shortcut| parse_shortcut(shortcut).is_err())
+        {
+            reset_note("Shortcut", notes);
+            settings.shortcut = None;
         }
         settings
     }
@@ -162,6 +202,19 @@ mod tests {
         }
         .validate()
         .is_err());
+    }
+
+    #[test]
+    fn shortcuts_need_a_real_modifier() {
+        assert!(parse_shortcut("Alt+Super+KeyW").is_ok());
+        assert!(parse_shortcut("Control+Shift+Digit1").is_ok());
+        assert!(parse_shortcut("Shift+KeyA").is_err());
+        assert!(parse_shortcut("KeyA").is_err());
+        assert!(parse_shortcut("Super+Nope").is_err());
+        let mut notes = Vec::new();
+        let settings = Settings::recover(Some(json!({ "shortcut": "Shift+KeyA" })), &mut notes);
+        assert_eq!(settings.shortcut, None);
+        assert_eq!(notes, ["Shortcut was reset to its default."]);
     }
 
     #[test]
