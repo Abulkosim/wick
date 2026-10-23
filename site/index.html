@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wick — keeps your Mac awake</title>
+<meta name="description" content="Free, open-source menu bar app that keeps your Mac awake: on demand, for a set time, or while an app or command runs. Shows what else keeps your Mac awake.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f5f6f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b201d" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://abulkosim.github.io/wick/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wick">
+<meta property="og:title" content="Wick — keeps your Mac awake">
+<meta property="og:description" content="Keep your Mac awake on demand, for a set time, or while an app or command runs. Free and open source.">
+<meta property="og:url" content="https://abulkosim.github.io/wick/">
+<meta property="og:image" content="https://abulkosim.github.io/wick/og.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Wick: keeps your Mac awake, with the popover showing a two-hour session and app triggers">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f5f6f1;
+  --shot: #fff;
+  --shot-blend: multiply;
+  --card: #fff;
+  --ink: #29322d;
+  --secondary: #4d5c51;
+  --tertiary: #59665c;
+  --accent: #6c886f;
+  --accent-ink: #526d55;
+  --accent-soft: #e5ece1;
+  --line: rgba(42,56,43,.09);
+  --button: #354e3b;
+  --button-ink: #f8fbf5;
+  --focus: #7d9a7e;
+  --shadow: 0 30px 80px -30px #1c32284d, 0 1px 4px #22352a14;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #1b201d;
+    --shot: #1e1e1e;
+    --shot-blend: lighten;
+    --card: #242a26;
+    --ink: #e6ece5;
+    --secondary: #b9c3bb;
+    --tertiary: #a6b3a9;
+    --accent: #b8d1ba;
+    --accent-ink: #b8d1ba;
+    --accent-soft: #303e32;
+    --line: rgba(219,236,221,.08);
+    --button: #b9d2ba;
+    --button-ink: #243629;
+    --focus: #b8d1ba;
+    --shadow: 0 30px 80px -30px #000a, 0 1px 4px #0004;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, "Helvetica Neue", sans-serif;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+a:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+header.top { padding: 22px 0; }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 650; font-size: 19px; letter-spacing: -.01em; text-decoration: none; }
+.brand svg { color: var(--accent); }
+.hero { display: grid; grid-template-columns: 1fr minmax(0, 400px); gap: 56px; align-items: center; padding-top: 48px; padding-bottom: 72px; }
+h1 { font-size: clamp(34px, 5.2vw, 52px); line-height: 1.06; letter-spacing: -.035em; font-weight: 700; margin: 0 0 18px; text-wrap: balance; }
+.lede { font-size: 18px; color: var(--secondary); margin: 0 0 30px; max-width: 30em; text-wrap: pretty; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 10px; font-weight: 600; font-size: 15px; text-decoration: none; transition: background-color .18s ease, transform .18s ease; }
+.btn svg { flex: none; }
+.btn-primary { background: var(--button); color: var(--button-ink); }
+.btn-primary:hover { background: color-mix(in srgb, var(--button) 88%, var(--ink)); }
+.btn-secondary { background: var(--accent-soft); color: var(--ink); }
+.btn-secondary:hover { background: color-mix(in srgb, var(--accent-soft) 80%, var(--accent)); }
+.btn:active { transform: translateY(1px); }
+.meta { font-size: 14px; color: var(--tertiary); margin: 0; }
+.meta a { color: var(--accent-ink); text-decoration: none; }
+.meta a:hover { text-decoration: underline; }
+.shot { margin: 0; }
+.shot img { display: block; width: 100%; height: auto; filter: drop-shadow(0 30px 50px #1c32282e); }
+.flame { color: #d9a85b; }
+@media (prefers-color-scheme: dark) { .shot img { filter: none; } }
+section { padding: 56px 0; border-top: 1px solid var(--line); }
+h2 { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-ink); margin: 0 0 22px; }
+.features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; list-style: none; padding: 0; margin: 0; }
+.features h3 { font-size: 16px; font-weight: 650; letter-spacing: -.01em; margin: 0 0 6px; }
+.features p { font-size: 15px; color: var(--secondary); margin: 0; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; }
+.prose p { margin: 0 0 14px; color: var(--secondary); max-width: 34em; }
+.prose p:last-child { margin-bottom: 0; }
+.prose strong { color: var(--ink); font-weight: 600; }
+.prose a { color: var(--accent-ink); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+code { font: 14px/1 ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace; background: var(--accent-soft); color: var(--ink); padding: 2px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+.hosts { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
+.hosts li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; color: var(--secondary); font-size: 15px; }
+footer { border-top: 1px solid var(--line); padding: 28px 0 40px; font-size: 14px; color: var(--tertiary); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: center; }
+footer nav { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+footer a { text-decoration: none; color: var(--secondary); }
+footer a:hover { color: var(--ink); }
+@media (max-width: 900px) {
+  .features { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 760px) {
+  .hero { grid-template-columns: 1fr; gap: 40px; padding-top: 24px; padding-bottom: 56px; }
+  .shot { max-width: 340px; margin: 0 auto; width: 100%; }
+  .cols { grid-template-columns: 1fr; gap: 40px; }
+  section { padding: 44px 0; }
+}
+@media (max-width: 480px) {
+  .wrap { padding: 0 16px; }
+  .features { grid-template-columns: 1fr; gap: 24px; }
+  .actions .btn { flex: 1 1 100%; justify-content: center; }
+  .lede { font-size: 17px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="Wick home">
+      <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true"><rect x="6.5" y="12" width="11" height="13" rx="2.4" fill="currentColor"/><path class="flame" d="M12 1c2 2.9 3.7 4.9 3.7 7.2a3.7 3.7 0 0 1-7.4 0C8.3 5.9 10 3.9 12 1z" fill="currentColor"/></svg>
+      Wick
+    </a>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div>
+      <h1>Keeps your Mac awake</h1>
+      <p class="lede">On demand, for a set time, or while an app or command runs. And it tells you what else is keeping your Mac awake.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="https://github.com/Abulkosim/wick/releases/latest">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>
+          Download for macOS
+        </a>
+        <a class="btn btn-secondary" href="https://github.com/Abulkosim/wick">Source on GitHub</a>
+      </div>
+      <p class="meta">Free and open source · MIT · macOS 12+, Apple Silicon and Intel</p>
+    </div>
+    <figure class="shot">
+      <picture>
+        <source srcset="popover-dark.png" media="(prefers-color-scheme: dark)">
+        <img src="popover-light.png" width="372" height="567" alt="Wick popover: awake for 1 hour 50 minutes, with Xcode, claude and ffmpeg as triggers">
+      </picture>
+    </figure>
+  </div>
+
+  <section aria-labelledby="what">
+    <div class="wrap">
+      <h2 id="what">What it does</h2>
+      <ul class="features">
+        <li>
+          <h3>One click</h3>
+          <p>Until you stop it, 15 minutes, an hour, two hours, until a time, or any length. The menu bar candle burns down as time runs out.</p>
+        </li>
+        <li>
+          <h3>While something runs</h3>
+          <p>Stay awake while Xcode, <code>claude</code>, <code>codex</code>, <code>ffmpeg</code> or any app or command is running.</p>
+        </li>
+        <li>
+          <h3>What else is awake</h3>
+          <p>See which apps hold your Mac awake and why: a call, audio playing, or a <code>caffeinate</code> started by a tool.</p>
+        </li>
+        <li>
+          <h3>Careful by default</h3>
+          <p>Stops below 20% battery, warns when closing the lid will sleep the Mac, and never changes system settings.</p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section aria-labelledby="how">
+    <div class="wrap cols">
+      <div class="prose">
+        <h2 id="how">How it works</h2>
+        <p>Wick holds a standard macOS power assertion, the same thing <code>caffeinate</code> does. You can see it in <code>pmset -g assertions</code>.</p>
+        <p><strong>Nothing left behind.</strong> macOS releases the assertion when Wick quits or crashes. Wick needs no administrator password and asks for no permissions.</p>
+      </div>
+      <div class="prose">
+        <h2>Privacy</h2>
+        <p>No account, telemetry, analytics or crash reporting. Wick connects only to:</p>
+        <ul class="hosts">
+          <li><code>github.com</code> release checks, daily unless turned off</li>
+        </ul>
+        <p>Details in <a href="https://github.com/Abulkosim/wick/blob/main/PRIVACY.md">PRIVACY.md</a> and <a href="https://github.com/Abulkosim/wick/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="install">
+    <div class="wrap cols">
+      <div class="prose">
+        <h2 id="install">Install</h2>
+        <p>Builds don't carry an Apple publisher signature, so macOS warns on first launch. Updates are signed and verified in the app.</p>
+        <p><a href="https://github.com/Abulkosim/wick/blob/main/docs/install.md">Full install notes</a></p>
+      </div>
+      <div class="prose">
+        <p><strong>macOS 12+.</strong> Open the universal <code>.dmg</code> and move Wick to Applications. If macOS blocks it, go to System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>.</p>
+        <p>Wick lives in the menu bar, with no Dock icon.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Wick is free and open source, by the maker of <a href="https://abulkosim.github.io/margin/">Margin</a>.</span>
+    <nav aria-label="Project links">
+      <a href="https://github.com/Abulkosim/wick">GitHub</a>
+      <a href="https://github.com/Abulkosim/wick/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/Abulkosim/wick/blob/main/PRIVACY.md">Privacy</a>
+      <a href="https://github.com/Abulkosim/wick/blob/main/SECURITY.md">Security</a>
+      <a href="https://github.com/Abulkosim/wick/discussions">Discussions</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>
