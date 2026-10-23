@@ -1,0 +1,16 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/schemas/
+.pnpm-store/
+.cache/
+test-results/
+playwright-report/
+release-artifacts/
+.DS_Store
+*.local
+*.log
+*.key
+.env
+.env.*
+!.env.example
