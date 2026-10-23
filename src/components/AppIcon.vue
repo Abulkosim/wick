@@ -4,7 +4,7 @@ defineProps<{ name: 'wick' | 'settings' | 'plus' | 'back' | 'chevron' | 'check' 
 
 <template>
   <svg :width="size ?? 18" :height="size ?? 18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <template v-if="name === 'wick'"><path d="M12 3.5a8.5 8.5 0 1 1-7.4 4.3" stroke-width="2.6"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></template>
+    <template v-if="name === 'wick'"><rect x="8.25" y="11.25" width="7.5" height="10" rx="1.6" fill="currentColor" stroke="none"/><path d="M12 2.6c1.6 2.3 2.9 3.8 2.9 5.6a2.9 2.9 0 0 1-5.8 0c0-1.8 1.3-3.3 2.9-5.6z" fill="currentColor" stroke="none"/></template>
     <template v-else-if="name === 'settings'"><path d="m9 3-.7 2.2-2 .9-2.1-.5L2.7 8.2l1.5 1.7v2.3l-1.5 1.7 1.5 2.6 2.1-.5 2 .9L9 19h3l.7-2.1 2-.9 2.1.5 1.5-2.6-1.5-1.7V9.9l1.5-1.7-1.5-2.6-2.1.5-2-.9L12 3z" transform="translate(1.5 1)"/><circle cx="12" cy="12" r="3"/></template>
     <path v-else-if="name === 'plus'" d="M12 5v14M5 12h14"/>
     <path v-else-if="name === 'back'" d="m14 6-6 6 6 6M8 12h12"/>

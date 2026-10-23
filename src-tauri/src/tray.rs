@@ -1,7 +1,7 @@
 use crate::{
     core::settings::IconClick,
     core::{
-        ring::{template_rgba, Glyph},
+        candle::{template_rgba, Glyph},
         session::{short_duration, Session},
     },
     popover::{self, TRAY_ID},

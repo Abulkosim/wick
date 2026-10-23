@@ -1,4 +1,4 @@
-use super::ring::Glyph;
+use super::candle::Glyph;
 use chrono::{DateTime, Duration, NaiveTime, TimeZone};
 use serde::{Deserialize, Serialize};
 

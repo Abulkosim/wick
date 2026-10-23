@@ -1,9 +1,9 @@
 pub mod assertion;
+pub mod candle;
 pub mod lid;
 pub mod others;
 pub mod power;
 pub mod processes;
-pub mod ring;
 pub mod session;
 pub mod settings;
 pub mod store;
