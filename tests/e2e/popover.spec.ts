@@ -22,7 +22,7 @@ test('a preset starts a timed session in one click', async ({ page }) => {
 test('timed demo counts down with the end time', async ({ page }) => {
   await page.goto('/?demo=1&state=timed')
   await expect(page.getByRole('status').getByRole('heading')).toHaveText(/^Awake · 4[12]m left$/)
-  await expect(page.getByRole('status').getByText(/^Until \d/)).toBeVisible()
+  await expect(page.getByRole('status').getByText(/^Until (\w{3} )?\d/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
 })
 
