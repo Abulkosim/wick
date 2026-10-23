@@ -2,11 +2,12 @@
 
 Short version: [README → Install](../README.md#install). Downloads: [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
 
-Wick is free and open source. Builds are not signed with an Apple Developer ID, so macOS warns on first launch. Updates are signed separately and verified in the app. Homebrew is not available yet.
+Wick is free and open source. Builds are not signed with an Apple Developer ID or a Windows publisher certificate, so macOS and Windows warn on first launch. Updates are signed separately and verified in the app. Homebrew and winget are not available yet.
 
 | Platform | File |
 | --- | --- |
 | macOS 12+ · Apple Silicon and Intel | `Wick_<version>_universal.dmg` |
+| Windows 10/11 x64 (from v0.2.0) | `Wick_<version>_x64-setup.exe` (recommended) or `Wick_<version>_x64_en-US.msi` |
 
 ## macOS
 
@@ -34,12 +35,29 @@ This removes the download flag macOS uses to trigger the check. Use it only for 
 
 Wick asks for no permissions. It has no Dock icon or app window; look for the candle in the menu bar. If the menu bar is full, the icon may be hidden behind the notch or by a menu bar manager.
 
+## Windows
+
+1. Download `Wick_<version>_x64-setup.exe` (or the `.msi`).
+2. Run it. If **Windows protected your PC** appears, click **More info → Run anyway**.
+3. The installer adds Wick for the current user. If WebView2 is missing, it [downloads Microsoft's setup program](https://v2.tauri.app/distribute/windows-installer/#downloaded-bootstrapper), so first installation may need internet access.
+4. Wick appears in the system tray as a candle. Windows may put new icons in the overflow menu (**^**); drag it onto the taskbar to keep it visible.
+
+A managed device may hide **Run anyway**. See [Microsoft Defender SmartScreen](https://learn.microsoft.com/en-us/windows/security/operating-system-security/virus-and-threat-protection/microsoft-defender-smartscreen/).
+
+**Smart App Control.** On Windows 11 with Smart App Control on, unsigned apps are blocked with no Run anyway option, and Microsoft offers [no per-app exception](https://support.microsoft.com/en-us/topic/what-is-smart-app-control-285ea03d-fa88-4d56-882e-6698afdb7003).
+
+**What differs on Windows.** Wick keeps the PC awake with a standard power request (`powercfg /requests` lists it as Wick). It can't list other apps' requests without administrator rights, has no lid warning, and triggers are commands (`ffmpeg`, `claude`), power and monitors rather than apps.
+
 ## Verify a download
 
 Each release includes `SHA256SUMS.txt`. Compare your file's checksum with it:
 
 ```sh
 shasum -a 256 Wick_<version>_universal.dmg
+```
+
+```powershell
+Get-FileHash Wick_<version>_x64-setup.exe -Algorithm SHA256
 ```
 
 Releases also carry GitHub build attestations and an SPDX SBOM (`wick-<version>.sbom.spdx.json`). With the [GitHub CLI](https://cli.github.com), check that a file was built by this repository's release workflow:
@@ -60,12 +78,14 @@ Update checks send nothing about you. Wick has no telemetry. See [PRIVACY.md](..
 
 First turn off **Launch at login** in Wick's Settings, then right-click the candle and choose **Quit Wick**.
 
-Delete `Wick.app` from Applications. To remove settings and triggers, delete:
+**macOS.** Delete `Wick.app` from Applications. To remove settings and triggers, delete:
 
 ```
 ~/Library/Application Support/com.abulkosim.wick/
 ```
 
 If Launch at login was left on, also delete `~/Library/LaunchAgents/Wick.plist`.
+
+**Windows.** Open **Settings → Apps → Installed apps**, choose **Wick → Uninstall**. To remove settings and triggers, delete `%APPDATA%\com.abulkosim.wick\`.
 
 Quitting releases Wick's power assertion at once; Wick never changes `pmset` or other system settings, so there is nothing to restore.

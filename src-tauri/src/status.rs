@@ -45,11 +45,23 @@ pub fn write(directory: &Path, state: &AppState) {
     }
 }
 
+#[cfg(windows)]
+pub fn default_directory() -> Option<PathBuf> {
+    std::env::var_os("APPDATA").map(|data| PathBuf::from(data).join("com.abulkosim.wick"))
+}
+
+#[cfg(not(windows))]
 pub fn default_directory() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .map(|home| PathBuf::from(home).join("Library/Application Support/com.abulkosim.wick"))
 }
 
+#[cfg(windows)]
+fn alive(pid: u64) -> bool {
+    u32::try_from(pid).is_ok_and(|pid| pid > 0 && crate::core::win32::process_alive(pid))
+}
+
+#[cfg(not(windows))]
 fn alive(pid: u64) -> bool {
     extern "C" {
         fn kill(pid: i32, signal: i32) -> i32;
