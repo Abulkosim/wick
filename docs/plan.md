@@ -88,14 +88,23 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 - [x] **3.5 Release v0.1.0.** Changelog, tag, draft, checksums, updater test, `docs/verification.md`. 👤 owner says "publish".
   Done 2026-10-23: published by the agent with the owner's explicit go-ahead. Evidence in docs/verification.md.
 
-## Phase 4 — v0.2
+## Phase 4 — v0.2.0 ⛳
 
-- [ ] Windows build (`PowerCreateRequest`, tray, CI job, NSIS/MSI). 👤 VM check.
-- [ ] Triggers: on power, external display, CPU busy, network activity, schedule.
-- [ ] Pause while the screen is locked (KeepingYouAwake #98, top request).
-- [ ] Menu-bar countdown text beside the icon.
-- [ ] Presets.
-- [ ] URL scheme `wick://start?for=1h` + `wick --json status` CLI for Shortcuts/Raycast.
+Mac features first, Windows last, then the release. Presets dropped for now: the duration grid plus "Start keeps awake" already covers them; revisit on demand.
+
+- [ ] **4.1 Countdown beside the tray icon.** Settings → General → "Show time left in the menu bar" (off by default); monospaced digits, minute resolution ("42m", "1h 05m"), nothing when off or indefinite.
+  Verify: unit tests on the title text; e2e of the setting; real app shows the title (owner screenshot 👤 if no capture).
+- [ ] **4.2 Pause while the screen is locked.** Optional (off by default): release the assertion while locked, take it back on unlock; status "Paused while the screen is locked".
+  Verify: pure tests on the decision; lock state read via `CGSessionCopyCurrentDictionary` checked against a live read; e2e of the paused state.
+- [ ] **4.3 Condition triggers.** "Stay awake while on power" and "while an external display is connected", in the same card as app and command triggers.
+  Verify: pure evaluation tests; external display read checked against `system_profiler` on this Mac; e2e adding both.
+- [ ] **4.4 Schedule.** "Keep awake on weekdays 9:00–18:00"-style windows, evaluated each tick with the local clock; shown as held "Until 18:00 (schedule)".
+  Verify: unit tests for day/time windows incl. overnight and DST; e2e of the editor.
+- [ ] **4.5 URL scheme and status CLI.** `wick://start?minutes=60`, `wick://start`, `wick://stop`, `wick://toggle`; `wick status` prints JSON for Shortcuts and Raycast.
+  Verify: parser unit tests; real `open "wick://start?minutes=1"` creates the assertion; `wick status` JSON checked.
+- [ ] **4.6 Windows.** `PowerCreateRequest`/`PowerSetRequest`, colour tray icons following the taskbar theme, Toolhelp process scan, `GetSystemPowerStatus` battery guard; no lid hint and no "who else" (needs admin). CI Windows job, NSIS + MSI, Windows entries in `latest.json`.
+  Verify: CI builds and tests on windows-latest; 👤 VM install and tray check.
+- [ ] **4.7 Release v0.2.0.** Changelog, screenshots, draft, checksums, updater test from the installed v0.1.0. 👤 owner says "publish".
 
 ## Later / maybe
 
