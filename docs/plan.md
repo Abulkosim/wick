@@ -29,18 +29,21 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 - [x] **0.1 Scaffold.** Tauri 2 + Vue 3 + TS + Vite + pnpm, ported from Margin: `package.json`, `tauri.conf.json`, capabilities, CSP, `styles.css` tokens, `design/controls.css`, `components/ui/*`, `AppIcon`, demo bridge skeleton, Playwright config, LICENSE, `.gitignore`.
   Verify: `pnpm tauri build --debug` produces `Wick.app`; full check suite green; demo page renders in Chromium + WebKit.
   Done 2026-10-23: popover 360×560 (fits content, min 160), tray placement ported with tests, template ring glyphs off/remaining/full/held (contact sheet in `docs/images/tray/`, ≥3:1 on light and dark bars), app icon = draining sage ring + dot.
-- [ ] **0.2 CI.** Port `ci.yml` (Ubuntu frontend + Playwright 45 min, macOS fmt/clippy/test/universal DMG + `.app.tar.gz`), `security.yml`, `scorecard.yml`, Dependabot. Actions pinned by SHA, least privilege, concurrency cancels `main` only. Windows job off until v0.2.
+- [x] **0.2 CI.** Port `ci.yml` (Ubuntu frontend + Playwright 45 min, macOS fmt/clippy/test/universal DMG + `.app.tar.gz`), `security.yml`, `scorecard.yml`, Dependabot. Actions pinned by SHA, least privilege, concurrency cancels `main` only. Windows job off until v0.2.
   Verify: CI green on `main`.
+  Done 2026-10-23: run 39953784833 green (frontend + macOS universal DMG, including the live assertion test). Release job ports with 3.5.
 
 ## Phase 1 — Alive (M1)
 
 - [x] **1.1 Assertion core.** `core/assertion.rs`: create/release with type + name + optional timeout; RAII guard released on drop; `core/session.rs` pure state machine (off, timed, until, indefinite) with unit tests for remaining time, wake drift, until-time rolling to tomorrow.
   Verify: unit tests; ignored integration test creates an assertion, reads it back via `IOPMCopyAssertionsByProcess`, drops it, sees it gone.
   Done 2026-10-23: `core/assertion.rs` (IOKit FFI via core-foundation, `TimeoutActionRelease` backstop, `list()` for who-else) and `core/session.rs` (wall-clock `endsAt`, so time left can't go negative after sleep). The create/read/drop test runs un-ignored on every macOS test run, not just locally.
-- [ ] **1.2 Tray icon.** `core/ring.rs` renders template PNGs at 1x/2x: off, fraction 0–1, full, held-by-trigger dot. Contact sheet in `docs/images/tray/`.
+- [x] **1.2 Tray icon.** `core/ring.rs` renders template PNGs at 1x/2x: off, fraction 0–1, full, held-by-trigger dot. Contact sheet in `docs/images/tray/`.
   Verify: render test 16/22/32 px; eyeball sheet on light + dark menu bar.
-- [ ] **1.3 Popover + toggle.** Status line, primary Start/Stop, duration chips (15m, 1h, 2h, Until…, Indefinitely, Custom), "Keep display on" switch. `fit_popover` + ResizeObserver from Margin. Countdown ticks.
+  Done 2026-10-23 with 0.1. Tray redraws at most once per 1% of a session (5 s tick, deduped glyph).
+- [x] **1.3 Popover + toggle.** Status line, primary Start/Stop, duration chips (15m, 1h, 2h, Until…, Indefinitely, Custom), "Keep display on" switch. `fit_popover` + ResizeObserver from Margin. Countdown ticks.
   Verify: e2e for off/timed/indefinite; screenshots light + dark; real app: `pmset -g assertions` shows `Wick:` while on, gone after Stop and after Quit. Screenshot. ⛳ no release, M1 done.
+  Done 2026-10-23: presets start in one click, Until…/Custom… inline editors, display switch swaps the assertion type without a gap. Real app via `wick start 30` / `wick stop` (forwarded through single-instance): `PreventUserIdleSystemSleep named "Wick: awake until 18:07"` while on; 0 after stop, after quit, and after `kill -9`. Browser screenshots reviewed; real menu-bar screenshot needs Screen Recording permission here 👤.
 
 ## Phase 2 — Real (M2) → v0.1.0 ⛳
 

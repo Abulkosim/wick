@@ -1,29 +1,59 @@
+mod cli;
 mod commands;
 pub mod core;
 mod popover;
+mod runtime;
 mod tray;
 
 use popover::Visibility;
-use std::time::Instant;
+use runtime::Runtime;
+use std::{sync::Arc, time::Instant};
 use tauri::{Manager, WindowEvent};
+
+/// Runs a command-line intent. Returns false when there was none.
+fn perform(app: &tauri::AppHandle, args: &[String]) -> bool {
+    let runtime = app.state::<Arc<Runtime>>();
+    let result = match cli::parse(args) {
+        Ok(None) => return false,
+        Ok(Some(cli::Intent::Start(request))) => runtime.start(app, request).map(|_| ()),
+        Ok(Some(cli::Intent::Stop)) => runtime.stop(app).map(|_| ()),
+        Err(error) => Err(error),
+    };
+    if let Err(error) = result {
+        eprintln!("wick: {error}");
+    }
+    true
+}
 
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-            popover::show(app, false)
+        .plugin(tauri_plugin_single_instance::init(|app, args, _| {
+            if !perform(app, &args) {
+                popover::show(app, false)
+            }
         }))
         .plugin(tauri_plugin_positioner::init())
         .manage(Visibility::default())
+        .manage(tray::Presentation::default())
+        .manage(Arc::new(Runtime::default()))
         .invoke_handler(tauri::generate_handler![
+            commands::get_state,
+            commands::start_session,
+            commands::stop_session,
+            commands::set_display,
             commands::get_popover_placement,
             commands::fit_popover,
             commands::hide_window,
+            commands::quit,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             tray::setup(app.handle())?;
-            if !std::env::args().any(|argument| argument == "--background") {
+            let runtime = app.state::<Arc<Runtime>>().inner().clone();
+            runtime::start_ticker(app.handle().clone(), runtime);
+            let args: Vec<String> = std::env::args().collect();
+            if !perform(app.handle(), &args) && !args.iter().any(|arg| arg == "--background") {
                 popover::show(app.handle(), false);
             }
             Ok(())
@@ -45,10 +75,12 @@ pub fn run() {
         })
         .build(tauri::generate_context!())
         .expect("Wick could not start")
-        .run(|_app, _event| {
+        .run(|app, event| match event {
             #[cfg(target_os = "macos")]
-            if let tauri::RunEvent::Reopen { .. } = _event {
-                popover::show(_app, false);
+            tauri::RunEvent::Reopen { .. } => popover::show(app, false),
+            tauri::RunEvent::Exit => {
+                let _ = app.state::<Arc<Runtime>>().stop(app);
             }
+            _ => {}
         });
 }

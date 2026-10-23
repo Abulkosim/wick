@@ -1,15 +1,80 @@
 use crate::{
-    core::ring::{template_rgba, Glyph},
+    core::{
+        ring::{template_rgba, Glyph},
+        session::{short_duration, Session},
+    },
     popover::{self, TRAY_ID},
+    runtime::AppState,
 };
+use std::sync::Mutex;
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle,
+    AppHandle, Manager,
 };
 
 const ICON_SIZE: u32 = 36;
+
+#[derive(Default)]
+struct Shown {
+    revision: u64,
+    glyph: Option<Glyph>,
+    tooltip: String,
+}
+
+#[derive(Default)]
+pub struct Presentation(Mutex<Shown>);
+
+pub fn tooltip(state: &AppState, now: i64) -> String {
+    let screen = if state.display { " · display on" } else { "" };
+    match state.session {
+        Session::Off => "Wick · Off".into(),
+        Session::Indefinite { .. } => format!("Wick · Awake{screen}"),
+        session => format!(
+            "Wick · Awake · {} left{screen}",
+            short_duration(session.remaining_ms(now).unwrap_or(0))
+        ),
+    }
+}
+
+/// Quantized so the tray redraws about once per 1% of a session, not every tick.
+fn glyph(state: &AppState, now: i64) -> Glyph {
+    match state.session.glyph(now, false) {
+        Glyph::Remaining(value) => Glyph::Remaining((value * 100.0).ceil() / 100.0),
+        glyph => glyph,
+    }
+}
+
+pub fn update(app: &AppHandle, state: &AppState, now: i64) {
+    let glyph = glyph(state, now);
+    let tooltip = tooltip(state, now);
+    let revision = state.revision;
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        let Some(tray) = handle.tray_by_id(TRAY_ID) else {
+            return;
+        };
+        let presentation = handle.state::<Presentation>();
+        let Ok(mut shown) = presentation.0.lock() else {
+            return;
+        };
+        if revision < shown.revision {
+            return;
+        }
+        shown.revision = revision;
+        if shown.glyph != Some(glyph)
+            && tray
+                .set_icon_with_as_template(Some(icon(glyph)), true)
+                .is_ok()
+        {
+            shown.glyph = Some(glyph);
+        }
+        if shown.tooltip != tooltip && tray.set_tooltip(Some(&tooltip)).is_ok() {
+            shown.tooltip = tooltip;
+        }
+    });
+}
 
 pub fn icon(glyph: Glyph) -> Image<'static> {
     Image::new_owned(template_rgba(ICON_SIZE, glyph), ICON_SIZE, ICON_SIZE)

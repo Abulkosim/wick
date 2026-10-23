@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ name: 'wick' | 'settings' | 'plus' | 'back' | 'chevron' | 'check' | 'close' | 'alert' | 'sun' | 'moon' | 'system' | 'display' | 'battery' | 'bolt' | 'clock' | 'terminal' | 'app' | 'lid' | 'external'; size?: number }>()
+defineProps<{ name: 'wick' | 'settings' | 'plus' | 'back' | 'chevron' | 'check' | 'close' | 'alert' | 'sun' | 'moon' | 'system' | 'display' | 'battery' | 'bolt' | 'clock' | 'terminal' | 'app' | 'lid' | 'power' | 'external'; size?: number }>()
 </script>
 
 <template>
@@ -22,6 +22,7 @@ defineProps<{ name: 'wick' | 'settings' | 'plus' | 'back' | 'chevron' | 'check' 
     <template v-else-if="name === 'terminal'"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="m7.5 9.5 3 2.5-3 2.5M13 15h3.5"/></template>
     <template v-else-if="name === 'app'"><rect x="4" y="4" width="16" height="16" rx="4.5"/></template>
     <template v-else-if="name === 'lid'"><path d="M4 17h16l-1.5-11h-13z"/><path d="M2 20h20"/></template>
+    <template v-else-if="name === 'power'"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></template>
     <template v-else-if="name === 'external'"><path d="M14 3h7v7M21 3l-11 11M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></template>
   </svg>
 </template>
