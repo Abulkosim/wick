@@ -77,10 +77,14 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 
 ## Phase 3 — Ship (M3)
 
-- [ ] **3.1 README.** Hero screenshots, 3-bullet value, Install in the first screen, comparison vs Amphetamine / KeepingYouAwake / `caffeinate`.
-- [ ] **3.2 `docs/install.md`.** Open Anyway on macOS 15/26, `xattr` fallback, uninstall.
-- [ ] **3.3 Pages site** from Margin's template; 👤 Settings → Pages → GitHub Actions, homepage.
-- [ ] **3.4 Repo hygiene.** SECURITY.md, PRIVACY.md (no network except GitHub update check), CONTRIBUTING, issue forms.
+- [x] **3.1 README.** Hero screenshots, 3-bullet value, Install in the first screen, comparison vs Amphetamine / KeepingYouAwake / `caffeinate`.
+  Done 2026-10-23: hero screenshots via scripts/native-preview.mjs, 3 bullets, Install in the first screen, comparison table, no-closed-lid rationale.
+- [x] **3.2 `docs/install.md`.** Open Anyway on macOS 15/26, `xattr` fallback, uninstall.
+  Done 2026-10-23.
+- [x] **3.3 Pages site** from Margin's template; 👤 Settings → Pages → GitHub Actions, homepage.
+  Done 2026-10-23: Pages enabled via API (build type workflow), homepage set to https://abulkosim.github.io/wick/, og.png 1280×640. 👤 upload docs/images/social-preview.png in repo Settings → General → Social preview (no API).
+- [x] **3.4 Repo hygiene.** SECURITY.md, PRIVACY.md (no network except GitHub update check), CONTRIBUTING, issue forms.
+  Done 2026-10-23: SECURITY, PRIVACY, CONTRIBUTING, CODE_OF_CONDUCT, issue forms, PR template. Discussions and private vulnerability reporting were enabled at repo creation.
 - [ ] **3.5 Release v0.1.0.** Changelog, tag, draft, checksums, updater test, `docs/verification.md`. 👤 owner says "publish".
 
 ## Phase 4 — v0.2
