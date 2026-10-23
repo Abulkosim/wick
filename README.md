@@ -41,7 +41,7 @@ Updates are signed and verified in the app. Wick checks once a day and installs 
 | **Lid** | Warns "Closing the lid will sleep your Mac" when that is true, and stays quiet in clamshell mode. |
 | **Shortcut** | A global shortcut you record in Settings starts or stops from any app. |
 | **Notifications** | "Session ended. Your Mac can sleep again." Only when Wick stops on its own. |
-| **Command line** | `wick start`, `wick start 45` (minutes), `wick stop`, sent to the running app. |
+| **Automation** | `wick start`, `wick start 45`, `wick start 16:30`, `wick stop`, `wick toggle`, and `wick status` (JSON). Links: `wick://start?minutes=45`, `wick://start?until=16:30`, `wick://stop`, `wick://toggle`. |
 
 <p>
   <img src="docs/images/settings-light.png" alt="Wick settings: start duration, icon click, shortcut, launch at login and battery" width="300" />
@@ -62,6 +62,20 @@ Updates are signed and verified in the app. Wick checks once a day and installs 
 | Open source, free | ✓ | – | ✓ | ✓ |
 
 Wick has no closed-lid mode on purpose. Keeping a closed Mac awake without an external display needs root and a persistent `pmset` change, and a forgotten session overheats a Mac in a bag. Wick tells you when closing the lid will sleep the Mac instead.
+
+## Shortcuts, Raycast and scripts
+
+The app's binary doubles as a command line tool:
+
+```sh
+alias wick=/Applications/Wick.app/Contents/MacOS/wick
+wick start 45          # 45 minutes
+wick start 16:30       # until 16:30
+wick toggle
+wick status            # {"running":true,"awake":true,"session":{"mode":"for",…},"endsAt":…}
+```
+
+In Shortcuts, use **Open URLs** with `wick://start?minutes=60`, `wick://start?until=18:00`, `wick://stop` or `wick://toggle`. Raycast and Alfred can open the same links.
 
 ## How it works
 

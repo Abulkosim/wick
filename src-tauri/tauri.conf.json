@@ -61,6 +61,13 @@
         "https://github.com/Abulkosim/wick/releases/latest/download/latest.json"
       ],
       "requireSignedVersion": true
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "wick"
+        ]
+      }
     }
   }
 }

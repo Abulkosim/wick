@@ -104,8 +104,9 @@ Mac features first, Windows last, then the release. Presets dropped for now: the
 - [x] **4.4 Schedule.** "Keep awake on weekdays 9:00–18:00"-style windows, evaluated each tick with the local clock; shown as held "Until 18:00 (schedule)".
   Verify: unit tests for day/time windows incl. overnight and DST; e2e of the editor.
   Done 2026-10-23: `core/schedule.rs` (days 0=Mon, "HH:MM", overnight windows belong to the start day; wall-clock local time so DST just shifts with the clock). Added as a `schedule` trigger with a day-chip + time editor. Live: a window around now gave `Wick: awake while on schedule until 21:54`; nothing after quit.
-- [ ] **4.5 URL scheme and status CLI.** `wick://start?minutes=60`, `wick://start`, `wick://stop`, `wick://toggle`; `wick status` prints JSON for Shortcuts and Raycast.
+- [x] **4.5 URL scheme and status CLI.** `wick://start?minutes=60`, `wick://start`, `wick://stop`, `wick://toggle`; `wick status` prints JSON for Shortcuts and Raycast.
   Verify: parser unit tests; real `open "wick://start?minutes=1"` creates the assertion; `wick status` JSON checked.
+  Done 2026-10-23: tauri-plugin-deep-link (single-instance `deep-link` feature), parser for links and `start [minutes|HH:MM] | stop | toggle | status`. `wick status` reads `status.json` (written on every publish) before Tauri starts and checks the pid. Live: `open wick://start?minutes=1` → `Wick: awake until 21:28`; `wick://toggle` → 0; status JSON correct, `running:false` after quit.
 - [ ] **4.6 Windows.** `PowerCreateRequest`/`PowerSetRequest`, colour tray icons following the taskbar theme, Toolhelp process scan, `GetSystemPowerStatus` battery guard; no lid hint and no "who else" (needs admin). CI Windows job, NSIS + MSI, Windows entries in `latest.json`.
   Verify: CI builds and tests on windows-latest; 👤 VM install and tray check.
 - [ ] **4.7 Release v0.2.0.** Changelog, screenshots, draft, checksums, updater test from the installed v0.1.0. 👤 owner says "publish".

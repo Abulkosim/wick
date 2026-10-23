@@ -527,6 +527,9 @@ fn notify(app: &AppHandle, title: &str) {
 
 pub fn publish(app: &AppHandle, view: &AppState) {
     tray::update(app, view, now_ms());
+    if let Ok(directory) = app.path().app_data_dir() {
+        crate::status::write(&directory, view);
+    }
     crate::popover::set_theme(
         app,
         match view.settings.theme {

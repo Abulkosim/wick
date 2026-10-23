@@ -4,6 +4,7 @@ pub mod core;
 mod popover;
 mod runtime;
 mod shortcut;
+mod status;
 mod tray;
 mod updates;
 
@@ -11,6 +12,7 @@ use popover::Visibility;
 use runtime::Runtime;
 use std::{sync::Arc, time::Instant};
 use tauri::{Manager, WindowEvent};
+use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_notification::NotificationExt;
 
 /// Runs a command-line intent. Returns false when there was none.
@@ -20,6 +22,8 @@ fn perform(app: &tauri::AppHandle, args: &[String]) -> bool {
         Ok(None) => return false,
         Ok(Some(cli::Intent::Start(request))) => runtime.start(app, request).map(|_| ()),
         Ok(Some(cli::Intent::Stop)) => runtime.stop(app).map(|_| ()),
+        Ok(Some(cli::Intent::Toggle)) => runtime.toggle(app).map(|_| ()),
+        Ok(Some(cli::Intent::Status)) => Ok(()),
         Err(error) => Err(error),
     };
     if let Err(error) = result {
@@ -29,12 +33,28 @@ fn perform(app: &tauri::AppHandle, args: &[String]) -> bool {
 }
 
 pub fn run() {
+    let args: Vec<String> = std::env::args().collect();
+    match cli::parse(&args) {
+        Ok(Some(cli::Intent::Status)) => {
+            let value = status::default_directory()
+                .map(|directory| status::read(&directory))
+                .unwrap_or_else(|| serde_json::json!({ "running": false, "awake": false }));
+            println!("{value}");
+            return;
+        }
+        Err(error) => {
+            eprintln!("wick: {error}");
+            std::process::exit(2);
+        }
+        _ => {}
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _| {
             if !perform(app, &args) {
                 popover::show(app, false)
             }
         }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -71,6 +91,12 @@ pub fn run() {
             let runtime = Arc::new(Runtime::new(path));
             app.manage(runtime.clone());
             tray::setup(app.handle())?;
+            let linker = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                for url in event.urls() {
+                    perform(&linker, &["wick".into(), url.to_string()]);
+                }
+            });
             let opener = app.handle().clone();
             app.notification()
                 .on_action(move |_| popover::show(&opener, false))?;
