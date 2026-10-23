@@ -8,14 +8,14 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://127.0.0.1:1420',
-    viewport: { width: 420, height: 660 },
+    viewport: { width: 420, height: 720 },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     contextOptions: { reducedMotion: 'reduce' },
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 420, height: 660 }, deviceScaleFactor: 1.25 } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'], viewport: { width: 420, height: 660 }, deviceScaleFactor: 2 } },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 420, height: 720 }, deviceScaleFactor: 1.25 } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'], viewport: { width: 420, height: 720 }, deviceScaleFactor: 2 } },
   ],
   webServer: {
     command: 'pnpm dev',

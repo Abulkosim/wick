@@ -49,3 +49,10 @@ test('clock and custom inputs are validated', () => {
   assert.equal(customMinutes(168, 1), null)
   assert.equal(customMinutes(1.5, 0), null)
 })
+
+test('held and paused by a trigger', () => {
+  assert.equal(title({ mode: 'off' }, now, 'Xcode'), 'Awake')
+  assert.equal(detail({ mode: 'off' }, now, true, 'Xcode'), 'While Xcode is running · Display on')
+  assert.equal(detail({ mode: 'off' }, now, false, null, 'claude'), 'Paused until claude quits')
+  assert.equal(title(start({ mode: 'indefinite' }, now), now, 'Xcode'), 'Awake')
+})

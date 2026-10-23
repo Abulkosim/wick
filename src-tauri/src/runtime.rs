@@ -2,9 +2,11 @@ use crate::{
     core::{
         assertion::{self, Assertion, Kind},
         power::{self, Power},
+        processes,
         session::{Request, Session},
         settings::Settings,
         store::{self, StoredState},
+        triggers::{self, Trigger},
     },
     tray,
 };
@@ -30,6 +32,13 @@ pub struct AppState {
     /// Why Wick last stopped on its own, until the next start.
     pub notice: Option<String>,
     pub power: Power,
+    pub triggers: Vec<Trigger>,
+    /// Ids of enabled triggers whose app or process is running now.
+    pub running: Vec<String>,
+    /// The running app or process keeping the Mac awake while no session is on.
+    pub held_by: Option<String>,
+    /// A running trigger the owner stopped; it counts again once it quits.
+    pub paused_by: Option<String>,
     /// Set when the settings file can't be read. Saving stays off until the owner resets it.
     pub recovery: Option<String>,
     pub recovered: Vec<String>,
@@ -39,8 +48,10 @@ pub struct AppState {
 struct Inner {
     view: AppState,
     assertion: Option<Assertion>,
-    held_for: Option<(Kind, Session)>,
+    held_for: Option<(Kind, Session, Option<String>)>,
     store_path: Option<PathBuf>,
+    /// Ids of triggers ignored until they stop matching.
+    paused: Vec<String>,
 }
 
 #[derive(Default)]
@@ -53,7 +64,10 @@ pub fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
 }
 
-fn assertion_name(session: &Session) -> String {
+fn assertion_name(session: &Session, held_by: Option<&str>) -> String {
+    if let (false, Some(name)) = (session.is_on(), held_by) {
+        return format!("Wick: awake while {name} is running");
+    }
     match session.ends_at() {
         Some(ends_at) => {
             let time = chrono::DateTime::from_timestamp_millis(ends_at)
@@ -74,7 +88,10 @@ impl Inner {
     /// old one drops, so the Mac is never briefly allowed to sleep.
     fn reconcile(&mut self, now: i64) -> Result<(), String> {
         let session = self.view.session;
-        if !session.is_on() {
+        let held_by = (!session.is_on())
+            .then(|| self.view.held_by.clone())
+            .flatten();
+        if !session.is_on() && held_by.is_none() {
             self.assertion = None;
             self.held_for = None;
             return Ok(());
@@ -84,15 +101,16 @@ impl Inner {
         } else {
             Kind::System
         };
-        if self.assertion.is_some() && self.held_for == Some((kind, session)) {
+        let key = (kind, session, held_by);
+        if self.assertion.is_some() && self.held_for.as_ref() == Some(&key) {
             return Ok(());
         }
         let timeout = session
             .remaining_ms(now)
             .map(|ms| Duration::from_millis(ms as u64) + Duration::from_secs(2));
-        let next = assertion::create(kind, &assertion_name(&session), timeout)?;
+        let next = assertion::create(kind, &assertion_name(&session, key.2.as_deref()), timeout)?;
         self.assertion = Some(next);
-        self.held_for = Some((kind, session));
+        self.held_for = Some(key);
         Ok(())
     }
 
@@ -106,7 +124,9 @@ impl Inner {
             return Err(format!("{recovery} Reset settings to save changes."));
         }
         if let Some(path) = &self.store_path {
-            store::save(path, &StoredState::new(self.view.settings.clone()))?;
+            let mut stored = StoredState::new(self.view.settings.clone());
+            stored.triggers = self.view.triggers.clone();
+            store::save(path, &stored)?;
         }
         self.view.recovered.clear();
         Ok(())
@@ -130,6 +150,7 @@ impl Runtime {
                 view: AppState {
                     power: power::read(),
                     settings: stored.settings,
+                    triggers: stored.triggers,
                     recovery,
                     recovered: stored.recovered,
                     ..AppState::default()
@@ -164,7 +185,8 @@ impl Runtime {
                 inner.view = previous;
                 return Err(error);
             }
-            if inner.view.settings != previous.settings {
+            if inner.view.settings != previous.settings || inner.view.triggers != previous.triggers
+            {
                 if let Err(error) = inner.persist() {
                     inner.view = previous;
                     return Err(error);
@@ -209,12 +231,45 @@ impl Runtime {
         })
     }
 
+    /// Ends the session. With no session, it pauses the trigger holding the Mac awake.
     pub fn stop(&self, app: &AppHandle) -> Result<AppState, String> {
         self.update(app, |inner, _| {
+            if !inner.view.session.is_on() {
+                if let Some(name) = inner.view.held_by.take() {
+                    let processes = processes::scan();
+                    inner.paused = triggers::active(&inner.view.triggers, &processes)
+                        .into_iter()
+                        .map(|trigger| trigger.id.clone())
+                        .collect();
+                    inner.view.paused_by = Some(name);
+                }
+            }
             inner.view.session = Session::Off;
             inner.view.notice = None;
             Ok(())
         })
+    }
+
+    pub fn resume_triggers(&self, app: &AppHandle) -> Result<AppState, String> {
+        self.update(app, |inner, _| {
+            inner.paused.clear();
+            inner.view.paused_by = None;
+            inner.view.held_by = None;
+            Ok(())
+        })
+        .inspect(|_| self.wake.notify_one())
+    }
+
+    pub fn save_triggers(&self, app: &AppHandle, list: Vec<Trigger>) -> Result<AppState, String> {
+        triggers::validate_all(&list)?;
+        self.update(app, |inner, _| {
+            inner
+                .paused
+                .retain(|id| list.iter().any(|trigger| &trigger.id == id));
+            inner.view.triggers = list;
+            Ok(())
+        })
+        .inspect(|_| self.wake.notify_one())
     }
 
     pub fn start_default(&self, app: &AppHandle) -> Result<AppState, String> {
@@ -276,6 +331,7 @@ impl Runtime {
     pub fn tick(&self, app: &AppHandle) -> Duration {
         let now = now_ms();
         let power = power::read();
+        self.evaluate_triggers(app, &power);
         let state = self.state();
         match due(&state, power, now) {
             Due::Nothing => tray::update(app, &state, now),
@@ -298,10 +354,47 @@ impl Runtime {
             }
         }
         let state = self.state();
+        let watching = state.triggers.iter().any(|trigger| trigger.enabled);
         match state.session.remaining_ms(now) {
             Some(ms) => TICK.min(Duration::from_millis(ms.max(0) as u64)),
-            None if state.session.is_on() => TICK,
+            None if state.session.is_on() || watching => TICK,
             None => IDLE_TICK,
+        }
+    }
+
+    fn evaluate_triggers(&self, app: &AppHandle, power: &Power) {
+        let state = self.state();
+        let processes = if state.triggers.iter().any(|trigger| trigger.enabled) {
+            processes::scan()
+        } else {
+            Vec::new()
+        };
+        let active = triggers::active(&state.triggers, &processes);
+        let Ok(paused) = self.inner.lock().map(|inner| inner.paused.clone()) else {
+            return;
+        };
+        let paused: Vec<String> = paused
+            .into_iter()
+            .filter(|id| active.iter().any(|trigger| &trigger.id == id))
+            .collect();
+        let allowed = power::stop_reason(power, &state.settings.guard()).is_none();
+        let held_by = active
+            .iter()
+            .find(|trigger| allowed && !paused.contains(&trigger.id))
+            .map(|trigger| trigger.name.clone());
+        let paused_by = active
+            .iter()
+            .find(|trigger| paused.contains(&trigger.id))
+            .map(|trigger| trigger.name.clone());
+        let running: Vec<String> = active.iter().map(|trigger| trigger.id.clone()).collect();
+        if held_by != state.held_by || paused_by != state.paused_by || running != state.running {
+            let _ = self.update(app, |inner, _| {
+                inner.paused = paused;
+                inner.view.running = running;
+                inner.view.held_by = held_by;
+                inner.view.paused_by = paused_by;
+                Ok(())
+            });
         }
     }
 }
@@ -367,13 +460,20 @@ mod tests {
     #[test]
     fn names_say_how_long() {
         assert_eq!(
-            assertion_name(&Session::Indefinite { started_at: 0 }),
+            assertion_name(&Session::Indefinite { started_at: 0 }, None),
             "Wick: awake until stopped"
         );
-        assert!(assertion_name(&Session::For {
-            started_at: 0,
-            ends_at: 3_600_000
-        })
+        assert_eq!(
+            assertion_name(&Session::Off, Some("Xcode")),
+            "Wick: awake while Xcode is running"
+        );
+        assert!(assertion_name(
+            &Session::For {
+                started_at: 0,
+                ends_at: 3_600_000
+            },
+            Some("Xcode")
+        )
         .starts_with("Wick: awake until "));
     }
 

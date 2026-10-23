@@ -7,13 +7,14 @@ import AppSwitch from './components/ui/AppSwitch.vue'
 import AppTooltip from './components/ui/AppTooltip.vue'
 import DurationPicker from './components/DurationPicker.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
+import TriggersCard from './components/TriggersCard.vue'
 import StatusRing from './components/StatusRing.vue'
 import { useWick } from './lib/wick'
 import { activePreset, detail, fraction, shortDuration, title } from './lib/session'
 import type { StartRequest } from './lib/model'
 import { powerNote } from './lib/power'
 
-const { state, pending, message, now, demo, desktop, startSession, stopSession, setDisplay, saveSettings, resetStore, hideWindow } = useWick()
+const { state, pending, message, now, demo, desktop, startSession, stopSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, hideWindow } = useWick()
 const query = new URLSearchParams(location.search)
 const placementSchema = z.object({ revision: z.number().int().nonnegative(), arrowX: z.number().finite().nullable() })
 const placement = ref<z.infer<typeof placementSchema>>({ revision: 0, arrowX: null })
@@ -26,8 +27,9 @@ const startRequest = computed<StartRequest>(() => state.value.settings.startMinu
 const startHint = computed(() => state.value.settings.startMinutes === null ? 'Keep awake until you stop it' : `Keep awake for ${shortDuration(state.value.settings.startMinutes * 60_000)}`)
 const busy = computed(() => pending.value !== null)
 const on = computed(() => state.value.session.mode !== 'off')
-const statusTitle = computed(() => title(state.value.session, now.value))
-const statusDetail = computed(() => state.value.session.mode === 'off' && state.value.notice ? state.value.notice : detail(state.value.session, now.value, state.value.settings.keepDisplayOn))
+const held = computed(() => !on.value && state.value.heldBy !== null)
+const statusTitle = computed(() => title(state.value.session, now.value, state.value.heldBy))
+const statusDetail = computed(() => state.value.session.mode === 'off' && !held.value && state.value.notice ? state.value.notice : detail(state.value.session, now.value, state.value.settings.keepDisplayOn, state.value.heldBy, state.value.pausedBy))
 const footerNote = computed(() => powerNote(state.value.power))
 const ringFraction = computed(() => fraction(state.value.session, now.value))
 const active = computed(() => activePreset(state.value.session))
@@ -38,7 +40,7 @@ const arrowStyle = computed(() => {
 })
 const shell = ref<HTMLElement | null>(null)
 const popover = ref<HTMLElement | null>(null)
-const fullHeight = 560
+const fullHeight = 640
 let fitHeight = 0
 let fitFrame = 0
 let fitObserver: ResizeObserver | undefined
@@ -132,12 +134,13 @@ onUnmounted(() => {
         <template v-if="page === 'overview'">
         <main class="popover-body">
           <section class="hero" :class="{ active: on }">
-            <StatusRing :fraction="ringFraction" :on="on"/>
+            <StatusRing :fraction="held ? 1 : ringFraction" :on="on || held" :held="held"/>
             <div class="hero-copy" role="status" aria-live="polite">
               <h1 class="hero-title">{{ statusTitle }}</h1>
-              <p class="hero-detail" :class="{ 'is-notice': state.session.mode === 'off' && state.notice }">{{ statusDetail }}</p>
+              <p class="hero-detail" :class="{ 'is-notice': !on && !held && state.notice }">{{ statusDetail }}<template v-if="!on && !held && state.pausedBy"> · <button class="text-button inline-action" :disabled="busy" @click="resumeTriggers">Resume</button></template></p>
             </div>
-            <button v-if="on" class="button hero-action" :disabled="busy" @click="stopSession">Stop</button>
+            <AppTooltip v-if="held" :text="`Ignore ${state.heldBy} until it quits`"><button class="button hero-action" :disabled="busy" @click="stopSession">Stop</button></AppTooltip>
+            <button v-else-if="on" class="button hero-action" :disabled="busy" @click="stopSession">Stop</button>
             <AppTooltip v-else :text="startHint"><button class="button button-primary hero-action" :disabled="busy" @click="startSession(startRequest)">Start</button></AppTooltip>
           </section>
           <div v-if="state.recovery" class="error-note" role="alert"><AppIcon name="alert" :size="16"/><div><p><strong>Settings could not be read.</strong> Wick is using defaults.</p><button class="text-button" @click="page = 'settings'">Review in Settings</button></div></div>
@@ -146,6 +149,7 @@ onUnmounted(() => {
             <h2 id="duration-label" class="card-label">Keep awake for</h2>
             <DurationPicker :active="active" :busy="busy" :now="now" @start="startSession"/>
           </section>
+          <TriggersCard :triggers="state.triggers" :running="state.running" :busy="busy" :save="saveTriggers" :load-apps="runningApps"/>
           <section class="card">
             <div class="setting-row card-row">
               <div>

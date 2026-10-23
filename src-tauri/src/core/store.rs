@@ -1,4 +1,7 @@
-use super::settings::Settings;
+use super::{
+    settings::Settings,
+    triggers::{self, Trigger},
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
@@ -15,6 +18,8 @@ const MAX_STORE_BYTES: u64 = 1024 * 1024;
 pub struct StoredState {
     pub version: u32,
     pub settings: Settings,
+    #[serde(default)]
+    pub triggers: Vec<Trigger>,
     #[serde(skip)]
     pub recovered: Vec<String>,
 }
@@ -24,6 +29,7 @@ impl StoredState {
         Self {
             version: VERSION,
             settings,
+            triggers: Vec::new(),
             recovered: Vec::new(),
         }
     }
@@ -65,15 +71,18 @@ pub fn load(path: &Path) -> Result<StoredState, String> {
     }
     let mut recovered = Vec::new();
     let settings = Settings::recover(map.remove("settings"), &mut recovered);
+    let triggers = triggers::recover(map.remove("triggers"), &mut recovered);
     Ok(StoredState {
         version: VERSION,
         settings,
+        triggers,
         recovered,
     })
 }
 
 pub fn save(path: &Path, state: &StoredState) -> Result<(), String> {
     state.settings.validate()?;
+    triggers::validate_all(&state.triggers)?;
     let parent = path.parent().ok_or("Invalid settings location.")?;
     fs::create_dir_all(parent).map_err(|_| "Wick could not create its settings folder.")?;
     let mut file =
@@ -206,6 +215,32 @@ mod tests {
         assert_eq!(
             state.recovered,
             ["Clicking the icon was reset to its default."]
+        );
+    }
+
+    #[test]
+    fn triggers_round_trip_and_bad_ones_drop() {
+        let (_directory, path) = temp();
+        let mut state = StoredState::new(Settings::default());
+        state.triggers = vec![Trigger {
+            id: "t1".into(),
+            kind: triggers::TriggerKind::Process,
+            name: "claude".into(),
+            path: None,
+            enabled: true,
+        }];
+        save(&path, &state).unwrap();
+        assert_eq!(load(&path).unwrap(), state);
+        fs::write(
+            &path,
+            r#"{"version":1,"settings":{},"triggers":[{"id":"x","kind":"app","name":"Nope","enabled":true}]}"#,
+        )
+        .unwrap();
+        let loaded = load(&path).unwrap();
+        assert!(loaded.triggers.is_empty());
+        assert_eq!(
+            loaded.recovered,
+            ["1 trigger could not be read and was removed."]
         );
     }
 

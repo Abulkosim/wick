@@ -1,6 +1,18 @@
-import { initialState, type AppState } from './model.ts'
+import { initialState, type AppState, type RunningApp, type Trigger } from './model.ts'
 
-export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop'] as const
+export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers'] as const
+
+export const demoApps: RunningApp[] = [
+  { name: 'Final Cut Pro', path: '/Applications/Final Cut Pro.app' },
+  { name: 'Xcode', path: '/Applications/Xcode.app' },
+  { name: 'zoom.us', path: '/Applications/zoom.us.app' },
+]
+
+export const demoTriggers = (): Trigger[] => [
+  { id: 'demo-xcode', kind: 'app', name: 'Xcode', path: '/Applications/Xcode.app', enabled: true },
+  { id: 'demo-claude', kind: 'process', name: 'claude', enabled: true },
+  { id: 'demo-ffmpeg', kind: 'process', name: 'ffmpeg', enabled: false },
+]
 
 export function createDemoState(scenario: string | null, now = Date.now()): AppState {
   const state = initialState()
@@ -30,6 +42,21 @@ export function createDemoState(scenario: string | null, now = Date.now()): AppS
       break
     case 'desktop':
       state.power = { onBattery: false, percent: null, lowPowerMode: false }
+      break
+    case 'held':
+      state.triggers = demoTriggers()
+      state.running = ['demo-xcode']
+      state.heldBy = 'Xcode'
+      break
+    case 'paused':
+      state.triggers = demoTriggers()
+      state.running = ['demo-claude']
+      state.pausedBy = 'claude'
+      break
+    case 'triggers':
+      state.triggers = demoTriggers()
+      state.session = { mode: 'for', startedAt: now - minutes(10), endsAt: now + minutes(110) }
+      state.running = ['demo-claude']
       break
     case 'error':
       state.error = 'macOS refused the sleep assertion (IOKit error 0xe00002c2).'

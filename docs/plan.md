@@ -59,9 +59,10 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 - [x] **2.4 Notifications.** "Session ended. Your Mac can sleep again." and battery stop. Off switch in Settings → Notifications.
   Verify: unit test on when to send; one real notification seen.
   Done 2026-10-23: `due()` decides end/guard/power per tick (unit tested); a notification only when Wick ends a session itself, never on manual Stop; clicking it opens the popover. Real app in /Applications: `wick start 1` ended on time, assertion gone. Whether the banner showed is 👤 (owner's screen).
-- [ ] **2.5 App/process trigger.** Sentence builder "Stay awake while **Xcode** is running": pick a running app (NSWorkspace) or type a process name (`claude`, `codex`, `ffmpeg`, `xcodebuild`). Held state shows "Awake while Xcode is running". Manual session wins over triggers; Stop while held offers "Pause triggers for 1h".
+- [x] **2.5 App/process trigger.** Sentence builder "Stay awake while **Xcode** is running": pick a running app (NSWorkspace) or type a process name (`claude`, `codex`, `ffmpeg`, `xcodebuild`). Held state shows "Awake while Xcode is running". Manual session wins over triggers; Stop while held offers "Pause triggers for 1h".
   Verify: pure evaluation tests; real run with `sleep 30` as the watched process: assertion appears, then goes.
-- [ ] **2.6 Who else.** `IOPMCopyAssertionsByProcess`, filtered, friendly names: "Zoom is also keeping your Mac awake" with the reason on hover.
+  Done 2026-10-23: one `proc_listallpids` scan every 5 s while any trigger is on; apps match by bundle path (helpers and lookalike bundles don't), commands by process name or executable (`claude` shows as `claude`). Stop while held pauses until that process quits; Resume undoes it. Battery guard also blocks holding. Real app: `Wick: awake while sleep is running` while `/bin/sleep` ran, none after Stop, held again for a new run, none after exit. Note: Cursor's ChatGPT extension keeps a `codex` process running, so a `codex` trigger holds as long as Cursor is open.
+- [ ] **2.6 Who else.** ← resume here `IOPMCopyAssertionsByProcess`, filtered, friendly names: "Zoom is also keeping your Mac awake" with the reason on hover.
   Verify: unit tests on filtering with a fixture; real app shows `caffeinate` started from a terminal.
 - [ ] **2.7 Lid hint.** Read `AppleClamshellCausesSleep`; show "Closing the lid will sleep your Mac" on portables while awake.
   Verify: fixture tests; real read on this Mac.

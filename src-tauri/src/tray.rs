@@ -45,7 +45,7 @@ pub fn tooltip(state: &AppState, now: i64) -> String {
 
 /// Quantized so the tray redraws about once per 1% of a session, not every tick.
 fn glyph(state: &AppState, now: i64) -> Glyph {
-    match state.session.glyph(now, false) {
+    match state.session.glyph(now, state.held_by.is_some()) {
         Glyph::Remaining(value) => Glyph::Remaining((value * 100.0).ceil() / 100.0),
         glyph => glyph,
     }

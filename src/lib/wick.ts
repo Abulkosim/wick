@@ -1,10 +1,11 @@
 import { onMounted, onUnmounted, ref } from 'vue'
-import { createDemoState } from './demo.ts'
-import { appStateSchema, defaultSettings, initialState, type AppState, type Settings, type StartRequest } from './model.ts'
+import { createDemoState, demoApps } from './demo.ts'
+import { z } from 'zod'
+import { appStateSchema, defaultSettings, initialState, runningAppSchema, type AppState, type RunningApp, type Settings, type StartRequest, type Trigger } from './model.ts'
 import { start } from './session.ts'
 import { stopReason } from './power.ts'
 
-type Command = 'start_session' | 'stop_session' | 'set_display' | 'save_settings' | 'reset_store'
+type Command = 'start_session' | 'stop_session' | 'set_display' | 'save_settings' | 'reset_store' | 'save_triggers' | 'resume_triggers'
 
 export function useWick() {
   const query = new URLSearchParams(window.location.search)
@@ -60,7 +61,34 @@ export function useWick() {
     state.value.session = start(request, Date.now())
     state.value.notice = null
   })
-  const stopSession = () => perform('stop_session', undefined, () => { state.value.session = { mode: 'off' }; state.value.notice = null })
+  const stopSession = () => perform('stop_session', undefined, () => {
+    if (state.value.session.mode === 'off' && state.value.heldBy) {
+      state.value.pausedBy = state.value.heldBy
+      state.value.heldBy = null
+    }
+    state.value.session = { mode: 'off' }
+    state.value.notice = null
+  })
+  const resumeTriggers = () => perform('resume_triggers', undefined, () => {
+    if (state.value.pausedBy) state.value.heldBy = state.value.pausedBy
+    state.value.pausedBy = null
+  })
+  const saveTriggers = (triggers: Trigger[]) => perform('save_triggers', { triggers }, () => {
+    state.value.triggers = triggers
+    state.value.running = state.value.running.filter(id => triggers.some(trigger => trigger.id === id && trigger.enabled))
+    const holding = triggers.find(trigger => trigger.enabled && state.value.running.includes(trigger.id))
+    if (state.value.heldBy && !holding) state.value.heldBy = null
+  })
+
+  async function runningApps(): Promise<RunningApp[]> {
+    if (demo || !desktop) return demoApps
+    try {
+      return z.array(runningAppSchema).parse(await window.__TAURI__!.core.invoke('running_apps'))
+    } catch {
+      notify('Could not list running apps. Type a process name instead.', 'error')
+      return []
+    }
+  }
   const setDisplay = (display: boolean) => perform('set_display', { display }, () => { state.value.settings = { ...state.value.settings, keepDisplayOn: display } })
   const saveSettings = (settings: Settings) => perform('save_settings', { settings }, () => { state.value.settings = settings; state.value.recovered = [] })
 
@@ -103,5 +131,5 @@ export function useWick() {
     clearTimeout(toastTimer)
   })
 
-  return { state, loading, pending, message, now, demo, desktop, startSession, stopSession, setDisplay, saveSettings, resetStore, hideWindow, notify }
+  return { state, loading, pending, message, now, demo, desktop, startSession, stopSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, hideWindow, notify }
 }

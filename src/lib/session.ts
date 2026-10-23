@@ -34,19 +34,19 @@ export function fraction(session: Session, now: number): number {
   return Math.min(1, Math.max(0, (session.endsAt - now) / Math.max(1, session.endsAt - session.startedAt)))
 }
 
-export function title(session: Session, now: number): string {
+export function title(session: Session, now: number, heldBy: string | null = null): string {
   switch (session.mode) {
-    case 'off': return 'Off'
+    case 'off': return heldBy ? 'Awake' : 'Off'
     case 'indefinite': return 'Awake'
     case 'until': return `Awake until ${clockTime(session.endsAt, now)}`
     case 'for': return `Awake · ${shortDuration(session.endsAt - now)} left`
   }
 }
 
-export function detail(session: Session, now: number, display: boolean): string {
+export function detail(session: Session, now: number, display: boolean, heldBy: string | null = null, pausedBy: string | null = null): string {
   const screen = display ? ' · Display on' : ''
   switch (session.mode) {
-    case 'off': return 'Your Mac sleeps as usual.'
+    case 'off': return heldBy ? `While ${heldBy} is running${screen}` : pausedBy ? `Paused until ${pausedBy} quits` : 'Your Mac sleeps as usual.'
     case 'indefinite': return `Until you stop it${screen}`
     case 'until': return `${shortDuration(session.endsAt - now)} left${screen}`
     case 'for': return `Until ${clockTime(session.endsAt, now)}${screen}`

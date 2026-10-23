@@ -1,5 +1,10 @@
 use crate::{
-    core::{session::Request, settings::Settings},
+    core::{
+        processes::{self, RunningApp},
+        session::Request,
+        settings::Settings,
+        triggers::Trigger,
+    },
     popover::{self, PopoverPlacement, Visibility},
     runtime::{AppState, Runtime},
 };
@@ -81,6 +86,30 @@ fn set_launch_at_login(app: &AppHandle, from: bool, to: bool) -> Result<(), Stri
 #[tauri::command]
 pub fn reset_store(app: AppHandle, runtime: State<'_, Arc<Runtime>>) -> Result<AppState, String> {
     runtime.reset_store(&app)
+}
+
+#[tauri::command]
+pub fn save_triggers(
+    app: AppHandle,
+    runtime: State<'_, Arc<Runtime>>,
+    triggers: Vec<Trigger>,
+) -> Result<AppState, String> {
+    runtime.save_triggers(&app, triggers)
+}
+
+#[tauri::command]
+pub fn resume_triggers(
+    app: AppHandle,
+    runtime: State<'_, Arc<Runtime>>,
+) -> Result<AppState, String> {
+    runtime.resume_triggers(&app)
+}
+
+#[tauri::command]
+pub async fn running_apps() -> Vec<RunningApp> {
+    tauri::async_runtime::spawn_blocking(|| processes::running_apps(&processes::scan()))
+        .await
+        .unwrap_or_default()
 }
 
 #[tauri::command]
