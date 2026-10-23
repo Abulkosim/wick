@@ -11,24 +11,17 @@ pub enum Glyph {
     Held,
 }
 
-#[derive(Clone, Copy, PartialEq)]
-enum Part {
-    Solid,
-    Track,
-}
-
 const SAMPLES: usize = 8;
-const LEFT: f64 = 0.30;
-const RIGHT: f64 = 0.70;
-const TOP: f64 = 0.46;
-const BOTTOM: f64 = 0.96;
-const CORNER: f64 = 0.07;
-const STROKE: f64 = 0.085;
-const FLAME_RADIUS: f64 = 0.115;
-const FLAME_HEIGHT: f64 = 0.36;
-const FLAME_GAP: f64 = 0.045;
-const WICK: f64 = 0.04;
-const TRACK_ALPHA: f64 = 0.5;
+const LEFT: f64 = 0.26;
+const RIGHT: f64 = 0.74;
+const TOP: f64 = 0.45;
+const BOTTOM: f64 = 0.98;
+const CORNER: f64 = 0.09;
+const STROKE: f64 = 0.12;
+const FLAME_RADIUS: f64 = 0.145;
+const FLAME_HEIGHT: f64 = 0.42;
+const FLAME_GAP: f64 = 0.03;
+const WICK: f64 = 0.09;
 
 /// Inside a rounded rectangle, in unit coordinates.
 fn in_body(x: f64, y: f64, top: f64, inset: f64) -> bool {
@@ -56,7 +49,7 @@ fn in_flame(x: f64, y: f64, base: f64) -> bool {
     y >= tip && y <= cy && (x - 0.5).abs() <= FLAME_RADIUS * (y - tip) / (cy - tip)
 }
 
-fn part_at(x: f64, y: f64, glyph: Glyph) -> Option<Part> {
+fn covered(x: f64, y: f64, glyph: Glyph) -> bool {
     let level = match glyph {
         Glyph::Off => 0.0,
         Glyph::Remaining(value) => value.clamp(0.0, 1.0),
@@ -66,15 +59,15 @@ fn part_at(x: f64, y: f64, glyph: Glyph) -> Option<Part> {
     let height = BOTTOM - TOP;
     let surface = BOTTOM - height * level.max(0.12);
     if lit && in_flame(x, y, surface - FLAME_GAP) {
-        return Some(Part::Solid);
+        return true;
     }
     let outline = in_body(x, y, TOP, 0.0) && !in_body(x, y, TOP, STROKE);
     match glyph {
-        Glyph::Held => outline.then_some(Part::Solid),
-        _ if lit => in_body(x, y, surface, 0.0).then_some(Part::Solid),
+        Glyph::Held => outline,
+        _ if lit => in_body(x, y, surface, 0.0),
         _ => {
-            let stub = (x - 0.5).abs() <= WICK / 2.0 && (TOP - 0.1..TOP + STROKE).contains(&y);
-            (outline || stub).then_some(Part::Track)
+            let stub = (x - 0.5).abs() <= WICK / 2.0 && (TOP - 0.13..TOP + STROKE).contains(&y);
+            outline || stub
         }
     }
 }
@@ -90,24 +83,19 @@ pub fn raster(size: u32, glyph: Glyph) -> Vec<Pixel> {
     let mut pixels = Vec::with_capacity((size * size) as usize);
     for y in 0..size {
         for x in 0..size {
-            let (mut covered, mut alpha) = (0.0, 0.0);
+            let mut hits = 0.0;
             for sy in 0..SAMPLES {
                 for sx in 0..SAMPLES {
                     let ux = (f64::from(x) + (sx as f64 + 0.5) / SAMPLES as f64) / extent;
                     let uy = (f64::from(y) + (sy as f64 + 0.5) / SAMPLES as f64) / extent;
-                    if let Some(part) = part_at(ux, uy, glyph) {
-                        covered += 1.0;
-                        alpha += if part == Part::Track {
-                            TRACK_ALPHA
-                        } else {
-                            1.0
-                        };
+                    if covered(ux, uy, glyph) {
+                        hits += 1.0;
                     }
                 }
             }
             pixels.push(Pixel {
-                coverage: covered / total,
-                alpha: (alpha / total * 255.0).round() as u8,
+                coverage: hits / total,
+                alpha: (hits / total * 255.0).round() as u8,
             });
         }
     }
@@ -194,7 +182,7 @@ mod tests {
             let flame = (0.5, TOP - FLAME_GAP - FLAME_RADIUS);
             assert_eq!(at(size, Glyph::Full, flame.0, flame.1), 255);
             assert_eq!(at(size, Glyph::Held, flame.0, flame.1), 255);
-            assert!(at(size, Glyph::Off, flame.0, flame.1) < 255);
+            assert_eq!(at(size, Glyph::Off, LEFT + 0.03, flame.1), 0);
             let upper_body = (LEFT + 0.06, TOP + 0.05);
             assert_eq!(
                 at(size, Glyph::Remaining(0.3), upper_body.0, upper_body.1),
