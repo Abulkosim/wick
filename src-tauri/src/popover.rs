@@ -285,6 +285,10 @@ pub fn show(app: &AppHandle, settings: bool) {
                 let _ = handle.emit("open_settings", ());
             }
             let _ = handle.emit("popover_shown", ());
+            if let Some(runtime) = handle.try_state::<std::sync::Arc<crate::runtime::Runtime>>() {
+                runtime.refresh_others(&handle);
+                runtime.poke();
+            }
         }
     });
 }

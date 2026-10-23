@@ -1,6 +1,7 @@
 use crate::{
     core::{
         assertion::{self, Assertion, Kind},
+        others::{self, Other},
         power::{self, Power},
         processes,
         session::{Request, Session},
@@ -16,7 +17,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Notify;
 
 const TICK: Duration = Duration::from_secs(5);
@@ -39,6 +40,8 @@ pub struct AppState {
     pub held_by: Option<String>,
     /// A running trigger the owner stopped; it counts again once it quits.
     pub paused_by: Option<String>,
+    /// Other processes keeping the Mac awake right now.
+    pub others: Vec<Other>,
     /// Set when the settings file can't be read. Saving stays off until the owner resets it.
     pub recovery: Option<String>,
     pub recovered: Vec<String>,
@@ -332,6 +335,7 @@ impl Runtime {
         let now = now_ms();
         let power = power::read();
         self.evaluate_triggers(app, &power);
+        self.refresh_others(app);
         let state = self.state();
         match due(&state, power, now) {
             Due::Nothing => tray::update(app, &state, now),
@@ -354,11 +358,33 @@ impl Runtime {
             }
         }
         let state = self.state();
-        let watching = state.triggers.iter().any(|trigger| trigger.enabled);
+        let watching = state.triggers.iter().any(|trigger| trigger.enabled)
+            || app
+                .get_webview_window("main")
+                .and_then(|window| window.is_visible().ok())
+                .unwrap_or(false);
         match state.session.remaining_ms(now) {
             Some(ms) => TICK.min(Duration::from_millis(ms.max(0) as u64)),
             None if state.session.is_on() || watching => TICK,
             None => IDLE_TICK,
+        }
+    }
+
+    /// Wakes the ticker, e.g. so it polls faster while the popover is open.
+    pub fn poke(&self) {
+        self.wake.notify_one();
+    }
+
+    pub fn refresh_others(&self, app: &AppHandle) {
+        let Ok(held) = assertion::list() else {
+            return;
+        };
+        let others = others::others(&held, std::process::id() as i32, others::parent_name);
+        if others != self.state().others {
+            let _ = self.update(app, |inner, _| {
+                inner.view.others = others;
+                Ok(())
+            });
         }
     }
 

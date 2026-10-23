@@ -8,6 +8,8 @@ import AppTooltip from './components/ui/AppTooltip.vue'
 import DurationPicker from './components/DurationPicker.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import TriggersCard from './components/TriggersCard.vue'
+import OthersCard from './components/OthersCard.vue'
+import { othersSummary } from './lib/others'
 import StatusRing from './components/StatusRing.vue'
 import { useWick } from './lib/wick'
 import { activePreset, detail, fraction, shortDuration, title } from './lib/session'
@@ -29,7 +31,7 @@ const busy = computed(() => pending.value !== null)
 const on = computed(() => state.value.session.mode !== 'off')
 const held = computed(() => !on.value && state.value.heldBy !== null)
 const statusTitle = computed(() => title(state.value.session, now.value, state.value.heldBy))
-const statusDetail = computed(() => state.value.session.mode === 'off' && !held.value && state.value.notice ? state.value.notice : detail(state.value.session, now.value, state.value.settings.keepDisplayOn, state.value.heldBy, state.value.pausedBy))
+const statusDetail = computed(() => state.value.session.mode === 'off' && !held.value && state.value.notice ? state.value.notice : !on.value && !held.value && !state.value.pausedBy && state.value.others.length ? othersSummary(state.value.others) ?? '' : detail(state.value.session, now.value, state.value.settings.keepDisplayOn, state.value.heldBy, state.value.pausedBy))
 const footerNote = computed(() => powerNote(state.value.power))
 const ringFraction = computed(() => fraction(state.value.session, now.value))
 const active = computed(() => activePreset(state.value.session))
@@ -149,6 +151,7 @@ onUnmounted(() => {
             <h2 id="duration-label" class="card-label">Keep awake for</h2>
             <DurationPicker :active="active" :busy="busy" :now="now" @start="startSession"/>
           </section>
+          <OthersCard v-if="state.others.length" :others="state.others" :also="on || held"/>
           <TriggersCard :triggers="state.triggers" :running="state.running" :busy="busy" :save="saveTriggers" :load-apps="runningApps"/>
           <section class="card">
             <div class="setting-row card-row">
