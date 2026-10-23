@@ -52,6 +52,15 @@
       "minimumSystemVersion": "12.0",
       "signingIdentity": "-"
     },
-    "createUpdaterArtifacts": false
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM0RTU4MkIwMUM5QzczQkYKUldTL2M1d2NzSUxsTkJTTUptSlJoa2hmQjBLY0dtMFpEMHc5N0lWR3JJNThNZUNmZTN0OTYyTzgK",
+      "endpoints": [
+        "https://github.com/Abulkosim/wick/releases/latest/download/latest.json"
+      ],
+      "requireSignedVersion": true
+    }
   }
 }

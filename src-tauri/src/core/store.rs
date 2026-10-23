@@ -20,6 +20,8 @@ pub struct StoredState {
     pub settings: Settings,
     #[serde(default)]
     pub triggers: Vec<Trigger>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_update_check_at: Option<String>,
     #[serde(skip)]
     pub recovered: Vec<String>,
 }
@@ -30,6 +32,7 @@ impl StoredState {
             version: VERSION,
             settings,
             triggers: Vec::new(),
+            last_update_check_at: None,
             recovered: Vec::new(),
         }
     }
@@ -72,10 +75,15 @@ pub fn load(path: &Path) -> Result<StoredState, String> {
     let mut recovered = Vec::new();
     let settings = Settings::recover(map.remove("settings"), &mut recovered);
     let triggers = triggers::recover(map.remove("triggers"), &mut recovered);
+    let last_update_check_at = map
+        .remove("lastUpdateCheckAt")
+        .and_then(|value| value.as_str().map(String::from))
+        .filter(|value| value.len() <= 64 && chrono::DateTime::parse_from_rfc3339(value).is_ok());
     Ok(StoredState {
         version: VERSION,
         settings,
         triggers,
+        last_update_check_at,
         recovered,
     })
 }

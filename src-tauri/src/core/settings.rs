@@ -34,6 +34,7 @@ pub struct Settings {
     pub battery_threshold: u8,
     pub stop_in_low_power_mode: bool,
     pub notify_on_end: bool,
+    pub auto_check_updates: bool,
 }
 
 pub const BATTERY_THRESHOLDS: std::ops::RangeInclusive<u8> = 5..=80;
@@ -51,6 +52,7 @@ impl Default for Settings {
             battery_threshold: 20,
             stop_in_low_power_mode: false,
             notify_on_end: true,
+            auto_check_updates: true,
         }
     }
 }
@@ -163,6 +165,13 @@ impl Settings {
                 "notifyOnEnd",
                 defaults.notify_on_end,
                 "Session notifications",
+                notes,
+            ),
+            auto_check_updates: field(
+                &map,
+                "autoCheckUpdates",
+                defaults.auto_check_updates,
+                "Check for updates",
                 notes,
             ),
         };

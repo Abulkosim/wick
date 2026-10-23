@@ -1,6 +1,7 @@
+import type { UpdateState } from './updater.ts'
 import { initialState, type AppState, type RunningApp, type Trigger } from './model.ts'
 
-export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off', 'clamshell'] as const
+export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off', 'clamshell', 'update-available'] as const
 
 export const demoApps: RunningApp[] = [
   { name: 'Final Cut Pro', path: '/Applications/Final Cut Pro.app' },
@@ -85,4 +86,8 @@ export function createDemoState(scenario: string | null, now = Date.now()): AppS
       break
   }
   return state
+}
+
+export function createDemoUpdateState(scenario: string | null): UpdateState {
+  return scenario === 'update-available' ? { kind: 'available', version: '0.2.0' } : { kind: 'idle' }
 }

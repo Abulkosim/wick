@@ -58,12 +58,14 @@ struct Inner {
     store_path: Option<PathBuf>,
     /// Ids of triggers ignored until they stop matching.
     paused: Vec<String>,
+    last_update_check_at: Option<String>,
 }
 
 #[derive(Default)]
 pub struct Runtime {
     inner: Mutex<Inner>,
     wake: Notify,
+    pub update_wake: Notify,
 }
 
 pub fn now_ms() -> i64 {
@@ -132,6 +134,7 @@ impl Inner {
         if let Some(path) = &self.store_path {
             let mut stored = StoredState::new(self.view.settings.clone());
             stored.triggers = self.view.triggers.clone();
+            stored.last_update_check_at = self.last_update_check_at.clone();
             store::save(path, &stored)?;
         }
         self.view.recovered.clear();
@@ -163,9 +166,11 @@ impl Runtime {
                     ..AppState::default()
                 },
                 store_path: Some(store_path),
+                last_update_check_at: stored.last_update_check_at,
                 ..Inner::default()
             }),
             wake: Notify::new(),
+            update_wake: Notify::new(),
         }
     }
 
@@ -378,6 +383,23 @@ impl Runtime {
             Some(ms) => TICK.min(Duration::from_millis(ms.max(0) as u64)),
             None if state.session.is_on() || watching => TICK,
             None => IDLE_TICK,
+        }
+    }
+
+    pub fn last_update_check_at(&self) -> Option<String> {
+        self.inner
+            .lock()
+            .ok()
+            .and_then(|inner| inner.last_update_check_at.clone())
+    }
+
+    /// Remembers the check across launches. A damaged settings file stays untouched.
+    pub fn record_update_check(&self, at: String) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.last_update_check_at = Some(at);
+            if inner.view.recovery.is_none() {
+                let _ = inner.persist();
+            }
         }
     }
 

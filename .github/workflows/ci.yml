@@ -43,7 +43,9 @@ jobs:
       - name: Check types and production build
         run: pnpm build
       - name: Run unit tests
-        run: pnpm test
+        run: |
+          pnpm test
+          node --test scripts/*.test.mjs
       - name: Install browser engines
         run: pnpm exec playwright install --with-deps chromium webkit
       - name: Run browser tests

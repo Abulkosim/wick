@@ -8,9 +8,11 @@ import AppIcon from './AppIcon.vue'
 import AppSelect from './ui/AppSelect.vue'
 import AppSwitch from './ui/AppSwitch.vue'
 import ShortcutField from './ShortcutField.vue'
+import UpdateSettings from './settings/UpdateSettings.vue'
+import type { UpdateState } from '../lib/updater'
 
-const props = defineProps<{ settings: Settings; power: Power; recovered: string[]; recovery: string | null; busy: boolean; save: (settings: Settings) => Promise<boolean>; reset: () => Promise<boolean> }>()
-defineEmits<{ back: [] }>()
+const props = defineProps<{ updateState: UpdateState; updateBusy: boolean; demo: boolean; settings: Settings; power: Power; recovered: string[]; recovery: string | null; busy: boolean; save: (settings: Settings) => Promise<boolean>; reset: () => Promise<boolean> }>()
+defineEmits<{ back: []; checkUpdate: []; installUpdate: [] }>()
 
 const themes: { id: Settings['theme']; label: string; icon: 'system' | 'sun' | 'moon' }[] = [
   { id: 'system', label: 'System', icon: 'system' },
@@ -45,7 +47,7 @@ function setClick(value: string): void {
 
 <template>
   <div class="settings-view">
-    <header class="settings-header"><button class="icon-button back-button" aria-label="Back" @click="$emit('back')"><AppIcon name="back" :size="18"/></button><h1>Settings</h1><span class="settings-autosave">Saves automatically</span></header>
+    <header class="settings-header"><button class="icon-button back-button" aria-label="Back to overview" @click="$emit('back')"><AppIcon name="back" :size="18"/></button><h1>Settings</h1><span class="settings-autosave">Saves automatically</span></header>
     <div class="settings-content">
       <div v-if="recovery" class="error-note recovery-note" role="alert"><AppIcon name="alert" :size="16"/><div><p><strong>Settings could not be read.</strong> Wick is using defaults and won’t save until you reset. {{ recovery }}</p><button class="button button-small" :disabled="busy" @click="reset">Back up and reset</button></div></div>
       <p v-else-if="recovered.length" class="recovered-note" role="status"><AppIcon name="alert" :size="13"/><span>{{ recovered.join(' ') }} A backup is kept next to the settings file.</span></p>
@@ -79,6 +81,7 @@ function setClick(value: string): void {
         <h2>Appearance</h2>
         <div class="theme-options"><button v-for="theme in themes" :key="theme.id" class="theme-option" :class="{ selected: settings.theme === theme.id }" :aria-pressed="settings.theme === theme.id" :disabled="busy" @click="patch({ theme: theme.id })"><span class="theme-thumbnail" :class="`thumbnail-${theme.id}`"><span/><span/><span/></span><span><AppIcon :name="theme.icon" :size="13"/>{{ theme.label }}</span><span v-if="settings.theme === theme.id" class="theme-check"><AppIcon name="check" :size="10"/></span></button></div>
       </section>
+      <UpdateSettings :state="updateState" :busy="updateBusy" :demo="demo" :auto-check="settings.autoCheckUpdates" :settings-busy="busy" @check="$emit('checkUpdate')" @install="$emit('installUpdate')" @auto-check="patch({ autoCheckUpdates: $event })"/>
       <p class="settings-footnote">Version {{ version }}</p>
     </div>
   </div>

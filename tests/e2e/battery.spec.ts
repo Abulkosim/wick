@@ -13,7 +13,7 @@ test('a lower threshold lets it start', async ({ page }) => {
   await page.goto('/?demo=1&state=battery&page=settings')
   await page.getByRole('button', { name: '10%' }).click()
   await expect(page.getByRole('button', { name: '10%' })).toHaveAttribute('aria-pressed', 'true')
-  await page.getByRole('button', { name: 'Back' }).click()
+  await page.getByRole('button', { name: 'Back to overview' }).click()
   await page.getByRole('button', { name: '1 hour' }).click()
   await expect(page.getByRole('status').getByRole('heading')).toHaveText('Awake · 1h 00m left')
 })
@@ -27,7 +27,7 @@ test('thresholds are off with the guard', async ({ page }) => {
 test('desktops have no battery section or note', async ({ page }) => {
   await page.goto('/?demo=1&state=desktop&page=settings')
   await expect(page.getByRole('heading', { name: 'Battery' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Back' }).click()
+  await page.getByRole('button', { name: 'Back to overview' }).click()
   await expect(page.getByText(/On battery/)).toHaveCount(0)
 })
 

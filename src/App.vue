@@ -12,12 +12,15 @@ import OthersCard from './components/OthersCard.vue'
 import { othersSummary } from './lib/others'
 import StatusRing from './components/StatusRing.vue'
 import { useWick } from './lib/wick'
+import { useUpdater } from './lib/updater'
+import { createDemoUpdateState } from './lib/demo'
 import { activePreset, detail, fraction, shortDuration, title } from './lib/session'
 import type { StartRequest } from './lib/model'
 import { footerNote } from './lib/power'
 
 const { state, pending, message, now, demo, desktop, startSession, stopSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, hideWindow } = useWick()
 const query = new URLSearchParams(location.search)
+const updater = useUpdater({ demo, desktop, initial: demo ? createDemoUpdateState(query.get('state')) : undefined })
 const placementSchema = z.object({ revision: z.number().int().nonnegative(), arrowX: z.number().finite().nullable() })
 const placement = ref<z.infer<typeof placementSchema>>({ revision: 0, arrowX: null })
 const viewportWidth = ref(window.innerWidth)
@@ -166,12 +169,12 @@ onUnmounted(() => {
         <footer class="app-footer">
           <span class="footer-note"><template v-if="footer"><AppIcon :name="footer.icon" :size="15"/>{{ footer.text }}</template></span>
           <div class="footer-actions">
-            <AppTooltip text="Settings"><button class="icon-button" aria-label="Settings" @click="page = 'settings'"><AppIcon name="settings" :size="16"/></button></AppTooltip>
+            <AppTooltip :text="updater.available.value ? 'Settings · update available' : 'Settings'"><button class="icon-button settings-button" :aria-label="updater.available.value ? 'Settings, update available' : 'Open settings'" @click="page = 'settings'"><AppIcon name="settings" :size="16"/><span v-if="updater.available.value" class="update-dot" aria-hidden="true"/></button></AppTooltip>
             <AppTooltip text="Quit Wick"><button class="icon-button" aria-label="Quit Wick" @click="quit"><AppIcon name="power" :size="16"/></button></AppTooltip>
           </div>
         </footer>
         </template>
-        <SettingsPanel v-else :settings="state.settings" :power="state.power" :recovered="state.recovered" :recovery="state.recovery" :busy="busy" :save="saveSettings" :reset="resetStore" @back="page = 'overview'"/>
+        <SettingsPanel v-else :update-state="updater.state.value" :update-busy="updater.busy.value" :demo="demo" :settings="state.settings" :power="state.power" :recovered="state.recovered" :recovery="state.recovery" :busy="busy" :save="saveSettings" :reset="resetStore" @back="page = 'overview'" @check-update="updater.check" @install-update="updater.install"/>
         <div v-if="demo" class="preview-ribbon"><span class="preview-dot"/>Interface preview<span>Sample data</span></div>
         <Transition name="toast"><div v-if="message" class="toast-message" :class="{ 'toast-error': message.kind === 'error' }" :role="message.kind === 'error' ? 'alert' : 'status'"><AppIcon :name="message.kind === 'error' ? 'alert' : 'check'" :size="15"/><span>{{ message.text }}</span><button class="icon-button" aria-label="Dismiss message" @click="message = null"><AppIcon name="close" :size="13"/></button></div></Transition>
       </div>

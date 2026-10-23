@@ -1119,3 +1119,16 @@ button:disabled:hover {
     opacity: 1;
   }
 }
+.settings-button {
+  position: relative;
+}
+.settings-button .update-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--surface);
+}

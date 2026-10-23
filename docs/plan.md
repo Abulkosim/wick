@@ -71,8 +71,9 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 - [x] **2.8 Every state in the demo bridge.** off, timed, until, indefinite, held by trigger, stopped by battery, others awake, error, recovery, update available.
   Verify: e2e per state, Chromium + WebKit, light + dark screenshots reviewed.
   Done 2026-10-23: 16 scenarios in `src/lib/demo.ts` (off, timed, until, indefinite, display, battery, error, recovery, recovered, desktop, held, paused, triggers, others, others-off, clamshell); `states.spec.ts` renders each in both engines and themes with no console errors or horizontal overflow, plus a 340 px phone-width check. Contact sheets reviewed. No permission-needed state exists in v0.1: Wick asks for none (no Location, no Accessibility; the notification plugin never prompts on desktop). Update-available arrives with 2.9.
-- [ ] **2.9 Updater.** Port `updates.rs`, `UpdateSettings.vue`, daily check, signer key (stored outside repo, secret set), `scripts/`.
+- [x] **2.9 Updater.** Port `updates.rs`, `UpdateSettings.vue`, daily check, signer key (stored outside repo, secret set), `scripts/`.
   Verify: script tests; updater install test against a local build.
+  Done 2026-10-23: Margin's updater ported (downloads only `Abulkosim/wick/releases/download/v<version>/Wick.app.tar.gz`, daily background check, gear dot, Settings → Updates). Key in `~/.tauri/wick/` (0600, password file beside it), secrets `TAURI_SIGNING_PRIVATE_KEY`/`_PASSWORD` set; 👤 back up `~/.tauri/wick/` somewhere safe. Release scripts ported for a Mac-only asset set (DMG, archive, sig, latest.json, SHA256SUMS); 14 script tests. `updater_install` against a locally signed 0.0.1 build: tampered bytes and mismatched signed version rejected, install passed codesign. Local release builds now need the signing env, or `--config '{"bundle":{"createUpdaterArtifacts":false}}'`.
 
 ## Phase 3 — Ship (M3)
 

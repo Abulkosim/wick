@@ -5,6 +5,7 @@ mod popover;
 mod runtime;
 mod shortcut;
 mod tray;
+mod updates;
 
 use popover::Visibility;
 use runtime::Runtime;
@@ -41,6 +42,8 @@ pub fn run() {
         ))
         .plugin(shortcut::plugin())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(updates::Updates::default())
         .manage(Visibility::default())
         .manage(tray::Presentation::default())
         .invoke_handler(tauri::generate_handler![
@@ -53,6 +56,9 @@ pub fn run() {
             commands::save_triggers,
             commands::resume_triggers,
             commands::running_apps,
+            updates::get_update_status,
+            updates::check_for_update,
+            updates::install_update,
             commands::get_popover_placement,
             commands::fit_popover,
             commands::hide_window,
@@ -73,6 +79,7 @@ pub fn run() {
             if let Err(error) = shortcut::replace(app.handle(), None, saved.as_deref()) {
                 eprintln!("wick: {error}");
             }
+            updates::start_background_checks(app.handle().clone(), runtime.clone());
             runtime::start_ticker(app.handle().clone(), runtime);
             let args: Vec<String> = std::env::args().collect();
             if !perform(app.handle(), &args) && !args.iter().any(|arg| arg == "--background") {
