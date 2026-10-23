@@ -121,7 +121,9 @@ async fn check(app: &AppHandle, updates: &Updates, quiet: bool) -> Result<Update
             *pending = Some(update);
             return updates.publish(app, UpdatePhase::Available { version });
         }
-        Ok(None) => return updates.publish(app, UpdatePhase::Current),
+        Ok(None) | Err(tauri_plugin_updater::Error::ReleaseNotFound) => {
+            return updates.publish(app, UpdatePhase::Current)
+        }
         Ok(Some(_)) => "This update has an unexpected download address. Try again after the release is corrected.",
         Err(_) => "Couldn’t check for updates. Check your connection and try again.",
     };
