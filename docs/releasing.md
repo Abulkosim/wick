@@ -66,4 +66,6 @@ It uses the pinned updater plugin and the real public key with a loopback-only s
 
 Local release builds need the signing environment, or `--config '{"bundle":{"createUpdaterArtifacts":false}}'`.
 
+After publishing, `WICK_UPDATE_TARGET=/Applications/Wick.app cargo test --manifest-path src-tauri/Cargo.toml --test public_update -- --ignored --nocapture` updates an installed older Wick from the live endpoint, the same way Settings → Updates does.
+
 `latest.json` is served from the latest published release. Both Mac architectures use the universal archive. Windows entries keep the installer family (NSIS or MSI), with NSIS as the generic fallback. To stop offering a bad release, mark it as a prerelease so the endpoint falls back to the previous release, then ship a fixed patch.

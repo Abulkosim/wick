@@ -2,7 +2,7 @@
 
 What was checked for each release, newest first.
 
-## v0.2.0 — draft 2026-10-23
+## v0.2.0 — 2026-10-23
 
 Tag `v0.2.0` (`b543d78`), CI run [39999738063](https://github.com/Abulkosim/wick/actions/runs/39999738063): frontend and browser checks, macOS universal, Windows x64 and the draft release all passed. `main` run [39998556494](https://github.com/Abulkosim/wick/actions/runs/39998556494) passed first; its browser install stalled once and the new retry recovered it.
 
@@ -13,7 +13,9 @@ Tag `v0.2.0` (`b543d78`), CI run [39999738063](https://github.com/Abulkosim/wick
 - `updater_install` against the exact draft archive, `WICK_REQUIRE_UNIVERSAL=1`: tampered bytes and mismatched signed version rejected; 0.2.0 installed, codesign valid, `x86_64 arm64`.
 - DMG app on macOS 26.6.2: codesign valid, universal, 0.2.0, registers `wick://`. `wick start 30` → `Wick: awake until 23:40`; `wick status` JSON correct; 0 assertions after `wick stop` and after `kill -9`.
 - New features checked live during development: schedule trigger (`awake while on schedule until 21:54`), `wick://start?minutes=1` and `wick://toggle`, power trigger on battery held nothing.
-- Pending 👤: in-app update from the installed v0.1.0 after publish; Windows install, tray and `powercfg /requests` in a VM; pause-while-locked with a real lock; tray countdown text on screen.
+- Published 2026-10-23 18:32 UTC and marked latest; `latest.json` (0.2.0), DMG, both Windows installers and the archive resolve publicly.
+- Owner's Mac updated 0.1.0 → 0.2.0 through the updater plugin with the public endpoint and key (`tests/public_update.rs`, the same path as Settings → Updates minus the click): installed universal, codesign valid, settings kept, `wick status` answers.
+- Pending 👤: Windows install, tray and `powercfg /requests` in a VM; pause-while-locked with a real lock; tray countdown text on screen.
 
 Checksums:
 

@@ -110,7 +110,8 @@ Mac features first, Windows last, then the release. Presets dropped for now: the
 - [x] **4.6 Windows.** `PowerCreateRequest`/`PowerSetRequest`, colour tray icons following the taskbar theme, Toolhelp process scan, `GetSystemPowerStatus` battery guard; no lid hint and no "who else" (needs admin). CI Windows job, NSIS + MSI, Windows entries in `latest.json`.
   Verify: CI builds and tests on windows-latest; 👤 VM install and tray check.
   Done 2026-10-23: CI run 39989912830 green on windows-latest (fmt, clippy -D warnings, tests, NSIS `Wick_0.1.0_x64-setup.exe` + MSI). Win32 declared by hand in `core/win32.rs`. 👤 VM: install, candle in the tray (light and dark taskbar), start/stop with `powercfg /requests`, popover placement.
-- [ ] **4.7 Release v0.2.0.** Changelog, screenshots, draft, checksums, updater test from the installed v0.1.0. 👤 owner says "publish".
+- [x] **4.7 Release v0.2.0.** Changelog, screenshots, draft, checksums, updater test from the installed v0.1.0. 👤 owner says "publish".
+  Done 2026-10-23: published on the owner's "publish"; owner's Mac updated from v0.1.0 through the public updater path. Evidence in docs/verification.md.
 
 ## Later / maybe
 
