@@ -31,11 +31,20 @@ export const powerSchema = z.object({
   lowPowerMode: z.boolean(),
 })
 
+const clock = z.string().regex(/^\d{1,2}:\d{2}$/)
+
+export const scheduleSchema = z.object({
+  days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+  start: clock,
+  end: clock,
+})
+
 export const triggerSchema = z.object({
   id: z.string().regex(/^[A-Za-z0-9-]{1,64}$/),
-  kind: z.enum(['app', 'process', 'power', 'display']),
+  kind: z.enum(['app', 'process', 'power', 'display', 'schedule']),
   name: z.string().min(1).max(64),
   path: z.string().max(1024).optional(),
+  schedule: scheduleSchema.optional(),
   enabled: z.boolean(),
 })
 
@@ -77,6 +86,7 @@ export type Session = z.infer<typeof sessionSchema>
 export type Settings = z.infer<typeof settingsSchema>
 export type Power = z.infer<typeof powerSchema>
 export type Trigger = z.infer<typeof triggerSchema>
+export type Schedule = z.infer<typeof scheduleSchema>
 export type RunningApp = z.infer<typeof runningAppSchema>
 export type Other = z.infer<typeof otherSchema>
 export type AppState = z.infer<typeof appStateSchema>

@@ -235,6 +235,7 @@ mod tests {
             kind: triggers::TriggerKind::Process,
             name: "claude".into(),
             path: None,
+            schedule: None,
             enabled: true,
         }];
         save(&path, &state).unwrap();

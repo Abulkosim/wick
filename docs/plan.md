@@ -101,8 +101,9 @@ Mac features first, Windows last, then the release. Presets dropped for now: the
 - [x] **4.3 Condition triggers.** "Stay awake while on power" and "while an external display is connected", in the same card as app and command triggers.
   Verify: pure evaluation tests; external display read checked against `system_profiler` on this Mac; e2e adding both.
   Done 2026-10-23: `power`/`display` trigger kinds (one each), `Context` evaluation, phrases ("on power", "Paused until you unplug") sent from Rust. External display via `CGGetActiveDisplayList`/`CGDisplayIsBuiltin`, test agrees with `system_profiler`. Live: on battery, a power trigger held nothing (correct). Positive live case pending a plugged-in run.
-- [ ] **4.4 Schedule.** "Keep awake on weekdays 9:00–18:00"-style windows, evaluated each tick with the local clock; shown as held "Until 18:00 (schedule)".
+- [x] **4.4 Schedule.** "Keep awake on weekdays 9:00–18:00"-style windows, evaluated each tick with the local clock; shown as held "Until 18:00 (schedule)".
   Verify: unit tests for day/time windows incl. overnight and DST; e2e of the editor.
+  Done 2026-10-23: `core/schedule.rs` (days 0=Mon, "HH:MM", overnight windows belong to the start day; wall-clock local time so DST just shifts with the clock). Added as a `schedule` trigger with a day-chip + time editor. Live: a window around now gave `Wick: awake while on schedule until 21:54`; nothing after quit.
 - [ ] **4.5 URL scheme and status CLI.** `wick://start?minutes=60`, `wick://start`, `wick://stop`, `wick://toggle`; `wick status` prints JSON for Shortcuts and Raycast.
   Verify: parser unit tests; real `open "wick://start?minutes=1"` creates the assertion; `wick status` JSON checked.
 - [ ] **4.6 Windows.** `PowerCreateRequest`/`PowerSetRequest`, colour tray icons following the taskbar theme, Toolhelp process scan, `GetSystemPowerStatus` battery guard; no lid hint and no "who else" (needs admin). CI Windows job, NSIS + MSI, Windows entries in `latest.json`.

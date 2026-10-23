@@ -85,6 +85,7 @@ export function createDemoState(scenario: string | null, now = Date.now()): AppS
       state.triggers = [
         { id: 'demo-power', kind: 'power', name: 'Power adapter', enabled: true },
         { id: 'demo-display', kind: 'display', name: 'External display', enabled: true },
+        { id: 'demo-schedule', kind: 'schedule', name: 'Weekdays 09:00–18:00', schedule: { days: [0, 1, 2, 3, 4], start: '09:00', end: '18:00' }, enabled: true },
       ]
       state.power = { onBattery: false, percent: 100, lowPowerMode: false }
       state.running = ['demo-power']

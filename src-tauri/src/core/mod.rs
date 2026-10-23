@@ -6,6 +6,7 @@ pub mod lock;
 pub mod others;
 pub mod power;
 pub mod processes;
+pub mod schedule;
 pub mod session;
 pub mod settings;
 pub mod store;

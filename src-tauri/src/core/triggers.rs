@@ -1,4 +1,7 @@
-use super::processes::{bundle_of, Process};
+use super::{
+    processes::{bundle_of, Process},
+    schedule::Schedule,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -13,6 +16,8 @@ pub enum TriggerKind {
     Power,
     /// An external display is connected.
     Display,
+    /// Inside a weekly time window.
+    Schedule,
 }
 
 /// What a trigger can look at on each tick.
@@ -21,6 +26,8 @@ pub struct Context<'a> {
     pub processes: &'a [Process],
     pub on_power: bool,
     pub external_display: bool,
+    /// Local weekday (0 = Monday) and minutes past midnight.
+    pub clock: (u8, u32),
 }
 
 /// "Stay awake while <name> is running". Apps match by bundle path, processes by name.
@@ -32,6 +39,8 @@ pub struct Trigger {
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schedule: Option<Schedule>,
     pub enabled: bool,
 }
 
@@ -50,7 +59,17 @@ impl Trigger {
         if name.is_empty() || name.chars().count() > 64 || name.chars().any(char::is_control) {
             return Err("Name the app or process in 64 characters or fewer.".into());
         }
+        if self.kind == TriggerKind::Schedule {
+            return match (&self.schedule, &self.path) {
+                (Some(schedule), None) => schedule.validate(),
+                _ => Err("A schedule needs days and times.".into()),
+            };
+        }
+        if self.schedule.is_some() {
+            return Err("Only schedules have days and times.".into());
+        }
         match (self.kind, self.path.as_deref()) {
+            (TriggerKind::Schedule, _) => unreachable!(),
             (TriggerKind::Power | TriggerKind::Display, None) => Ok(()),
             (TriggerKind::Power | TriggerKind::Display, Some(_)) => {
                 Err("A condition has no app path.".into())
@@ -72,6 +91,10 @@ impl Trigger {
             TriggerKind::App | TriggerKind::Process => format!("{} is running", self.name.trim()),
             TriggerKind::Power => "on power".into(),
             TriggerKind::Display => "an external display is connected".into(),
+            TriggerKind::Schedule => match &self.schedule {
+                Some(schedule) => format!("on schedule until {}", schedule.end),
+                None => "on schedule".into(),
+            },
         }
     }
 
@@ -81,6 +104,7 @@ impl Trigger {
             TriggerKind::App | TriggerKind::Process => format!("{} quits", self.name.trim()),
             TriggerKind::Power => "you unplug".into(),
             TriggerKind::Display => "the display is disconnected".into(),
+            TriggerKind::Schedule => "the schedule ends".into(),
         }
     }
 
@@ -89,6 +113,10 @@ impl Trigger {
             && match self.kind {
                 TriggerKind::Power => context.on_power,
                 TriggerKind::Display => context.external_display,
+                TriggerKind::Schedule => self
+                    .schedule
+                    .as_ref()
+                    .is_some_and(|schedule| schedule.contains(context.clock.0, context.clock.1)),
                 _ => context
                     .processes
                     .iter()
@@ -98,7 +126,7 @@ impl Trigger {
 
     pub fn matches(&self, process: &Process) -> bool {
         match self.kind {
-            TriggerKind::Power | TriggerKind::Display => false,
+            TriggerKind::Power | TriggerKind::Display | TriggerKind::Schedule => false,
             TriggerKind::App => self
                 .path
                 .as_deref()
@@ -203,6 +231,7 @@ mod tests {
             kind: TriggerKind::App,
             name: name.into(),
             path: Some(path.into()),
+            schedule: None,
             enabled: true,
         }
     }
@@ -213,6 +242,7 @@ mod tests {
             kind: TriggerKind::Process,
             name: name.into(),
             path: None,
+            schedule: None,
             enabled: true,
         }
     }
@@ -284,6 +314,7 @@ mod tests {
             kind,
             name: "condition".into(),
             path: None,
+            schedule: None,
             enabled: true,
         }
     }
@@ -313,6 +344,29 @@ mod tests {
         let mut with_path = power;
         with_path.path = Some("/Applications/X.app".into());
         assert!(with_path.validate().is_err());
+    }
+
+    #[test]
+    fn schedules_hold_inside_their_window() {
+        let mut work = condition("s", TriggerKind::Schedule);
+        assert!(work.validate().is_err());
+        work.schedule = Some(Schedule {
+            days: vec![0, 1, 2, 3, 4],
+            start: "09:00".into(),
+            end: "18:00".into(),
+        });
+        assert!(work.validate().is_ok());
+        let at = |day, minute| Context {
+            clock: (day, minute),
+            ..Context::default()
+        };
+        assert!(work.holds(&at(2, 600)));
+        assert!(!work.holds(&at(5, 600)));
+        assert_eq!(work.phrase(), "on schedule until 18:00");
+        assert_eq!(work.until(), "the schedule ends");
+        let mut process = named("p", "claude");
+        process.schedule = work.schedule.clone();
+        assert!(process.validate().is_err());
     }
 
     #[test]

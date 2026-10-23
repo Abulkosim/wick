@@ -72,6 +72,16 @@ pub struct Runtime {
     pub update_wake: Notify,
 }
 
+/// Local weekday (0 = Monday) and minutes past midnight, for schedules.
+fn local_clock() -> (u8, u32) {
+    use chrono::{Datelike, Timelike};
+    let now = chrono::Local::now();
+    (
+        now.weekday().num_days_from_monday() as u8,
+        now.hour() * 60 + now.minute(),
+    )
+}
+
 pub fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
 }
@@ -444,6 +454,7 @@ impl Runtime {
             processes: &processes,
             on_power: !power.on_battery,
             external_display: display::external_connected(),
+            clock: local_clock(),
         };
         let active = triggers::active(&state.triggers, &context);
         let Ok(paused) = self.inner.lock().map(|inner| inner.paused.clone()) else {
