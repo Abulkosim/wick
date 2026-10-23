@@ -1,15 +1,17 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { createDemoState } from './demo.ts'
-import { appStateSchema, initialState, type AppState, type StartRequest } from './model.ts'
+import { appStateSchema, defaultSettings, initialState, type AppState, type Settings, type StartRequest } from './model.ts'
 import { start } from './session.ts'
 
-type Command = 'start_session' | 'stop_session' | 'set_display'
+type Command = 'start_session' | 'stop_session' | 'set_display' | 'save_settings' | 'reset_store'
 
 export function useWick() {
   const query = new URLSearchParams(window.location.search)
   const demo = query.get('demo') === '1'
   const desktop = typeof window.__TAURI__?.core.invoke === 'function'
   const state = ref<AppState>(demo ? createDemoState(query.get('state')) : initialState())
+  const theme = query.get('theme')
+  if (demo && (theme === 'light' || theme === 'dark')) state.value.settings.theme = theme
   const loading = ref(desktop && !demo)
   const pending = ref<Command | null>(null)
   const message = ref<{ kind: 'error' | 'success'; text: string } | null>(null)
@@ -53,7 +55,18 @@ export function useWick() {
 
   const startSession = (request: StartRequest) => perform('start_session', { request }, () => { state.value.session = start(request, Date.now()) })
   const stopSession = () => perform('stop_session', undefined, () => { state.value.session = { mode: 'off' } })
-  const setDisplay = (display: boolean) => perform('set_display', { display }, () => { state.value.display = display })
+  const setDisplay = (display: boolean) => perform('set_display', { display }, () => { state.value.settings = { ...state.value.settings, keepDisplayOn: display } })
+  const saveSettings = (settings: Settings) => perform('save_settings', { settings }, () => { state.value.settings = settings; state.value.recovered = [] })
+
+  async function resetStore(): Promise<boolean> {
+    const reset = await perform('reset_store', undefined, () => {
+      state.value.settings = { ...defaultSettings }
+      state.value.recovery = null
+      state.value.recovered = []
+    })
+    if (reset) notify('Settings reset. The old file was kept as a backup.')
+    return reset
+  }
 
   async function hideWindow(): Promise<void> {
     if (!desktop || demo) return
@@ -84,5 +97,5 @@ export function useWick() {
     clearTimeout(toastTimer)
   })
 
-  return { state, loading, pending, message, now, demo, desktop, startSession, stopSession, setDisplay, hideWindow, notify }
+  return { state, loading, pending, message, now, demo, desktop, startSession, stopSession, setDisplay, saveSettings, resetStore, hideWindow, notify }
 }

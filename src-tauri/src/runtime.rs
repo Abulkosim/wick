@@ -2,11 +2,14 @@ use crate::{
     core::{
         assertion::{self, Assertion, Kind},
         session::{Request, Session},
+        settings::Settings,
+        store::{self, StoredState},
     },
     tray,
 };
 use serde::Serialize;
 use std::{
+    path::PathBuf,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -20,8 +23,11 @@ const TICK: Duration = Duration::from_secs(5);
 pub struct AppState {
     pub revision: u64,
     pub session: Session,
-    pub display: bool,
+    pub settings: Settings,
     pub error: Option<String>,
+    /// Set when the settings file can't be read. Saving stays off until the owner resets it.
+    pub recovery: Option<String>,
+    pub recovered: Vec<String>,
 }
 
 #[derive(Default)]
@@ -29,6 +35,7 @@ struct Inner {
     view: AppState,
     assertion: Option<Assertion>,
     held_for: Option<(Kind, Session)>,
+    store_path: Option<PathBuf>,
 }
 
 #[derive(Default)]
@@ -67,7 +74,7 @@ impl Inner {
             self.held_for = None;
             return Ok(());
         }
-        let kind = if self.view.display {
+        let kind = if self.view.settings.keep_display_on {
             Kind::Display
         } else {
             Kind::System
@@ -87,9 +94,47 @@ impl Inner {
     fn changed(&mut self) {
         self.view.revision = self.view.revision.saturating_add(1);
     }
+
+    fn persist(&mut self) -> Result<(), String> {
+        self.view.settings.validate()?;
+        if let Some(recovery) = &self.view.recovery {
+            return Err(format!("{recovery} Reset settings to save changes."));
+        }
+        if let Some(path) = &self.store_path {
+            store::save(path, &StoredState::new(self.view.settings.clone()))?;
+        }
+        self.view.recovered.clear();
+        Ok(())
+    }
 }
 
 impl Runtime {
+    pub fn new(store_path: PathBuf) -> Self {
+        let (stored, recovery) = match store::load(&store_path) {
+            Ok(stored) => (stored, None),
+            Err(error) => (
+                StoredState::new(Settings::default()),
+                Some(format!("{error} Settings file: {}.", store_path.display())),
+            ),
+        };
+        if !stored.recovered.is_empty() {
+            let _ = store::backup(&store_path);
+        }
+        Self {
+            inner: Mutex::new(Inner {
+                view: AppState {
+                    settings: stored.settings,
+                    recovery,
+                    recovered: stored.recovered,
+                    ..AppState::default()
+                },
+                store_path: Some(store_path),
+                ..Inner::default()
+            }),
+            wake: Notify::new(),
+        }
+    }
+
     pub fn state(&self) -> AppState {
         self.inner
             .lock()
@@ -112,6 +157,12 @@ impl Runtime {
             if let Err(error) = change(&mut inner, now) {
                 inner.view = previous;
                 return Err(error);
+            }
+            if inner.view.settings != previous.settings {
+                if let Err(error) = inner.persist() {
+                    inner.view = previous;
+                    return Err(error);
+                }
             }
             if let Err(error) = inner.reconcile(now) {
                 inner.view = AppState {
@@ -150,9 +201,47 @@ impl Runtime {
         })
     }
 
-    pub fn set_display(&self, app: &AppHandle, display: bool) -> Result<AppState, String> {
+    pub fn start_default(&self, app: &AppHandle) -> Result<AppState, String> {
+        let request = match self.state().settings.start_minutes {
+            Some(minutes) => Request::For { minutes },
+            None => Request::Indefinite,
+        };
+        self.start(app, request)
+    }
+
+    pub fn toggle(&self, app: &AppHandle) -> Result<AppState, String> {
+        if self.state().session.is_on() {
+            self.stop(app)
+        } else {
+            self.start_default(app)
+        }
+    }
+
+    pub fn save_settings(&self, app: &AppHandle, settings: Settings) -> Result<AppState, String> {
+        settings.validate()?;
         self.update(app, |inner, _| {
-            inner.view.display = display;
+            inner.view.settings = settings;
+            Ok(())
+        })
+    }
+
+    pub fn set_display(&self, app: &AppHandle, on: bool) -> Result<AppState, String> {
+        let settings = Settings {
+            keep_display_on: on,
+            ..self.state().settings
+        };
+        self.save_settings(app, settings)
+    }
+
+    pub fn reset_store(&self, app: &AppHandle) -> Result<AppState, String> {
+        self.update(app, |inner, _| {
+            let settings = Settings::default();
+            if let Some(path) = &inner.store_path {
+                store::reset(path, &StoredState::new(settings.clone()))?;
+            }
+            inner.view.settings = settings;
+            inner.view.recovery = None;
+            inner.view.recovered.clear();
             Ok(())
         })
     }
@@ -206,6 +295,32 @@ mod tests {
         .starts_with("Wick: awake until "));
     }
 
+    #[test]
+    fn damaged_settings_are_never_overwritten() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.json");
+        std::fs::write(&path, "{ damaged").unwrap();
+        let runtime = Runtime::new(path.clone());
+        let mut inner = runtime.inner.lock().unwrap();
+        assert!(inner.view.recovery.is_some());
+        inner.view.settings.keep_display_on = true;
+        assert!(inner.persist().unwrap_err().contains("Reset settings"));
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "{ damaged");
+    }
+
+    #[test]
+    fn saved_settings_load_on_the_next_launch() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.json");
+        {
+            let runtime = Runtime::new(path.clone());
+            let mut inner = runtime.inner.lock().unwrap();
+            inner.view.settings.start_minutes = Some(45);
+            inner.persist().unwrap();
+        }
+        assert_eq!(Runtime::new(path).state().settings.start_minutes, Some(45));
+    }
+
     #[cfg(target_os = "macos")]
     #[test]
     fn reconcile_holds_one_assertion_matching_the_session() {
@@ -223,7 +338,7 @@ mod tests {
         inner.view.session = Session::Indefinite { started_at: now };
         inner.reconcile(now).unwrap();
         assert_eq!(ours(), ["PreventUserIdleSystemSleep"]);
-        inner.view.display = true;
+        inner.view.settings.keep_display_on = true;
         inner.reconcile(now).unwrap();
         assert_eq!(ours(), ["PreventUserIdleDisplaySleep"]);
         inner.view.session = Session::Off;

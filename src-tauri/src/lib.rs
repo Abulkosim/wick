@@ -35,12 +35,13 @@ pub fn run() {
         .plugin(tauri_plugin_positioner::init())
         .manage(Visibility::default())
         .manage(tray::Presentation::default())
-        .manage(Arc::new(Runtime::default()))
         .invoke_handler(tauri::generate_handler![
             commands::get_state,
             commands::start_session,
             commands::stop_session,
             commands::set_display,
+            commands::save_settings,
+            commands::reset_store,
             commands::get_popover_placement,
             commands::fit_popover,
             commands::hide_window,
@@ -49,8 +50,10 @@ pub fn run() {
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            let path = app.path().app_data_dir()?.join("settings.json");
+            let runtime = Arc::new(Runtime::new(path));
+            app.manage(runtime.clone());
             tray::setup(app.handle())?;
-            let runtime = app.state::<Arc<Runtime>>().inner().clone();
             runtime::start_ticker(app.handle().clone(), runtime);
             let args: Vec<String> = std::env::args().collect();
             if !perform(app.handle(), &args) && !args.iter().any(|arg| arg == "--background") {

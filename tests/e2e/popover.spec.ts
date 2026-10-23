@@ -46,6 +46,7 @@ test('until and custom take typed values', async ({ page }) => {
 test('display switch shows in the status', async ({ page }) => {
   await page.goto('/?demo=1&state=indefinite')
   await page.getByRole('switch', { name: 'Keep display on' }).click()
+  await expect(page.getByRole('switch', { name: 'Keep display on' })).toBeChecked()
   await expect(page.getByText('Until you stop it · Display on')).toBeVisible()
 })
 

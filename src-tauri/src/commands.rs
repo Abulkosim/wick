@@ -1,5 +1,5 @@
 use crate::{
-    core::session::Request,
+    core::{session::Request, settings::Settings},
     popover::{self, PopoverPlacement, Visibility},
     runtime::{AppState, Runtime},
 };
@@ -32,6 +32,20 @@ pub fn set_display(
     display: bool,
 ) -> Result<AppState, String> {
     runtime.set_display(&app, display)
+}
+
+#[tauri::command]
+pub fn save_settings(
+    app: AppHandle,
+    runtime: State<'_, Arc<Runtime>>,
+    settings: Settings,
+) -> Result<AppState, String> {
+    runtime.save_settings(&app, settings)
+}
+
+#[tauri::command]
+pub fn reset_store(app: AppHandle, runtime: State<'_, Arc<Runtime>>) -> Result<AppState, String> {
+    runtime.reset_store(&app)
 }
 
 #[tauri::command]

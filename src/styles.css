@@ -730,3 +730,140 @@ button:disabled:hover {
   -webkit-appearance: none;
   margin: 0;
 }
+.theme-options {
+  display: flex;
+  gap: 7px;
+}
+.theme-option {
+  position: relative;
+  width: 33.333%;
+  border: 1px solid transparent;
+  padding: 8px 6px 9px;
+  border-radius: 8px;
+  background: var(--card);
+}
+.theme-option:hover {
+  background: var(--hover);
+}
+.theme-option.selected {
+  border-color: var(--accent);
+  background: var(--card);
+}
+.theme-option>span:nth-child(2) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--secondary);
+  margin-top: 8px;
+}
+.theme-thumbnail {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 9px 9px;
+  gap: 5px;
+  border-radius: 4px;
+  background: #f1f3ed;
+  height: 47px;
+  border: 1px solid #00000007;
+}
+.theme-thumbnail span {
+  display: block;
+  height: 4px;
+  background: #6b816c55;
+  border-radius: 2px;
+  width: 100%;
+}
+.theme-thumbnail span:first-child {
+  width: 40%;
+  height: 5px;
+  background: #3a4b3b88;
+}
+.theme-thumbnail span:nth-child(2) {
+  width: 83%;
+}
+.thumbnail-dark {
+  background: #252d27;
+  border-color: #ffffff0b;
+}
+.thumbnail-dark span {
+  background: #a3bda655;
+}
+.thumbnail-dark span:first-child {
+  background: #b8d1ba99;
+}
+.thumbnail-system {
+  background: linear-gradient(90deg,#f1f3ed 50%,#252d27 50%);
+}
+.thumbnail-system span {
+  background: linear-gradient(90deg,#6b816c55 60%,#a3bda655 60%);
+}
+.theme-check {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  color: var(--surface);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--card);
+}
+.recovered-note {
+  display: flex;
+  gap: 8px;
+  padding: 0 3px 16px;
+  color: var(--tertiary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.recovered-note>svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: var(--warning);
+}
+.recovery-note {
+  margin-bottom: 18px;
+}
+.recovery-note p {
+  overflow-wrap: anywhere;
+}
+.recovery-note .button {
+  margin-top: 9px;
+  background: var(--card);
+}
+.settings-header {
+  padding: 18px 18px 16px;
+}
+.settings-content {
+  padding: 0 20px 16px;
+}
+.settings-view .setting-row label {
+  font-weight: 450;
+}
+.settings-view .app-select-trigger {
+  min-width: 132px;
+  max-width: 140px;
+}
+@media(max-width:400px) {
+  .preview-stage {
+    padding: 0;
+    background: transparent;
+    min-height: 100dvh;
+  }
+  .app-shell {
+    width: 100%;
+    padding: 8px 6px 6px;
+  }
+}
+.error-note .text-button {
+  margin-top: 4px;
+  padding: 0;
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

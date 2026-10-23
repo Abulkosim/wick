@@ -9,11 +9,20 @@ export const sessionSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('indefinite'), startedAt: millis }),
 ])
 
+export const settingsSchema = z.object({
+  theme: z.enum(['system', 'light', 'dark']),
+  keepDisplayOn: z.boolean(),
+  startMinutes: z.number().int().min(1).max(7 * 24 * 60).nullable(),
+  iconClick: z.enum(['open', 'toggle']),
+})
+
 export const appStateSchema = z.object({
   revision: z.number().int().nonnegative(),
   session: sessionSchema,
-  display: z.boolean(),
+  settings: settingsSchema,
   error: z.string().nullable(),
+  recovery: z.string().nullable(),
+  recovered: z.array(z.string()),
 })
 
 export const startRequestSchema = z.discriminatedUnion('mode', [
@@ -23,7 +32,10 @@ export const startRequestSchema = z.discriminatedUnion('mode', [
 ])
 
 export type Session = z.infer<typeof sessionSchema>
+export type Settings = z.infer<typeof settingsSchema>
 export type AppState = z.infer<typeof appStateSchema>
 export type StartRequest = z.infer<typeof startRequestSchema>
 
-export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, display: false, error: null })
+export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open' }
+
+export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings }, error: null, recovery: null, recovered: [] })

@@ -1,12 +1,13 @@
 use crate::{
+    core::settings::IconClick,
     core::{
         ring::{template_rgba, Glyph},
         session::{short_duration, Session},
     },
     popover::{self, TRAY_ID},
-    runtime::AppState,
+    runtime::{AppState, Runtime},
 };
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
@@ -27,7 +28,11 @@ struct Shown {
 pub struct Presentation(Mutex<Shown>);
 
 pub fn tooltip(state: &AppState, now: i64) -> String {
-    let screen = if state.display { " · display on" } else { "" };
+    let screen = if state.settings.keep_display_on {
+        " · display on"
+    } else {
+        ""
+    };
     match state.session {
         Session::Off => "Wick · Off".into(),
         Session::Indefinite { .. } => format!("Wick · Awake{screen}"),
@@ -107,7 +112,12 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                 ..
             } = event
             {
-                popover::toggle(app);
+                let runtime = app.state::<Arc<Runtime>>();
+                if runtime.state().settings.icon_click == IconClick::Toggle {
+                    let _ = runtime.toggle(app);
+                } else {
+                    popover::toggle(app);
+                }
             }
         })
         .build(app)?;
