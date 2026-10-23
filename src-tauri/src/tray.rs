@@ -1,7 +1,7 @@
 use crate::{
     core::settings::IconClick,
     core::{
-        candle::{template_rgba, Glyph},
+        candle::Glyph,
         session::{short_duration, Session},
     },
     popover::{self, TRAY_ID},
@@ -15,7 +15,8 @@ use tauri::{
     AppHandle, Manager,
 };
 
-const ICON_SIZE: u32 = 36;
+/// 18 pt at 2x on macOS; 32 px suits Windows at 100–200% scaling.
+const ICON_SIZE: u32 = if cfg!(windows) { 32 } else { 36 };
 
 #[derive(Default)]
 struct Shown {
@@ -107,7 +108,7 @@ pub fn update(app: &AppHandle, state: &AppState, now: i64) {
         shown.revision = revision;
         if shown.glyph != Some(glyph)
             && tray
-                .set_icon_with_as_template(Some(icon(glyph)), true)
+                .set_icon_with_as_template(Some(icon(glyph)), cfg!(target_os = "macos"))
                 .is_ok()
         {
             shown.glyph = Some(glyph);
@@ -121,8 +122,32 @@ pub fn update(app: &AppHandle, state: &AppState, now: i64) {
     });
 }
 
+#[cfg(not(windows))]
 pub fn icon(glyph: Glyph) -> Image<'static> {
-    Image::new_owned(template_rgba(ICON_SIZE, glyph), ICON_SIZE, ICON_SIZE)
+    Image::new_owned(
+        crate::core::candle::template_rgba(ICON_SIZE, glyph),
+        ICON_SIZE,
+        ICON_SIZE,
+    )
+}
+
+/// Windows doesn't tint tray icons, so draw dark ink on a light taskbar and light on dark.
+#[cfg(windows)]
+pub fn icon(glyph: Glyph) -> Image<'static> {
+    let light = windows_registry::CURRENT_USER
+        .open(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+        .and_then(|key| key.get_u32("SystemUsesLightTheme"))
+        .is_ok_and(|value| value == 1);
+    let ink = if light {
+        [0x1f, 0x2a, 0x24]
+    } else {
+        [0xf2, 0xf5, 0xf0]
+    };
+    Image::new_owned(
+        crate::core::candle::tinted_rgba(ICON_SIZE, glyph, ink),
+        ICON_SIZE,
+        ICON_SIZE,
+    )
 }
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
@@ -133,7 +158,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let menu = Menu::with_items(app, &[&show_item, &settings_item, &separator, &quit_item])?;
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(icon(Glyph::Off))
-        .icon_as_template(true)
+        .icon_as_template(cfg!(target_os = "macos"))
         .tooltip("Wick · Off")
         .menu(&menu)
         .show_menu_on_left_click(false)

@@ -20,7 +20,7 @@ async function releaseFixture(t) {
   t.after(() => rm(directory, { recursive: true, force: true }))
   const assets = releaseAssetNames(version)
   for (const name of Object.values(assets)) await writeFile(join(directory, name), artifact)
-  for (const name of [assets.mac]) await writeFile(join(directory, `${name}.sig`), signature)
+  for (const name of [assets.mac, assets.nsis, assets.msi]) await writeFile(join(directory, `${name}.sig`), signature)
   return {
     directory,
     version,
@@ -69,13 +69,18 @@ test('rejects malformed or legacy signature encodings', async () => {
   await assert.rejects(verifyUpdaterSignature(join(fixture, 'artifact.txt'), Buffer.from(lines.join('\n')).toString('base64'), publicKey, version), /unsupported algorithm/)
 })
 
-test('maps both Mac architectures to the universal archive', async (t) => {
+test('maps both Mac architectures to universal and keeps the Windows installer family', async (t) => {
   const manifest = await createUpdaterManifest(await releaseFixture(t))
   assert.equal(manifest.version, version)
   assert.equal(manifest.pub_date, '2026-10-16T00:00:00.000Z')
-  assert.deepEqual(Object.keys(manifest.platforms).sort(), ['darwin-aarch64', 'darwin-x86_64'])
+  assert.deepEqual(Object.keys(manifest.platforms).sort(), [
+    'darwin-aarch64', 'darwin-x86_64', 'windows-x86_64', 'windows-x86_64-msi', 'windows-x86_64-nsis',
+  ])
   assert.deepEqual(manifest.platforms['darwin-aarch64'], manifest.platforms['darwin-x86_64'])
   assert.equal(manifest.platforms['darwin-aarch64'].url, 'https://github.com/Abulkosim/wick/releases/download/v0.2.0/Wick.app.tar.gz')
+  assert.match(manifest.platforms['windows-x86_64-nsis'].url, /v0\.2\.0\/Wick_0\.2\.0_x64-setup\.exe$/)
+  assert.match(manifest.platforms['windows-x86_64-msi'].url, /\.msi$/)
+  assert.deepEqual(manifest.platforms['windows-x86_64'], manifest.platforms['windows-x86_64-nsis'])
   assert.equal(manifest.platforms['darwin-aarch64'].signature, signature.trim())
 })
 
@@ -97,16 +102,16 @@ test('refuses wrong destination repository and malformed versions', async (t) =>
   await assert.rejects(createUpdaterManifest({ ...options, version: '../0.2.0' }), /Invalid release version/)
 })
 
-test('checksums cover the DMG, Mac archive, signature, and manifest', async (t) => {
+test('checksums cover installers, Mac archive, signatures, and manifest', async (t) => {
   const options = await releaseFixture(t)
   const manifest = await createUpdaterManifest(options)
   await writeFile(join(options.directory, 'latest.json'), JSON.stringify(manifest))
   execFileSync(process.execPath, [fileURLToPath(new URL('./checksums.mjs', import.meta.url)), options.directory])
   const lines = (await readFile(join(options.directory, 'SHA256SUMS.txt'), 'utf8')).trim().split('\n')
-  assert.equal(lines.length, 4)
+  assert.equal(lines.length, 8)
   assert(lines.every((line) => /^[a-f0-9]{64}  .+$/.test(line)))
   assert(lines.some((line) => line.endsWith('  latest.json')))
-  assert.equal(lines.filter((line) => line.endsWith('.sig')).length, 1)
+  assert.equal(lines.filter((line) => line.endsWith('.sig')).length, 3)
 })
 
 async function bundleFixture(t, target, artifacts) {

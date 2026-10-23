@@ -180,7 +180,12 @@ pub fn info(_pid: i32) -> Option<(i32, String)> {
     None
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(windows)]
+pub fn path(pid: i32) -> Option<String> {
+    super::win32::process_path(pid as u32)
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn path(_pid: i32) -> Option<String> {
     None
 }
@@ -201,7 +206,43 @@ pub fn scan() -> Vec<Process> {
         .collect()
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Process names lose `.exe`, so a `claude` trigger matches `claude.exe`.
+#[cfg(windows)]
+pub fn scan() -> Vec<Process> {
+    use super::win32::*;
+    let own = std::process::id();
+    let mut processes = Vec::new();
+    unsafe {
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snapshot == INVALID_HANDLE_VALUE {
+            return processes;
+        }
+        let mut entry: ProcessEntry32W = std::mem::zeroed();
+        entry.size = std::mem::size_of::<ProcessEntry32W>() as u32;
+        let mut more = Process32FirstW(snapshot, &mut entry) != 0;
+        while more {
+            let pid = entry.process_id;
+            if pid != 0 && pid != own {
+                let file = from_wide(&entry.exe_file);
+                let name = file
+                    .strip_suffix(".exe")
+                    .or_else(|| file.strip_suffix(".EXE"))
+                    .unwrap_or(&file)
+                    .to_string();
+                processes.push(Process {
+                    pid: pid as i32,
+                    name,
+                    path: None,
+                });
+            }
+            more = Process32NextW(snapshot, &mut entry) != 0;
+        }
+        CloseHandle(snapshot);
+    }
+    processes
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn scan() -> Vec<Process> {
     Vec::new()
 }

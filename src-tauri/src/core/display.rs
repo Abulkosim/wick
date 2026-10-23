@@ -16,7 +16,13 @@ pub fn external_connected() -> bool {
             .any(|&display| unsafe { CGDisplayIsBuiltin(display) } == 0)
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Windows can't tell a laptop panel from a monitor cheaply; more than one screen counts.
+#[cfg(windows)]
+pub fn external_connected() -> bool {
+    unsafe { super::win32::GetSystemMetrics(super::win32::SM_CMONITORS) > 1 }
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn external_connected() -> bool {
     false
 }

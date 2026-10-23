@@ -1188,3 +1188,12 @@ button:disabled:hover {
   flex: 1;
   min-width: 0;
 }
+:root[data-platform=windows] .desktop-stage .app-shell {
+  padding: 6px;
+}
+:root[data-platform=windows] .popover {
+  border-radius: 8px;
+}
+:root[data-platform=windows] .popover-arrow {
+  display: none;
+}

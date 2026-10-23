@@ -102,7 +102,23 @@ pub fn read() -> Power {
     power
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(windows)]
+pub fn read() -> Power {
+    use super::win32::*;
+    let mut status = SystemPowerStatus::default();
+    if unsafe { GetSystemPowerStatus(&mut status) } == 0 {
+        return Power::default();
+    }
+    let has_battery = status.battery_flag != 128 && status.battery_flag != 255;
+    Power {
+        on_battery: has_battery && status.ac_line_status == 0,
+        percent: (has_battery && status.battery_life_percent <= 100)
+            .then_some(status.battery_life_percent),
+        low_power_mode: status.system_status_flag == 1,
+    }
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn read() -> Power {
     Power::default()
 }

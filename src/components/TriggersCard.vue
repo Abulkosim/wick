@@ -5,11 +5,12 @@ import AppSelect from './ui/AppSelect.vue'
 import AppSwitch from './ui/AppSwitch.vue'
 import AppTooltip from './ui/AppTooltip.vue'
 import type { RunningApp, Trigger } from '../lib/model'
+import { isWindows } from '../lib/platform'
 import { dayLetters, daysLabel, processSuggestions, triggerId, validProcessName, validSchedule } from '../lib/triggers'
 
 const props = defineProps<{ triggers: Trigger[]; running: string[]; busy: boolean; save: (triggers: Trigger[]) => Promise<boolean>; loadApps: () => Promise<RunningApp[]> }>()
 const adding = ref(false)
-const kind = ref<'app' | 'process' | 'condition'>('app')
+const kind = ref<'app' | 'process' | 'condition'>(isWindows ? 'process' : 'app')
 const apps = ref<RunningApp[]>([])
 const appPath = ref('')
 const processName = ref('')
@@ -62,6 +63,7 @@ async function open(): Promise<void> {
   appPath.value = ''
   processName.value = ''
   condition.value = null
+  if (isWindows) { kind.value = 'process'; await nextTick(); processInput.value?.focus(); return }
   apps.value = await props.loadApps()
   if (!apps.value.length) kind.value = 'process'
 }
@@ -108,7 +110,7 @@ function remove(id: string): void {
       <h2 id="triggers-label" class="card-label">Stay awake while</h2>
       <button v-if="!adding" ref="addButton" class="text-button card-action" :disabled="busy" @click="open"><AppIcon name="plus" :size="13"/>Add</button>
     </div>
-    <p v-if="!triggers.length && !adding" class="card-empty">An app or command is running, like Xcode or claude.</p>
+    <p v-if="!triggers.length && !adding" class="card-empty">{{ isWindows ? 'A program is running, like ffmpeg or claude.' : 'An app or command is running, like Xcode or claude.' }}</p>
     <ul v-if="triggers.length" class="trigger-list">
       <li v-for="trigger in triggers" :key="trigger.id" class="trigger-row" :class="{ running: status(trigger) === 'Running', disabled: !trigger.enabled }">
         <span class="trigger-mark"><AppIcon :name="trigger.kind === 'app' ? 'app' : trigger.kind === 'power' ? 'bolt' : trigger.kind === 'display' ? 'display' : trigger.kind === 'schedule' ? 'clock' : 'terminal'" :size="15"/></span>
@@ -122,7 +124,7 @@ function remove(id: string): void {
     </ul>
     <form v-if="adding" class="trigger-form" @submit.prevent="add" @keydown.esc.stop.prevent="close">
       <div class="segmented" role="radiogroup" aria-label="Trigger type">
-        <button type="button" role="radio" :aria-checked="kind === 'app'" :class="{ selected: kind === 'app' }" @click="choose('app')"><AppIcon name="app" :size="14"/>App</button>
+        <button v-if="!isWindows" type="button" role="radio" :aria-checked="kind === 'app'" :class="{ selected: kind === 'app' }" @click="choose('app')"><AppIcon name="app" :size="14"/>App</button>
         <button type="button" role="radio" :aria-checked="kind === 'process'" :class="{ selected: kind === 'process' }" @click="choose('process')"><AppIcon name="terminal" :size="14"/>Command</button>
         <button type="button" role="radio" :aria-checked="kind === 'condition'" :class="{ selected: kind === 'condition' }" @click="choose('condition')"><AppIcon name="bolt" :size="14"/>Condition</button>
       </div>

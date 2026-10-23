@@ -40,6 +40,9 @@ objc2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["NSView", "NSVisualEffectView", "NSWindow", "NSScreen", "NSStatusItem", "NSStatusBarButton", "NSButton", "NSControl", "NSFont", "NSFontDescriptor", "objc2-core-foundation", "NSResponder"] }
 objc2-foundation = { version = "0.3", default-features = false, features = ["NSArray", "NSGeometry", "NSProcessInfo", "NSString"] }
 
+[target.'cfg(windows)'.dependencies]
+windows-registry = "0.6"
+
 [profile.release]
 codegen-units = 1
 lto = true

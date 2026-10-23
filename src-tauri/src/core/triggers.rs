@@ -137,7 +137,8 @@ impl Trigger {
                     || process
                         .path
                         .as_deref()
-                        .and_then(|path| path.rsplit('/').next())
+                        .and_then(|path| path.rsplit(['/', '\\']).next())
+                        .map(|file| file.strip_suffix(".exe").unwrap_or(file))
                         .is_some_and(|file| file.eq_ignore_ascii_case(name))
             }
         }

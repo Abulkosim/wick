@@ -102,6 +102,14 @@ pub fn raster(size: u32, glyph: Glyph) -> Vec<Pixel> {
     pixels
 }
 
+/// Coloured pixels for taskbars that don't tint icons (Windows).
+pub fn tinted_rgba(size: u32, glyph: Glyph, rgb: [u8; 3]) -> Vec<u8> {
+    raster(size, glyph)
+        .into_iter()
+        .flat_map(|pixel| [rgb[0], rgb[1], rgb[2], pixel.alpha])
+        .collect()
+}
+
 /// Black template pixels; macOS tints them for the menu bar.
 pub fn template_rgba(size: u32, glyph: Glyph) -> Vec<u8> {
     raster(size, glyph)

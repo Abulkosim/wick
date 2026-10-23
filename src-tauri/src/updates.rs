@@ -83,7 +83,15 @@ fn trusted_download(url: &tauri::Url, version: &str) -> bool {
     {
         return false;
     }
-    url.path() == format!("/Abulkosim/wick/releases/download/v{version}/Wick.app.tar.gz")
+    let Some(file) = url
+        .path()
+        .strip_prefix(&format!("/Abulkosim/wick/releases/download/v{version}/"))
+    else {
+        return false;
+    };
+    file == "Wick.app.tar.gz"
+        || file == format!("Wick_{version}_x64-setup.exe")
+        || file == format!("Wick_{version}_x64_en-US.msi")
 }
 
 #[tauri::command]
@@ -244,6 +252,12 @@ mod tests {
     fn downloads_are_limited_to_the_versioned_wick_archive() {
         let good = "https://github.com/Abulkosim/wick/releases/download/v0.2.0/Wick.app.tar.gz";
         assert!(trusted_download(&good.parse().unwrap(), "0.2.0"));
+        for file in ["Wick_0.2.0_x64-setup.exe", "Wick_0.2.0_x64_en-US.msi"] {
+            let url = good.replace("Wick.app.tar.gz", file);
+            assert!(trusted_download(&url.parse().unwrap(), "0.2.0"), "{url}");
+        }
+        let stale = good.replace("Wick.app.tar.gz", "Wick_0.1.0_x64-setup.exe");
+        assert!(!trusted_download(&stale.parse().unwrap(), "0.2.0"));
         for url in [
             good.replace("v0.2.0", "v0.1.1"),
             format!("{good}?token=anything"),

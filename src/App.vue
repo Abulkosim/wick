@@ -17,6 +17,7 @@ import { createDemoUpdateState } from './lib/demo'
 import { activePreset, detail, fraction, shortDuration, title } from './lib/session'
 import type { StartRequest } from './lib/model'
 import { footerNote } from './lib/power'
+import { isWindows } from './lib/platform'
 
 const { state, pending, message, now, demo, desktop, startSession, stopSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, hideWindow } = useWick()
 const query = new URLSearchParams(location.search)
@@ -40,7 +41,7 @@ const ringFraction = computed(() => fraction(state.value.session, now.value))
 const active = computed(() => activePreset(state.value.session))
 const arrowStyle = computed(() => {
   const x = placement.value.arrowX
-  if (!desktop || demo || x === null || x < 26 || x > viewportWidth.value - 26) return undefined
+  if (!desktop || demo || isWindows || x === null || x < 26 || x > viewportWidth.value - 26) return undefined
   return { left: `${x - 6}px` }
 })
 const shell = ref<HTMLElement | null>(null)
@@ -57,6 +58,7 @@ let destroyed = false
 watchEffect(() => {
   document.documentElement.dataset.theme = dark.value ? 'dark' : 'light'
   document.documentElement.style.colorScheme = dark.value ? 'dark' : 'light'
+  document.documentElement.dataset.platform = isWindows ? 'windows' : 'mac'
 })
 
 function measureFit(): void {
@@ -179,7 +181,7 @@ onUnmounted(() => {
           <span class="footer-note"><template v-if="footer"><AppIcon :name="footer.icon" :size="15"/><span class="footer-text">{{ footer.text }}</span></template></span>
           <div class="footer-actions">
             <AppTooltip :text="updater.available.value ? 'Settings · update available' : 'Settings'"><button class="icon-button settings-button" :aria-label="updater.available.value ? 'Settings, update available' : 'Open settings'" @click="page = 'settings'"><AppIcon name="settings" :size="16"/><span v-if="updater.available.value" class="update-dot" aria-hidden="true"/></button></AppTooltip>
-            <AppTooltip text="Quit Wick"><button class="icon-button" aria-label="Quit Wick" @click="quit"><AppIcon name="power" :size="16"/></button></AppTooltip>
+            <AppTooltip text="Quit Wick"><button class="icon-button" aria-label="Quit Wick" :title="isWindows ? 'Ctrl+Q' : '⌘Q'" @click="quit"><AppIcon name="power" :size="16"/></button></AppTooltip>
           </div>
         </footer>
         </template>

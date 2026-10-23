@@ -9,10 +9,12 @@ export function releaseAssetNames(version) {
   return {
     dmg: `Wick_${version}_universal.dmg`,
     mac: 'Wick.app.tar.gz',
+    nsis: `Wick_${version}_x64-setup.exe`,
+    msi: `Wick_${version}_x64_en-US.msi`,
   }
 }
 
-export const signedAssets = (assets) => [assets.mac]
+export const signedAssets = (assets) => [assets.mac, assets.nsis, assets.msi]
 
 export async function createUpdaterManifest({ directory, version, publicKey, repository, notes = '', date = new Date() }) {
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error('Invalid release version.')
@@ -29,7 +31,11 @@ export async function createUpdaterManifest({ directory, version, publicKey, rep
     if (!names.has(name)) throw new Error(`Missing release asset: ${name}`)
   }
   const platforms = {}
-  for (const [name, targets] of [[assets.mac, ['darwin-aarch64', 'darwin-x86_64']]]) {
+  for (const [name, targets] of [
+    [assets.mac, ['darwin-aarch64', 'darwin-x86_64']],
+    [assets.nsis, ['windows-x86_64-nsis', 'windows-x86_64']],
+    [assets.msi, ['windows-x86_64-msi']],
+  ]) {
     const signature = (await readFile(join(directory, `${name}.sig`), 'utf8')).trim()
     await verifyUpdaterSignature(join(directory, name), signature, publicKey, version)
     const platform = {
@@ -53,5 +59,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     notes: await readFile(`changelogs/${tag}.md`, 'utf8'),
   })
   await writeFile(join(directory, 'latest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
-  console.log(`Verified the signed Mac archive and generated the updater manifest for ${tag}.`)
+  console.log(`Verified three signed artifacts and generated the updater manifest for ${tag}.`)
 }
