@@ -1,6 +1,6 @@
 import { initialState, type AppState, type RunningApp, type Trigger } from './model.ts'
 
-export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off'] as const
+export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off', 'clamshell'] as const
 
 export const demoApps: RunningApp[] = [
   { name: 'Final Cut Pro', path: '/Applications/Final Cut Pro.app' },
@@ -17,6 +17,7 @@ export const demoTriggers = (): Trigger[] => [
 export function createDemoState(scenario: string | null, now = Date.now()): AppState {
   const state = initialState()
   state.power = { onBattery: true, percent: 82, lowPowerMode: false }
+  state.lidSleeps = true
   const minutes = (value: number): number => value * 60_000
   switch (scenario) {
     case 'timed':
@@ -67,6 +68,11 @@ export function createDemoState(scenario: string | null, now = Date.now()): AppS
       break
     case 'others-off':
       state.others = [{ pid: 7710, name: 'caffeinate', display: false, reason: null, parent: 'claude' }]
+      break
+    case 'clamshell':
+      state.session = { mode: 'indefinite', startedAt: now - minutes(30) }
+      state.power = { onBattery: false, percent: 100, lowPowerMode: false }
+      state.lidSleeps = false
       break
     case 'error':
       state.error = 'macOS refused the sleep assertion (IOKit error 0xe00002c2).'

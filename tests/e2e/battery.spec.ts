@@ -37,3 +37,15 @@ for (const theme of ['light', 'dark'] as const) {
     await page.locator('.app-shell').screenshot({ path: testInfo.outputPath(`battery-${theme}.png`) })
   })
 }
+
+test('warns that the lid still sleeps the Mac while awake', async ({ page }) => {
+  await page.goto('/?demo=1&state=indefinite')
+  await expect(page.locator('.footer-note')).toHaveText('Closing the lid will sleep your Mac')
+  await page.getByRole('button', { name: 'Stop' }).click()
+  await expect(page.locator('.footer-note')).toHaveText('On battery · 82%')
+})
+
+test('no lid warning in clamshell mode', async ({ page }) => {
+  await page.goto('/?demo=1&state=clamshell')
+  await expect(page.locator('.footer-note')).toHaveText('')
+})

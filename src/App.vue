@@ -14,7 +14,7 @@ import StatusRing from './components/StatusRing.vue'
 import { useWick } from './lib/wick'
 import { activePreset, detail, fraction, shortDuration, title } from './lib/session'
 import type { StartRequest } from './lib/model'
-import { powerNote } from './lib/power'
+import { footerNote } from './lib/power'
 
 const { state, pending, message, now, demo, desktop, startSession, stopSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, hideWindow } = useWick()
 const query = new URLSearchParams(location.search)
@@ -32,7 +32,7 @@ const on = computed(() => state.value.session.mode !== 'off')
 const held = computed(() => !on.value && state.value.heldBy !== null)
 const statusTitle = computed(() => title(state.value.session, now.value, state.value.heldBy))
 const statusDetail = computed(() => state.value.session.mode === 'off' && !held.value && state.value.notice ? state.value.notice : !on.value && !held.value && !state.value.pausedBy && state.value.others.length ? othersSummary(state.value.others) ?? '' : detail(state.value.session, now.value, state.value.settings.keepDisplayOn, state.value.heldBy, state.value.pausedBy))
-const footerNote = computed(() => powerNote(state.value.power))
+const footer = computed(() => footerNote(state.value.power, state.value.lidSleeps, on.value || held.value))
 const ringFraction = computed(() => fraction(state.value.session, now.value))
 const active = computed(() => activePreset(state.value.session))
 const arrowStyle = computed(() => {
@@ -164,7 +164,7 @@ onUnmounted(() => {
           </section>
         </main>
         <footer class="app-footer">
-          <span class="footer-note"><template v-if="footerNote"><AppIcon :name="state.power.lowPowerMode ? 'bolt' : 'battery'" :size="15"/>{{ footerNote }}</template></span>
+          <span class="footer-note"><template v-if="footer"><AppIcon :name="footer.icon" :size="15"/>{{ footer.text }}</template></span>
           <div class="footer-actions">
             <AppTooltip text="Settings"><button class="icon-button" aria-label="Settings" @click="page = 'settings'"><AppIcon name="settings" :size="16"/></button></AppTooltip>
             <AppTooltip text="Quit Wick"><button class="icon-button" aria-label="Quit Wick" @click="quit"><AppIcon name="power" :size="16"/></button></AppTooltip>

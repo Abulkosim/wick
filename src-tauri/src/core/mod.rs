@@ -1,4 +1,5 @@
 pub mod assertion;
+pub mod lid;
 pub mod others;
 pub mod power;
 pub mod processes;

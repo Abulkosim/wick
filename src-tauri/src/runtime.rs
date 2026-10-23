@@ -1,6 +1,7 @@
 use crate::{
     core::{
         assertion::{self, Assertion, Kind},
+        lid,
         others::{self, Other},
         power::{self, Power},
         processes,
@@ -33,6 +34,8 @@ pub struct AppState {
     /// Why Wick last stopped on its own, until the next start.
     pub notice: Option<String>,
     pub power: Power,
+    /// Whether closing the lid would sleep the Mac; `None` without a lid.
+    pub lid_sleeps: Option<bool>,
     pub triggers: Vec<Trigger>,
     /// Ids of enabled triggers whose app or process is running now.
     pub running: Vec<String>,
@@ -152,6 +155,7 @@ impl Runtime {
             inner: Mutex::new(Inner {
                 view: AppState {
                     power: power::read(),
+                    lid_sleeps: lid::closing_sleeps(),
                     settings: stored.settings,
                     triggers: stored.triggers,
                     recovery,
@@ -336,6 +340,13 @@ impl Runtime {
         let power = power::read();
         self.evaluate_triggers(app, &power);
         self.refresh_others(app);
+        let lid_sleeps = lid::closing_sleeps();
+        if lid_sleeps != self.state().lid_sleeps {
+            let _ = self.update(app, |inner, _| {
+                inner.view.lid_sleeps = lid_sleeps;
+                Ok(())
+            });
+        }
         let state = self.state();
         match due(&state, power, now) {
             Due::Nothing => tray::update(app, &state, now),

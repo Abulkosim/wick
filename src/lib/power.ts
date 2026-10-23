@@ -14,3 +14,13 @@ export function powerNote(power: Power): string | null {
 }
 
 export const hasBattery = (power: Power): boolean => power.percent !== null
+
+export type FooterNote = { icon: 'lid' | 'bolt' | 'battery'; text: string }
+
+/** While awake, warn that the lid still sleeps the Mac; otherwise show battery state. */
+export function footerNote(power: Power, lidSleeps: boolean | null, awake: boolean): FooterNote | null {
+  if (awake && lidSleeps) return { icon: 'lid', text: 'Closing the lid will sleep your Mac' }
+  const text = powerNote(power)
+  if (!text) return null
+  return { icon: power.lowPowerMode ? 'bolt' : 'battery', text }
+}
