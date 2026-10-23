@@ -26,8 +26,9 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 
 ## Phase 0 — Foundations
 
-- [ ] **0.1 Scaffold.** Tauri 2 + Vue 3 + TS + Vite + pnpm, ported from Margin: `package.json`, `tauri.conf.json`, capabilities, CSP, `styles.css` tokens, `design/controls.css`, `components/ui/*`, `AppIcon`, demo bridge skeleton, Playwright config, LICENSE, `.gitignore`.
+- [x] **0.1 Scaffold.** Tauri 2 + Vue 3 + TS + Vite + pnpm, ported from Margin: `package.json`, `tauri.conf.json`, capabilities, CSP, `styles.css` tokens, `design/controls.css`, `components/ui/*`, `AppIcon`, demo bridge skeleton, Playwright config, LICENSE, `.gitignore`.
   Verify: `pnpm tauri build --debug` produces `Wick.app`; full check suite green; demo page renders in Chromium + WebKit.
+  Done 2026-10-23: popover 360×560 (fits content, min 160), tray placement ported with tests, template ring glyphs off/remaining/full/held (contact sheet in `docs/images/tray/`, ≥3:1 on light and dark bars), app icon = draining sage ring + dot.
 - [ ] **0.2 CI.** Port `ci.yml` (Ubuntu frontend + Playwright 45 min, macOS fmt/clippy/test/universal DMG + `.app.tar.gz`), `security.yml`, `scorecard.yml`, Dependabot. Actions pinned by SHA, least privilege, concurrency cancels `main` only. Windows job off until v0.2.
   Verify: CI green on `main`.
 

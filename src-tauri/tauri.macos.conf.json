@@ -1,0 +1,27 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Wick",
+        "width": 360,
+        "height": 560,
+        "visible": false,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "center": true,
+        "windowEffects": {
+          "effects": [
+            "popover"
+          ],
+          "state": "active",
+          "radius": 12
+        }
+      }
+    ]
+  }
+}
