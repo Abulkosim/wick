@@ -10,7 +10,7 @@ import SettingsPanel from './components/SettingsPanel.vue'
 import TriggersCard from './components/TriggersCard.vue'
 import OthersCard from './components/OthersCard.vue'
 import { othersSummary } from './lib/others'
-import StatusRing from './components/StatusRing.vue'
+import StatusCandle from './components/StatusCandle.vue'
 import { useWick } from './lib/wick'
 import { useUpdater } from './lib/updater'
 import { createDemoUpdateState } from './lib/demo'
@@ -45,6 +45,7 @@ const arrowStyle = computed(() => {
 })
 const shell = ref<HTMLElement | null>(null)
 const popover = ref<HTMLElement | null>(null)
+const scroller = ref<HTMLElement | null>(null)
 const fullHeight = 640
 let fitHeight = 0
 let fitFrame = 0
@@ -62,7 +63,9 @@ function measureFit(): void {
   fitFrame = 0
   if (!shell.value || !popover.value) return
   const style = getComputedStyle(shell.value)
-  const height = page.value === 'settings' ? fullHeight : Math.min(fullHeight, Math.ceil(parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + popover.value.scrollHeight))
+  const body = scroller.value
+  const content = body ? popover.value.offsetHeight - body.clientHeight + body.scrollHeight : popover.value.scrollHeight
+  const height = page.value === 'settings' ? fullHeight : Math.min(fullHeight, Math.ceil(parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + content))
   if (height === fitHeight) return
   fitHeight = height
   if (desktop && !demo) window.__TAURI__?.core.invoke('fit_popover', { height }).catch(() => {})
@@ -70,6 +73,14 @@ function measureFit(): void {
 
 function scheduleFit(): void {
   if (!fitFrame) fitFrame = requestAnimationFrame(measureFit)
+}
+
+function observeFit(): void {
+  if (fitObserver) {
+    fitObserver.disconnect()
+    for (const element of [popover.value, scroller.value, ...(scroller.value?.children ?? [])]) if (element) fitObserver.observe(element)
+  }
+  scheduleFit()
 }
 
 async function quit(): Promise<void> {
@@ -95,7 +106,7 @@ function acceptPlacement(payload: unknown): void {
 function syncSystemTheme(event: MediaQueryListEvent): void { systemDark.value = event.matches }
 function syncViewportWidth(): void { viewportWidth.value = window.innerWidth }
 
-watch(() => [state.value.error, state.value.recovery, message.value, page.value], () => { void nextTick(scheduleFit) })
+watch([state, message, page], () => { void nextTick(observeFit) }, { deep: true })
 
 onMounted(async () => {
   media.addEventListener('change', syncSystemTheme)
@@ -103,10 +114,8 @@ onMounted(async () => {
   window.addEventListener('resize', syncViewportWidth)
   if (typeof ResizeObserver === 'function') {
     fitObserver = new ResizeObserver(scheduleFit)
-    if (popover.value) fitObserver.observe(popover.value)
-    for (const child of popover.value?.children ?? []) fitObserver.observe(child)
   }
-  scheduleFit()
+  observeFit()
   if (!desktop || demo) return
   const tauri = window.__TAURI__!
   tauri.event.listen('open_settings', () => { page.value = 'settings' }).then(unlisten => { if (destroyed) unlisten(); else stopSettings = unlisten }).catch(() => {})
@@ -137,9 +146,9 @@ onUnmounted(() => {
       <div class="popover-arrow" :style="arrowStyle" aria-hidden="true"/>
       <div ref="popover" class="popover">
         <template v-if="page === 'overview'">
-        <main class="popover-body">
+        <main ref="scroller" class="popover-body">
           <section class="hero" :class="{ active: on }">
-            <StatusRing :fraction="held ? 1 : ringFraction" :on="on || held" :held="held"/>
+            <StatusCandle :fraction="ringFraction" :on="on" :held="held"/>
             <div class="hero-copy" role="status" aria-live="polite">
               <h1 class="hero-title">{{ statusTitle }}</h1>
               <p class="hero-detail" :class="{ 'is-notice': !on && !held && state.notice }">{{ statusDetail }}<template v-if="!on && !held && state.pausedBy"> · <button class="text-button inline-action" :disabled="busy" @click="resumeTriggers">Resume</button></template></p>
