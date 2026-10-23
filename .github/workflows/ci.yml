@@ -1,0 +1,156 @@
+name: Verify and build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+  CI: true
+
+jobs:
+  frontend:
+    name: Frontend and browser checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          cache: true
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check types and production build
+        run: pnpm build
+      - name: Run unit tests
+        run: pnpm test
+      - name: Install browser engines
+        run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Run browser tests
+        run: pnpm test:e2e
+      - name: Preserve browser test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: browser-results
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+          overwrite: true
+
+  native:
+    name: Native · ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS universal
+            os: macos-latest
+            target: universal-apple-darwin
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+            bundles: app,dmg
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          cache: true
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
+        with:
+          toolchain: stable
+          components: clippy,rustfmt
+          targets: ${{ matrix.rust-targets }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.target }}
+          save-if: ${{ github.event_name != 'pull_request' }}
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+      - name: Prepare frontend assets for native checks
+        run: pnpm build
+      - name: Check Rust
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+      - name: Test providers and core
+        run: cargo test --manifest-path src-tauri/Cargo.toml --locked
+      - name: Build native installers
+        if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/v') || github.repository != 'Abulkosim/wick'
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+          BUILD_BUNDLES: ${{ matrix.bundles }}
+        run: pnpm tauri build --target "$BUILD_TARGET" --bundles "$BUILD_BUNDLES" --config '{"bundle":{"createUpdaterArtifacts":false}}' --ci -- --locked
+      - name: Build signed release artifacts
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.repository == 'Abulkosim/wick'
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+          BUILD_BUNDLES: ${{ matrix.bundles }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [[ -z "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
+            echo "Configure the updater signing secret before tagging a release."
+            exit 1
+          fi
+          pnpm tauri build --target "$BUILD_TARGET" --bundles "$BUILD_BUNDLES" --ci -- --locked
+      - name: Collect installers
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+          SIGNED_RELEASE: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.repository == 'Abulkosim/wick' }}
+        run: |
+          if [[ "$SIGNED_RELEASE" == "true" ]]; then
+            node scripts/collect-artifacts.mjs "$BUILD_TARGET" --updater
+          else
+            node scripts/collect-artifacts.mjs "$BUILD_TARGET"
+          fi
+      - name: Preserve installers
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: installers-${{ matrix.target }}
+          path: release-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          overwrite: true
+      - name: Preserve resolved dependency versions
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: dependency-locks-${{ matrix.target }}
+          path: |
+            src-tauri/Cargo.lock
+            pnpm-lock.yaml
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: true
