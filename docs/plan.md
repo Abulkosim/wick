@@ -107,8 +107,9 @@ Mac features first, Windows last, then the release. Presets dropped for now: the
 - [x] **4.5 URL scheme and status CLI.** `wick://start?minutes=60`, `wick://start`, `wick://stop`, `wick://toggle`; `wick status` prints JSON for Shortcuts and Raycast.
   Verify: parser unit tests; real `open "wick://start?minutes=1"` creates the assertion; `wick status` JSON checked.
   Done 2026-10-23: tauri-plugin-deep-link (single-instance `deep-link` feature), parser for links and `start [minutes|HH:MM] | stop | toggle | status`. `wick status` reads `status.json` (written on every publish) before Tauri starts and checks the pid. Live: `open wick://start?minutes=1` → `Wick: awake until 21:28`; `wick://toggle` → 0; status JSON correct, `running:false` after quit.
-- [ ] **4.6 Windows.** `PowerCreateRequest`/`PowerSetRequest`, colour tray icons following the taskbar theme, Toolhelp process scan, `GetSystemPowerStatus` battery guard; no lid hint and no "who else" (needs admin). CI Windows job, NSIS + MSI, Windows entries in `latest.json`.
+- [x] **4.6 Windows.** `PowerCreateRequest`/`PowerSetRequest`, colour tray icons following the taskbar theme, Toolhelp process scan, `GetSystemPowerStatus` battery guard; no lid hint and no "who else" (needs admin). CI Windows job, NSIS + MSI, Windows entries in `latest.json`.
   Verify: CI builds and tests on windows-latest; 👤 VM install and tray check.
+  Done 2026-10-23: CI run 39989912830 green on windows-latest (fmt, clippy -D warnings, tests, NSIS `Wick_0.1.0_x64-setup.exe` + MSI). Win32 declared by hand in `core/win32.rs`. 👤 VM: install, candle in the tray (light and dark taskbar), start/stop with `powercfg /requests`, popover placement.
 - [ ] **4.7 Release v0.2.0.** Changelog, screenshots, draft, checksums, updater test from the installed v0.1.0. 👤 owner says "publish".
 
 ## Later / maybe
