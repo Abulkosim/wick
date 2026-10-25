@@ -2,6 +2,28 @@
 
 What was checked for each release, newest first.
 
+## v0.3.0 — 2026-10-25
+
+Tag `v0.3.0`, CI run [40154976385](https://github.com/Abulkosim/wick/actions/runs/40154976385): frontend, macOS universal, Windows x64 and the draft release passed. `main` run [40154543608](https://github.com/Abulkosim/wick/actions/runs/40154543608) passed first.
+
+- Local suite (`scripts/check-all.sh`): all passed, including new tests for the commit order, pause handling, tooltips, resume marker, DST and popover keys.
+- Draft: 8/8 checksums OK; provenance for DMG, archive, both Windows installers, `latest.json`, `SHA256SUMS.txt`; SBOM attestation on the DMG; `latest.json` 0.3.0 with all five platform entries.
+- `updater_install` against the draft archive: tampered and wrong-version rejected; 0.3.0 universal installed, codesign valid.
+- Live on a debug build before tagging: a timed session expired on time; a uniquely named process trigger held and released; `kill -9` does not resume a session.
+- Published 2026-10-25 02:42 UTC, marked latest. Owner's Mac updated 0.2.0 → 0.3.0 from the live endpoint (`tests/public_update.rs`); settings kept, `wick status` answers.
+- Pending 👤: tray right-click menu and popover keys by hand; Windows VM.
+
+Checksums:
+
+    1b71536ccdbb7edb5470b518a3934cbe32ea50a25f0f42685f70cd8048811f34  latest.json
+    d7e2bb5e5781f036abfdbbe1093e61d5247af3c8dd3b852ec0418531ba83abc0  Wick_0.3.0_universal.dmg
+    034e469a340718db4923b880c4cb9117fb4a3b45d3c0d481bfbccbca8f9b6cb4  Wick_0.3.0_x64_en-US.msi
+    5a2bfe43f0cb2bc218b496f930419d04e6ed420141c25355d0784543d38e153c  Wick_0.3.0_x64_en-US.msi.sig
+    732fc87cf97f669ebc9effeba45010ba02024f301e3fc416733da0a3047f5f77  Wick_0.3.0_x64-setup.exe
+    7708c992bbbfdf457a25732b84d6bec03285f37001501094f195f3f8721afaad  Wick_0.3.0_x64-setup.exe.sig
+    20554ab27940882b8baddc03bfeb79fcd9189ea14771b66e2b4d95f080dcd82f  Wick.app.tar.gz
+    bf2bbf01fa50a567c1c68c8843e83ebb41fb4bab5a86dee66c29b3ec626bebfd  Wick.app.tar.gz.sig
+
 ## v0.2.0 — 2026-10-23
 
 Tag `v0.2.0` (`b543d78`), CI run [39999738063](https://github.com/Abulkosim/wick/actions/runs/39999738063): frontend and browser checks, macOS universal, Windows x64 and the draft release all passed. `main` run [39998556494](https://github.com/Abulkosim/wick/actions/runs/39998556494) passed first; its browser install stalled once and the new retry recovered it.
