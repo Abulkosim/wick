@@ -5,7 +5,7 @@ import { appStateSchema, defaultSettings, initialState, runningAppSchema, type A
 import { start } from './session.ts'
 import { stopReason } from './power.ts'
 
-type Command = 'start_session' | 'stop_session' | 'set_display' | 'save_settings' | 'reset_store' | 'save_triggers' | 'resume_triggers'
+type Command = 'start_session' | 'stop_session' | 'extend_session' | 'set_display' | 'save_settings' | 'reset_store' | 'save_triggers' | 'resume_triggers'
 
 export function useWick() {
   const query = new URLSearchParams(window.location.search)
@@ -69,6 +69,11 @@ export function useWick() {
     state.value.session = { mode: 'off' }
     state.value.notice = null
   })
+  const extendSession = (minutes: number) => perform('extend_session', { minutes }, () => {
+    const session = state.value.session
+    if (session.mode !== 'for' && session.mode !== 'until') throw new Error('Only a timed session can be extended.')
+    state.value.session = { ...session, endsAt: Math.max(session.endsAt, Date.now()) + minutes * 60_000 }
+  })
   const resumeTriggers = () => perform('resume_triggers', undefined, () => {
     if (state.value.pausedBy) state.value.heldBy = state.value.pausedBy.replace(/ quits$/, ' is running').replace(/^you unplug$/, 'on power').replace(/^the display is disconnected$/, 'an external display is connected')
     state.value.pausedBy = null
@@ -131,5 +136,5 @@ export function useWick() {
     clearTimeout(toastTimer)
   })
 
-  return { state, loading, pending, message, now, demo, desktop, startSession, stopSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, hideWindow, notify }
+  return { state, loading, pending, message, now, demo, desktop, startSession, stopSession, extendSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, hideWindow, notify }
 }

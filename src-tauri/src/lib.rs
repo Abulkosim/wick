@@ -70,6 +70,7 @@ pub fn run() {
             commands::get_state,
             commands::start_session,
             commands::stop_session,
+            commands::extend_session,
             commands::set_display,
             commands::save_settings,
             commands::reset_store,
@@ -101,6 +102,7 @@ pub fn run() {
             app.notification()
                 .on_action(move |_| popover::show(&opener, false))?;
             runtime.sync_launch_at_login(app.handle());
+            runtime.resume(app.handle());
             runtime::publish(app.handle(), &runtime.state());
             let saved = runtime.state().settings.shortcut;
             if let Err(error) = shortcut::replace(app.handle(), None, saved.as_deref()) {
@@ -135,7 +137,10 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             tauri::RunEvent::Reopen { .. } => popover::show(app, false),
             tauri::RunEvent::Exit => {
-                let _ = app.state::<Arc<Runtime>>().stop(app);
+                let runtime = app.state::<Arc<Runtime>>();
+                if !runtime.keeps_session_on_exit() {
+                    let _ = runtime.stop(app);
+                }
             }
             _ => {}
         });

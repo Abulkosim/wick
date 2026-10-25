@@ -27,6 +27,15 @@ pub fn start_session(
 }
 
 #[tauri::command]
+pub fn extend_session(
+    app: AppHandle,
+    runtime: State<'_, Arc<Runtime>>,
+    minutes: u32,
+) -> Result<AppState, String> {
+    runtime.extend(&app, minutes)
+}
+
+#[tauri::command]
 pub fn stop_session(app: AppHandle, runtime: State<'_, Arc<Runtime>>) -> Result<AppState, String> {
     runtime.stop(&app)
 }

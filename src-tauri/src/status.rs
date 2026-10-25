@@ -16,6 +16,7 @@ struct Status<'a> {
     paused_by: Option<&'a str>,
     paused_while_locked: bool,
     keep_display_on: bool,
+    boot: Option<i64>,
 }
 
 pub fn snapshot(state: &AppState, pid: u32) -> Value {
@@ -29,6 +30,7 @@ pub fn snapshot(state: &AppState, pid: u32) -> Value {
         paused_by: state.paused_by.as_deref(),
         paused_while_locked: state.paused_by_lock,
         keep_display_on: state.settings.keep_display_on,
+        boot: crate::core::boot::boot_time(),
     })
     .unwrap_or_default()
 }
@@ -67,6 +69,19 @@ fn alive(pid: u64) -> bool {
         fn kill(pid: i32, signal: i32) -> i32;
     }
     i32::try_from(pid).is_ok_and(|pid| pid > 0 && unsafe { kill(pid, 0) } == 0)
+}
+
+/// A session saved by an earlier run of Wick in this boot that hasn't run out, to pick up again
+/// after a crash or an update restart. Quitting saves "off", so it never resumes.
+pub fn resumable(directory: &Path, now: i64) -> Option<crate::core::session::Session> {
+    let saved: Value = serde_json::from_slice(&std::fs::read(directory.join(FILE)).ok()?).ok()?;
+    let boot = saved["boot"].as_i64();
+    if !crate::core::boot::same_boot(boot, crate::core::boot::boot_time()) {
+        return None;
+    }
+    let session: crate::core::session::Session =
+        serde_json::from_value(saved["session"].clone()).ok()?;
+    (session.is_on() && !session.expired(now)).then_some(session)
 }
 
 /// What `wick status` prints: the saved snapshot if its app is still running.
@@ -112,6 +127,28 @@ mod tests {
             read(directory.path()),
             json!({ "running": false, "awake": false })
         );
+    }
+
+    #[test]
+    fn resumes_only_a_live_session_from_this_boot() {
+        let directory = tempfile::tempdir().unwrap();
+        assert_eq!(resumable(directory.path(), 0), None);
+        let running = AppState {
+            session: Session::For {
+                started_at: 0,
+                ends_at: 60_000,
+            },
+            ..AppState::default()
+        };
+        write(directory.path(), &running);
+        assert_eq!(resumable(directory.path(), 30_000), Some(running.session));
+        assert_eq!(resumable(directory.path(), 60_000), None);
+        write(directory.path(), &AppState::default());
+        assert_eq!(resumable(directory.path(), 30_000), None);
+        let mut other_boot = snapshot(&running, 1);
+        other_boot["boot"] = json!(1);
+        std::fs::write(directory.path().join(FILE), other_boot.to_string()).unwrap();
+        assert_eq!(resumable(directory.path(), 30_000), None);
     }
 
     #[test]

@@ -1,4 +1,5 @@
 pub mod assertion;
+pub mod boot;
 pub mod candle;
 pub mod display;
 pub mod lid;

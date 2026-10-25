@@ -45,10 +45,10 @@ function submitCustom(): void {
 
 <template>
   <div class="duration-grid" role="group" aria-label="Keep awake for">
-    <button v-for="preset in presets" :key="preset.id" class="duration-option" :class="{ selected: active === preset.id }" :aria-pressed="active === preset.id" :disabled="busy" @click="choose(preset.request)">{{ preset.label }}</button>
+    <button v-for="preset in presets" :key="preset.id" class="duration-option" :class="{ selected: active === preset.id }" :aria-pressed="active === preset.id" :aria-keyshortcuts="String(presets.indexOf(preset) + 1)" :disabled="busy" @click="choose(preset.request)">{{ preset.label }}</button>
     <button class="duration-option" :class="{ selected: active === 'until', editing: editor === 'until' }" :aria-pressed="active === 'until'" :aria-expanded="editor === 'until'" aria-controls="duration-editor" :disabled="busy" @click="open('until')">Until…</button>
     <button class="duration-option" :class="{ selected: active === 'custom', editing: editor === 'custom' }" :aria-pressed="active === 'custom'" :aria-expanded="editor === 'custom'" aria-controls="duration-editor" :disabled="busy" @click="open('custom')">Custom…</button>
-    <button class="duration-option" :class="{ selected: active === 'indefinite' }" :aria-pressed="active === 'indefinite'" :disabled="busy" @click="choose({ mode: 'indefinite' })">Indefinitely</button>
+    <button class="duration-option" :class="{ selected: active === 'indefinite' }" :aria-pressed="active === 'indefinite'" aria-keyshortcuts="0" :disabled="busy" @click="choose({ mode: 'indefinite' })">Indefinitely</button>
   </div>
   <form v-if="editor === 'until'" id="duration-editor" class="duration-editor" @submit.prevent="submitUntil">
     <label for="until-time">Until</label>

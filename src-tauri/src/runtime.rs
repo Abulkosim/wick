@@ -70,6 +70,7 @@ pub struct Runtime {
     inner: Mutex<Inner>,
     wake: Notify,
     pub update_wake: Notify,
+    keep_on_exit: std::sync::atomic::AtomicBool,
 }
 
 /// Local weekday (0 = Monday) and minutes past midnight, for schedules.
@@ -185,6 +186,7 @@ impl Runtime {
             }),
             wake: Notify::new(),
             update_wake: Notify::new(),
+            keep_on_exit: Default::default(),
         }
     }
 
@@ -239,6 +241,36 @@ impl Runtime {
         publish(app, &view);
         self.wake.notify_one();
         Ok(view)
+    }
+
+    /// Picks up a session the previous run left behind in this boot (crash or update restart).
+    pub fn resume(&self, app: &AppHandle) {
+        let Ok(directory) = app.path().app_data_dir() else {
+            return;
+        };
+        if let Some(session) = crate::status::resumable(&directory, now_ms()) {
+            let _ = self.update(app, |inner, _| {
+                inner.view.session = session;
+                Ok(())
+            });
+        }
+    }
+
+    /// Lets the next launch resume the session, for a restart Wick starts itself.
+    pub fn keep_session_on_exit(&self) {
+        self.keep_on_exit
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    pub fn keeps_session_on_exit(&self) -> bool {
+        self.keep_on_exit.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    pub fn extend(&self, app: &AppHandle, minutes: u32) -> Result<AppState, String> {
+        self.update(app, |inner, now| {
+            inner.view.session = inner.view.session.extend(minutes, now)?;
+            Ok(())
+        })
     }
 
     pub fn start(&self, app: &AppHandle, request: Request) -> Result<AppState, String> {

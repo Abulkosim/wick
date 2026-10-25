@@ -80,3 +80,25 @@ test('a locked screen pauses the session', async ({ page }) => {
   await page.getByRole('button', { name: 'Open settings' }).click()
   await expect(page.getByRole('switch', { name: 'Pause while the screen is locked' })).toBeChecked()
 })
+
+test('a timed session can be extended in place', async ({ page }) => {
+  await page.goto('/?demo=1&state=timed')
+  await expect(page.getByRole('status').getByRole('heading')).toHaveText(/^Awake · 4[12]m left$/)
+  await page.getByRole('button', { name: 'Add 15 min' }).click()
+  await expect(page.getByRole('status').getByRole('heading')).toHaveText(/^Awake · 5[67]m left$/)
+  await page.goto('/?demo=1&state=indefinite')
+  await expect(page.getByRole('button', { name: 'Add 15 min' })).toHaveCount(0)
+})
+
+test('single keys start, extend and stop', async ({ page }) => {
+  await page.goto('/?demo=1&state=off')
+  await page.keyboard.press('2')
+  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Awake · 1h 00m left')
+  await page.keyboard.press('+')
+  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Awake · 1h 15m left')
+  await page.keyboard.press('s')
+  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Off')
+  await page.getByRole('button', { name: 'Custom…' }).click()
+  await page.getByLabel('Hours').fill('2')
+  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Off')
+})

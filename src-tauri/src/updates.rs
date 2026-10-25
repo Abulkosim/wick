@@ -236,7 +236,12 @@ pub async fn install_update(
     };
     updates.publish(&app, UpdatePhase::Installing { version })?;
     match tauri::async_runtime::spawn_blocking(move || update.install(bytes)).await {
-        Ok(Ok(())) => app.restart(),
+        Ok(Ok(())) => {
+            if let Some(runtime) = app.try_state::<Arc<Runtime>>() {
+                runtime.keep_session_on_exit();
+            }
+            app.restart()
+        }
         _ => updates.fail(
             &app,
             "Couldn’t finish installing. Reopen Wick, or install the latest release from GitHub.",

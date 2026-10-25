@@ -18,8 +18,9 @@ import { activePreset, detail, fraction, shortDuration, title } from './lib/sess
 import type { StartRequest } from './lib/model'
 import { footerNote } from './lib/power'
 import { isWindows } from './lib/platform'
+import { isTyping, keyAction } from './lib/keys'
 
-const { state, pending, message, now, demo, desktop, startSession, stopSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, hideWindow } = useWick()
+const { state, pending, message, now, demo, desktop, startSession, stopSession, extendSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, hideWindow } = useWick()
 const query = new URLSearchParams(location.search)
 const updater = useUpdater({ demo, desktop, initial: demo ? createDemoUpdateState(query.get('state')) : undefined })
 const placementSchema = z.object({ revision: z.number().int().nonnegative(), arrowX: z.number().finite().nullable() })
@@ -34,6 +35,7 @@ const startHint = computed(() => state.value.settings.startMinutes === null ? 'K
 const busy = computed(() => pending.value !== null)
 const on = computed(() => state.value.session.mode !== 'off')
 const held = computed(() => !on.value && state.value.heldBy !== null)
+const timed = computed(() => state.value.session.mode === 'for' || state.value.session.mode === 'until')
 const statusTitle = computed(() => title(state.value.session, now.value, state.value.heldBy))
 const statusDetail = computed(() => state.value.pausedByLock && (on.value || held.value) ? 'Paused while the screen is locked' : state.value.session.mode === 'off' && !held.value && state.value.notice ? state.value.notice : !on.value && !held.value && !state.value.pausedBy && state.value.others.length ? othersSummary(state.value.others) ?? '' : detail(state.value.session, now.value, state.value.settings.keepDisplayOn, state.value.heldBy, state.value.pausedBy))
 const footer = computed(() => footerNote(state.value.power, state.value.lidSleeps, on.value || held.value))
@@ -97,6 +99,14 @@ function onKeydown(event: KeyboardEvent): void {
   }
   if ((event.metaKey || event.ctrlKey) && event.key === ',') { event.preventDefault(); page.value = 'settings' }
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'q') { event.preventDefault(); void quit() }
+  if (page.value !== 'overview' || busy.value || document.querySelector('[role="listbox"]')) return
+  const action = keyAction(event, isTyping(event.target))
+  if (!action) return
+  event.preventDefault()
+  if (action.kind === 'start') void startSession(action.request)
+  else if (action.kind === 'extend') { if (timed.value) void extendSession(action.minutes) }
+  else if (on.value || held.value) void stopSession()
+  else void startSession(startRequest.value)
 }
 
 function acceptPlacement(payload: unknown): void {
@@ -153,7 +163,7 @@ onUnmounted(() => {
             <StatusCandle :fraction="ringFraction" :on="on" :held="held"/>
             <div class="hero-copy" role="status" aria-live="polite">
               <h1 class="hero-title">{{ statusTitle }}</h1>
-              <p class="hero-detail" :class="{ 'is-notice': !on && !held && state.notice }">{{ statusDetail }}<template v-if="!on && !held && state.pausedBy"> · <button class="text-button inline-action" :disabled="busy" @click="resumeTriggers">Resume</button></template></p>
+              <p class="hero-detail" :class="{ 'is-notice': !on && !held && state.notice }">{{ statusDetail }}<template v-if="!on && !held && state.pausedBy"> · <button class="text-button inline-action" :disabled="busy" @click="resumeTriggers">Resume</button></template><template v-if="timed && !state.pausedByLock"> · <button class="text-button inline-action" :disabled="busy" @click="extendSession(15)">Add 15 min</button></template></p>
             </div>
             <AppTooltip v-if="held" text="Pause this trigger until it ends"><button class="button hero-action" :disabled="busy" @click="stopSession">Stop</button></AppTooltip>
             <button v-else-if="on" class="button hero-action" :disabled="busy" @click="stopSession">Stop</button>

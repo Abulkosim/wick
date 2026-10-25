@@ -76,6 +76,37 @@ impl Session {
         }
     }
 
+    /// Pushes a timed session's end out by `minutes`, keeping its kind.
+    pub fn extend(&self, minutes: u32, now: i64) -> Result<Self, String> {
+        let add = i64::from(minutes) * 60_000;
+        let limit = now + i64::from(MAX_MINUTES) * 60_000;
+        let later = |ends_at: i64| {
+            let next = ends_at.max(now) + add;
+            if next > limit {
+                Err("Sessions can run up to 7 days.".to_string())
+            } else {
+                Ok(next)
+            }
+        };
+        match *self {
+            Session::For {
+                started_at,
+                ends_at,
+            } => Ok(Session::For {
+                started_at,
+                ends_at: later(ends_at)?,
+            }),
+            Session::Until {
+                started_at,
+                ends_at,
+            } => Ok(Session::Until {
+                started_at,
+                ends_at: later(ends_at)?,
+            }),
+            _ => Err("Only a timed session can be extended.".into()),
+        }
+    }
+
     pub fn is_on(&self) -> bool {
         !matches!(self, Session::Off)
     }
@@ -206,6 +237,30 @@ mod tests {
         let now = at(23, 59);
         let session = Session::start(Request::Until { hour: 0, minute: 0 }, &now).unwrap();
         assert_eq!(session.remaining_ms(now.timestamp_millis()), Some(60_000));
+    }
+
+    #[test]
+    fn extend_adds_time_to_timed_sessions_only() {
+        let session = Session::For {
+            started_at: 0,
+            ends_at: 600_000,
+        };
+        assert_eq!(
+            session.extend(15, 0).unwrap().ends_at(),
+            Some(600_000 + 900_000)
+        );
+        let until = Session::Until {
+            started_at: 0,
+            ends_at: 600_000,
+        };
+        assert!(matches!(until.extend(15, 0), Ok(Session::Until { .. })));
+        assert!(Session::Indefinite { started_at: 0 }.extend(15, 0).is_err());
+        assert!(Session::Off.extend(15, 0).is_err());
+        let near_limit = Session::For {
+            started_at: 0,
+            ends_at: i64::from(MAX_MINUTES) * 60_000,
+        };
+        assert!(near_limit.extend(15, 0).is_err());
     }
 
     #[test]
