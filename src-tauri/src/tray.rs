@@ -39,8 +39,14 @@ pub fn tooltip(state: &AppState, now: i64) -> String {
     } else {
         ""
     };
+    if state.paused_by_lock && (state.session.is_on() || state.held_by.is_some()) {
+        return "Wick · Paused while the screen is locked".into();
+    }
     match state.session {
-        Session::Off => "Wick · Off".into(),
+        Session::Off => match &state.held_by {
+            Some(phrase) => format!("Wick · Awake while {phrase}{screen}"),
+            None => "Wick · Off".into(),
+        },
         Session::Indefinite { .. } => format!("Wick · Awake{screen}"),
         session => format!(
             "Wick · Awake · {} left{screen}",
@@ -51,6 +57,9 @@ pub fn tooltip(state: &AppState, now: i64) -> String {
 
 /// Quantized so the tray redraws about once per 1% of a session, not every tick.
 fn glyph(state: &AppState, now: i64) -> Glyph {
+    if state.paused_by_lock {
+        return Glyph::Off;
+    }
     match state.session.glyph(now, state.held_by.is_some()) {
         Glyph::Remaining(value) => Glyph::Remaining((value * 100.0).ceil() / 100.0),
         glyph => glyph,
@@ -248,6 +257,23 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tooltip_and_glyph_follow_held_and_locked_states() {
+        let mut state = AppState {
+            held_by: Some("Xcode is running".into()),
+            ..AppState::default()
+        };
+        assert_eq!(tooltip(&state, 0), "Wick · Awake while Xcode is running");
+        assert_eq!(glyph(&state, 0), Glyph::Held);
+        state.paused_by_lock = true;
+        assert_eq!(
+            tooltip(&state, 0),
+            "Wick · Paused while the screen is locked"
+        );
+        assert_eq!(glyph(&state, 0), Glyph::Off);
+        assert_eq!(tooltip(&AppState::default(), 0), "Wick · Off");
+    }
 
     #[test]
     fn title_shows_time_left_only_when_asked_and_timed() {

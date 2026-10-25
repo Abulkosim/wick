@@ -116,7 +116,7 @@ pub fn resume_triggers(
 
 #[tauri::command]
 pub async fn running_apps() -> Vec<RunningApp> {
-    tauri::async_runtime::spawn_blocking(|| processes::running_apps(&processes::scan()))
+    tauri::async_runtime::spawn_blocking(|| processes::running_apps(&processes::scan(true)))
         .await
         .unwrap_or_default()
 }

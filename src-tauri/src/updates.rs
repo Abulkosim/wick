@@ -238,7 +238,7 @@ pub async fn install_update(
     match tauri::async_runtime::spawn_blocking(move || update.install(bytes)).await {
         Ok(Ok(())) => {
             if let Some(runtime) = app.try_state::<Arc<Runtime>>() {
-                runtime.keep_session_on_exit();
+                runtime.keep_session_on_exit(&app);
             }
             app.restart()
         }

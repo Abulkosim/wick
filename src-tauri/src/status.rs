@@ -17,9 +17,11 @@ struct Status<'a> {
     paused_while_locked: bool,
     keep_display_on: bool,
     boot: Option<i64>,
+    /// Set only around a restart Wick starts itself, so only that restart resumes the session.
+    resume: bool,
 }
 
-pub fn snapshot(state: &AppState, pid: u32) -> Value {
+pub fn snapshot_with(state: &AppState, pid: u32, resume: bool) -> Value {
     let held = state.held_by.as_deref().filter(|_| !state.session.is_on());
     serde_json::to_value(Status {
         pid,
@@ -31,19 +33,34 @@ pub fn snapshot(state: &AppState, pid: u32) -> Value {
         paused_while_locked: state.paused_by_lock,
         keep_display_on: state.settings.keep_display_on,
         boot: crate::core::boot::boot_time(),
+        resume,
     })
     .unwrap_or_default()
 }
 
+/// The last snapshot written, so writes from different threads stay in revision order and an
+/// unchanged state isn't rewritten.
+static LAST: std::sync::Mutex<Option<(PathBuf, u64, Value)>> = std::sync::Mutex::new(None);
+
 /// Written on every change so `wick status` can answer without the running app.
-pub fn write(directory: &Path, state: &AppState) {
-    let value = snapshot(state, std::process::id());
+pub fn write(directory: &Path, state: &AppState, resume: bool) {
+    let value = snapshot_with(state, std::process::id(), resume);
+    let Ok(mut last) = LAST.lock() else {
+        return;
+    };
+    if let Some((path, revision, previous)) = last.as_ref() {
+        if path == directory && (state.revision < *revision || *previous == value) {
+            return;
+        }
+    }
     let _ = std::fs::create_dir_all(directory);
     let Ok(mut file) = tempfile::NamedTempFile::new_in(directory) else {
         return;
     };
-    if serde_json::to_writer(&mut file, &value).is_ok() {
-        let _ = file.persist(directory.join(FILE));
+    if serde_json::to_writer(&mut file, &value).is_ok()
+        && file.persist(directory.join(FILE)).is_ok()
+    {
+        *last = Some((directory.to_path_buf(), state.revision, value));
     }
 }
 
@@ -71,12 +88,14 @@ fn alive(pid: u64) -> bool {
     i32::try_from(pid).is_ok_and(|pid| pid > 0 && unsafe { kill(pid, 0) } == 0)
 }
 
-/// A session saved by an earlier run of Wick in this boot that hasn't run out, to pick up again
-/// after a crash or an update restart. Quitting saves "off", so it never resumes.
+/// A session saved just before Wick restarted itself (an update) in this boot that hasn't run
+/// out. A quit, crash or force-quit never resumes.
 pub fn resumable(directory: &Path, now: i64) -> Option<crate::core::session::Session> {
     let saved: Value = serde_json::from_slice(&std::fs::read(directory.join(FILE)).ok()?).ok()?;
     let boot = saved["boot"].as_i64();
-    if !crate::core::boot::same_boot(boot, crate::core::boot::boot_time()) {
+    if saved["resume"] != true
+        || !crate::core::boot::same_boot(boot, crate::core::boot::boot_time())
+    {
         return None;
     }
     let session: crate::core::session::Session =
@@ -114,13 +133,13 @@ mod tests {
             },
             ..AppState::default()
         };
-        write(directory.path(), &state);
+        write(directory.path(), &state, false);
         let live = read(directory.path());
         assert_eq!(live["running"], true);
         assert_eq!(live["awake"], true);
         assert_eq!(live["endsAt"], 60_000);
         assert_eq!(live["session"]["mode"], "for");
-        let mut stale = snapshot(&state, 0);
+        let mut stale = snapshot_with(&state, 0, false);
         stale["pid"] = json!(999_999_999u64);
         std::fs::write(directory.path().join(FILE), stale.to_string()).unwrap();
         assert_eq!(
@@ -140,12 +159,18 @@ mod tests {
             },
             ..AppState::default()
         };
-        write(directory.path(), &running);
+        write(directory.path(), &running, false);
+        assert_eq!(resumable(directory.path(), 30_000), None);
+        write(directory.path(), &running, true);
         assert_eq!(resumable(directory.path(), 30_000), Some(running.session));
         assert_eq!(resumable(directory.path(), 60_000), None);
-        write(directory.path(), &AppState::default());
+        let stopped = AppState {
+            revision: 1,
+            ..AppState::default()
+        };
+        write(directory.path(), &stopped, false);
         assert_eq!(resumable(directory.path(), 30_000), None);
-        let mut other_boot = snapshot(&running, 1);
+        let mut other_boot = snapshot_with(&running, 1, true);
         other_boot["boot"] = json!(1);
         std::fs::write(directory.path().join(FILE), other_boot.to_string()).unwrap();
         assert_eq!(resumable(directory.path(), 30_000), None);
@@ -157,9 +182,12 @@ mod tests {
             held_by: Some("Xcode is running".into()),
             ..AppState::default()
         };
-        assert_eq!(snapshot(&state, 1)["awake"], true);
-        assert_eq!(snapshot(&state, 1)["heldBy"], "Xcode is running");
+        assert_eq!(snapshot_with(&state, 1, false)["awake"], true);
+        assert_eq!(
+            snapshot_with(&state, 1, false)["heldBy"],
+            "Xcode is running"
+        );
         state.paused_by_lock = true;
-        assert_eq!(snapshot(&state, 1)["awake"], false);
+        assert_eq!(snapshot_with(&state, 1, false)["awake"], false);
     }
 }

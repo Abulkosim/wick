@@ -8,7 +8,7 @@ use crate::{
         session::{Request, Session},
         settings::{Settings, Theme},
         store::{self, StoredState},
-        triggers::{self, Trigger},
+        triggers::{self, Trigger, TriggerKind},
     },
     tray,
 };
@@ -24,7 +24,7 @@ use tokio::sync::Notify;
 const TICK: Duration = Duration::from_secs(5);
 const IDLE_TICK: Duration = Duration::from_secs(60);
 
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppState {
     pub revision: u64,
@@ -137,6 +137,25 @@ impl Inner {
         Ok(())
     }
 
+    /// Decides which trigger holds the Mac, from the current list and pause state, so a
+    /// Resume or Stop that lands mid-tick isn't overwritten.
+    fn evaluate_triggers(&mut self, context: &triggers::Context, power: &Power) {
+        let active = triggers::active(&self.view.triggers, context);
+        self.paused
+            .retain(|id| active.iter().any(|trigger| &trigger.id == id));
+        let allowed = power::stop_reason(power, &self.view.settings.guard()).is_none();
+        let holder = active
+            .iter()
+            .find(|trigger| allowed && !self.paused.contains(&trigger.id));
+        self.held_id = holder.map(|trigger| trigger.id.clone());
+        self.view.held_by = holder.map(|trigger| trigger.phrase());
+        self.view.paused_by = active
+            .iter()
+            .find(|trigger| self.paused.contains(&trigger.id))
+            .map(|trigger| trigger.until());
+        self.view.running = active.iter().map(|trigger| trigger.id.clone()).collect();
+    }
+
     fn changed(&mut self) {
         self.view.revision = self.view.revision.saturating_add(1);
     }
@@ -197,49 +216,64 @@ impl Runtime {
             .unwrap_or_default()
     }
 
+    /// Applies a change, then swaps the assertion, then saves. A failed swap keeps the old
+    /// assertion and state; a failed save rolls the change back. Returns the view and whether it
+    /// changed.
+    fn commit<T>(
+        &self,
+        change: impl FnOnce(&mut Inner, i64) -> Result<T, String>,
+    ) -> Result<(AppState, bool), String> {
+        let mut inner = self
+            .inner
+            .lock()
+            .map_err(|_| "Wick's state is unavailable.")?;
+        let now = now_ms();
+        let previous = inner.view.clone();
+        if let Err(error) = change(&mut inner, now) {
+            inner.view = previous;
+            return Err(error);
+        }
+        if let Err(error) = inner.reconcile(now) {
+            inner.view = previous;
+            return Err(error);
+        }
+        if inner.view.settings != previous.settings || inner.view.triggers != previous.triggers {
+            if let Err(error) = inner.persist() {
+                inner.view = previous;
+                let _ = inner.reconcile(now);
+                return Err(error);
+            }
+        }
+        inner.view.error = None;
+        let changed = inner.view != previous;
+        if changed {
+            inner.changed();
+        }
+        Ok((inner.view.clone(), changed))
+    }
+
+    /// For intents: publishes and wakes the ticker so triggers and timers react at once.
     fn update<T>(
         &self,
         app: &AppHandle,
         change: impl FnOnce(&mut Inner, i64) -> Result<T, String>,
     ) -> Result<AppState, String> {
-        let view = {
-            let mut inner = self
-                .inner
-                .lock()
-                .map_err(|_| "Wick's state is unavailable.")?;
-            let now = now_ms();
-            let previous = inner.view.clone();
-            if let Err(error) = change(&mut inner, now) {
-                inner.view = previous;
-                return Err(error);
-            }
-            if inner.view.settings != previous.settings || inner.view.triggers != previous.triggers
-            {
-                if let Err(error) = inner.persist() {
-                    inner.view = previous;
-                    return Err(error);
-                }
-            }
-            if let Err(error) = inner.reconcile(now) {
-                inner.view = AppState {
-                    session: Session::Off,
-                    error: Some(error.clone()),
-                    ..previous
-                };
-                inner.assertion = None;
-                inner.held_for = None;
-                inner.changed();
-                let view = inner.view.clone();
-                drop(inner);
-                publish(app, &view);
-                return Err(error);
-            }
-            inner.view.error = None;
-            inner.changed();
-            inner.view.clone()
-        };
+        let (view, _) = self.commit(change)?;
         publish(app, &view);
         self.wake.notify_one();
+        Ok(view)
+    }
+
+    /// For the ticker: publishes only when something changed, and doesn't wake itself.
+    fn update_quiet<T>(
+        &self,
+        app: &AppHandle,
+        change: impl FnOnce(&mut Inner, i64) -> Result<T, String>,
+    ) -> Result<AppState, String> {
+        let (view, changed) = self.commit(change)?;
+        if changed {
+            publish(app, &view);
+        }
         Ok(view)
     }
 
@@ -257,9 +291,13 @@ impl Runtime {
     }
 
     /// Lets the next launch resume the session, for a restart Wick starts itself.
-    pub fn keep_session_on_exit(&self) {
+    pub fn keep_session_on_exit(&self, app: &AppHandle) {
         self.keep_on_exit
             .store(true, std::sync::atomic::Ordering::SeqCst);
+        if let (Ok(directory), Ok(mut inner)) = (app.path().app_data_dir(), self.inner.lock()) {
+            inner.changed();
+            crate::status::write(&directory, &inner.view, true);
+        }
     }
 
     pub fn keeps_session_on_exit(&self) -> bool {
@@ -315,7 +353,6 @@ impl Runtime {
             inner.view.held_by = None;
             Ok(())
         })
-        .inspect(|_| self.wake.notify_one())
     }
 
     pub fn save_triggers(&self, app: &AppHandle, list: Vec<Trigger>) -> Result<AppState, String> {
@@ -327,7 +364,6 @@ impl Runtime {
             inner.view.triggers = list;
             Ok(())
         })
-        .inspect(|_| self.wake.notify_one())
     }
 
     pub fn start_default(&self, app: &AppHandle) -> Result<AppState, String> {
@@ -338,8 +374,10 @@ impl Runtime {
         self.start(app, request)
     }
 
+    /// Stops whatever keeps the Mac awake (pausing a trigger), or starts a session.
     pub fn toggle(&self, app: &AppHandle) -> Result<AppState, String> {
-        if self.state().session.is_on() {
+        let state = self.state();
+        if state.session.is_on() || state.held_by.is_some() {
             self.stop(app)
         } else {
             self.start_default(app)
@@ -374,7 +412,10 @@ impl Runtime {
 
     pub fn reset_store(&self, app: &AppHandle) -> Result<AppState, String> {
         self.update(app, |inner, _| {
-            let settings = Settings::default();
+            let settings = Settings {
+                launch_at_login: inner.view.settings.launch_at_login,
+                ..Settings::default()
+            };
             if let Some(path) = &inner.store_path {
                 store::reset(path, &StoredState::new(settings.clone()))?;
             }
@@ -385,54 +426,73 @@ impl Runtime {
         })
     }
 
-    /// Stops when time runs out or the battery guard trips. Returns when to look again.
+    /// Reads what the current state needs, then applies it in one update: triggers, screen lock,
+    /// what the popover shows, and ending a session that ran out or tripped the battery guard.
+    /// Returns when to look again.
     pub fn tick(&self, app: &AppHandle) -> Duration {
         let now = now_ms();
+        let snapshot = self.state();
+        let visible = app
+            .get_webview_window("main")
+            .and_then(|window| window.is_visible().ok())
+            .unwrap_or(false);
         let power = power::read();
-        self.evaluate_triggers(app, &power);
-        self.refresh_others(app);
-        let paused_by_lock = self.state().settings.pause_when_locked && lock::screen_locked();
-        if paused_by_lock != self.state().paused_by_lock {
-            let _ = self.update(app, |inner, _| {
-                inner.view.paused_by_lock = paused_by_lock;
-                Ok(())
-            });
-        }
-        let lid_sleeps = lid::closing_sleeps();
-        if lid_sleeps != self.state().lid_sleeps {
-            let _ = self.update(app, |inner, _| {
+        let enabled = |kind| {
+            snapshot
+                .triggers
+                .iter()
+                .any(|trigger| trigger.enabled && trigger.kind == kind)
+        };
+        let processes = if triggers::needs_processes(&snapshot.triggers) {
+            processes::scan(enabled(TriggerKind::App))
+        } else {
+            Vec::new()
+        };
+        let context = triggers::Context {
+            processes: &processes,
+            on_power: !power.on_battery,
+            external_display: enabled(TriggerKind::Display) && display::external_connected(),
+            clock: local_clock(),
+        };
+        let holding =
+            snapshot.session.is_on() || snapshot.held_by.is_some() || snapshot.paused_by_lock;
+        let locked = snapshot.settings.pause_when_locked && holding && lock::screen_locked();
+        let others = visible
+            .then(|| assertion::list().ok().map(|held| others::current(&held)))
+            .flatten();
+        let lid_sleeps = visible.then(lid::closing_sleeps);
+        let mut ended: Option<(String, bool)> = None;
+        let result = self.update_quiet(app, |inner, now| {
+            inner.view.power = power;
+            inner.view.paused_by_lock = locked;
+            if let Some(others) = others {
+                inner.view.others = others;
+            }
+            if let Some(lid_sleeps) = lid_sleeps {
                 inner.view.lid_sleeps = lid_sleeps;
-                Ok(())
-            });
-        }
-        let state = self.state();
-        match due(&state, power, now) {
-            Due::Nothing => tray::update(app, &state, now),
-            Due::Power => {
-                let _ = self.update(app, |inner, _| {
-                    inner.view.power = power;
-                    Ok(())
-                });
             }
-            Due::End { notice, message } => {
-                let stopped = self.update(app, |inner, _| {
-                    inner.view.session = Session::Off;
-                    inner.view.notice = notice;
-                    inner.view.power = power;
-                    Ok(())
-                });
-                if stopped.is_ok() && state.settings.notify_on_end {
-                    notify(app, &message);
-                }
+            inner.evaluate_triggers(&context, &power);
+            if let Due::End { notice, message } = due(&inner.view, power, now) {
+                inner.view.session = Session::Off;
+                inner.view.notice = notice;
+                let message = match &inner.view.held_by {
+                    Some(phrase) if message.starts_with("Session ended") => {
+                        format!("Session ended. Still awake while {phrase}.")
+                    }
+                    _ => message,
+                };
+                ended = Some((message, inner.view.settings.notify_on_end));
             }
+            Ok(())
+        });
+        if let Some((message, true)) = ended.filter(|_| result.is_ok()) {
+            notify(app, &message);
         }
-        let state = self.state();
+        let state = result.unwrap_or(snapshot);
+        tray::update(app, &state, now);
         let watching = state.triggers.iter().any(|trigger| trigger.enabled)
-            || state.settings.pause_when_locked
-            || app
-                .get_webview_window("main")
-                .and_then(|window| window.is_visible().ok())
-                .unwrap_or(false);
+            || (state.settings.pause_when_locked && holding)
+            || visible;
         match state.session.remaining_ms(now) {
             Some(ms) => TICK.min(Duration::from_millis(ms.max(0) as u64)),
             None if state.session.is_on() || watching => TICK,
@@ -460,63 +520,6 @@ impl Runtime {
     /// Wakes the ticker, e.g. so it polls faster while the popover is open.
     pub fn poke(&self) {
         self.wake.notify_one();
-    }
-
-    pub fn refresh_others(&self, app: &AppHandle) {
-        let Ok(held) = assertion::list() else {
-            return;
-        };
-        let others = others::current(&held);
-        if others != self.state().others {
-            let _ = self.update(app, |inner, _| {
-                inner.view.others = others;
-                Ok(())
-            });
-        }
-    }
-
-    fn evaluate_triggers(&self, app: &AppHandle, power: &Power) {
-        let state = self.state();
-        let processes = if triggers::needs_processes(&state.triggers) {
-            processes::scan()
-        } else {
-            Vec::new()
-        };
-        let context = triggers::Context {
-            processes: &processes,
-            on_power: !power.on_battery,
-            external_display: display::external_connected(),
-            clock: local_clock(),
-        };
-        let active = triggers::active(&state.triggers, &context);
-        let Ok(paused) = self.inner.lock().map(|inner| inner.paused.clone()) else {
-            return;
-        };
-        let paused: Vec<String> = paused
-            .into_iter()
-            .filter(|id| active.iter().any(|trigger| &trigger.id == id))
-            .collect();
-        let allowed = power::stop_reason(power, &state.settings.guard()).is_none();
-        let holder = active
-            .iter()
-            .find(|trigger| allowed && !paused.contains(&trigger.id));
-        let held_id = holder.map(|trigger| trigger.id.clone());
-        let held_by = holder.map(|trigger| trigger.phrase());
-        let paused_by = active
-            .iter()
-            .find(|trigger| paused.contains(&trigger.id))
-            .map(|trigger| trigger.until());
-        let running: Vec<String> = active.iter().map(|trigger| trigger.id.clone()).collect();
-        if held_by != state.held_by || paused_by != state.paused_by || running != state.running {
-            let _ = self.update(app, |inner, _| {
-                inner.paused = paused;
-                inner.held_id = held_id;
-                inner.view.running = running;
-                inner.view.held_by = held_by;
-                inner.view.paused_by = paused_by;
-                Ok(())
-            });
-        }
     }
 }
 
@@ -560,7 +563,10 @@ fn notify(app: &AppHandle, title: &str) {
 pub fn publish(app: &AppHandle, view: &AppState) {
     tray::update(app, view, now_ms());
     if let Ok(directory) = app.path().app_data_dir() {
-        crate::status::write(&directory, view);
+        let resume = app
+            .try_state::<Arc<Runtime>>()
+            .is_some_and(|runtime| runtime.keeps_session_on_exit());
+        crate::status::write(&directory, view, resume);
     }
     crate::popover::set_theme(
         app,
@@ -640,6 +646,56 @@ mod tests {
         );
         let off = AppState::default();
         assert_eq!(due(&off, battery, 10), Due::Power);
+    }
+
+    fn trigger(id: &str, kind: TriggerKind) -> Trigger {
+        Trigger {
+            id: id.into(),
+            kind,
+            name: "x".into(),
+            path: None,
+            schedule: None,
+            enabled: true,
+        }
+    }
+
+    #[test]
+    fn a_failed_save_rolls_back_and_an_unchanged_commit_stays_quiet() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.json");
+        std::fs::write(&path, "{ damaged").unwrap();
+        let runtime = Runtime::new(path);
+        let before = runtime.state();
+        let result = runtime.commit(|inner, _| {
+            inner.view.settings.start_minutes = Some(30);
+            Ok(())
+        });
+        assert!(result.is_err());
+        assert_eq!(runtime.state(), before);
+        let (view, changed) = runtime.commit(|_, _| Ok(())).unwrap();
+        assert!(!changed);
+        assert_eq!(view.revision, before.revision);
+    }
+
+    #[test]
+    fn evaluation_keeps_a_pause_until_its_trigger_ends() {
+        let mut inner = Inner::default();
+        inner.view.triggers = vec![trigger("p", TriggerKind::Power)];
+        let plugged = triggers::Context {
+            on_power: true,
+            ..triggers::Context::default()
+        };
+        inner.evaluate_triggers(&plugged, &Power::default());
+        assert_eq!(inner.view.held_by.as_deref(), Some("on power"));
+        inner.paused = vec!["p".into()];
+        inner.evaluate_triggers(&plugged, &Power::default());
+        assert_eq!(inner.view.held_by, None);
+        assert_eq!(inner.view.paused_by.as_deref(), Some("you unplug"));
+        inner.evaluate_triggers(&triggers::Context::default(), &Power::default());
+        assert!(inner.paused.is_empty());
+        assert_eq!(inner.view.paused_by, None);
+        inner.evaluate_triggers(&plugged, &Power::default());
+        assert_eq!(inner.view.held_by.as_deref(), Some("on power"));
     }
 
     #[test]

@@ -82,12 +82,13 @@ mod native {
     }
 
     /// The basename of argv[0], which is what users typed (`claude`, not `2.1.309`).
-    fn argv0(pid: i32) -> Option<String> {
+    /// `buffer` is reused across a scan so each process costs no allocation.
+    fn argv0(pid: i32, buffer: &mut Vec<u8>) -> Option<String> {
         const CTL_KERN: c_int = 1;
         const KERN_PROCARGS2: c_int = 49;
         let mut mib = [CTL_KERN, KERN_PROCARGS2, pid];
-        let mut size: usize = 8192;
-        let mut buffer = vec![0_u8; size];
+        buffer.resize(8192, 0);
+        let mut size: usize = buffer.len();
         let status = unsafe {
             sysctl(
                 mib.as_mut_ptr(),
@@ -130,6 +131,10 @@ mod native {
 
     /// Parent pid and command name, from `proc_bsdinfo`.
     pub fn info(pid: i32) -> Option<(i32, String)> {
+        info_with(pid, &mut Vec::new())
+    }
+
+    pub fn info_with(pid: i32, scratch: &mut Vec<u8>) -> Option<(i32, String)> {
         let mut buffer = [0_u8; BSDINFO_SIZE];
         let size = unsafe {
             proc_pidinfo(
@@ -144,13 +149,13 @@ mod native {
             return None;
         }
         let ppid = u32::from_ne_bytes(buffer[PPID..PPID + 4].try_into().ok()?) as i32;
-        let name = argv0(pid)
+        let name = argv0(pid, scratch)
             .unwrap_or_else(|| super::command_name(&text(&buffer[COMM]), &text(&buffer[NAME])));
         (!name.is_empty()).then_some((ppid, name))
     }
 
     pub fn path(pid: i32) -> Option<String> {
-        let mut buffer = vec![0_u8; 4096];
+        let mut buffer = [0_u8; 4096];
         let length = unsafe { proc_pidpath(pid, buffer.as_mut_ptr().cast(), buffer.len() as u32) };
         (length > 0).then(|| {
             unsafe { CStr::from_ptr(buffer.as_ptr().cast::<c_char>()) }
@@ -190,17 +195,20 @@ pub fn path(_pid: i32) -> Option<String> {
     None
 }
 
+/// Every process with its command name; executable paths only when `with_paths` (app
+/// triggers and the app picker need them, command triggers don't).
 #[cfg(target_os = "macos")]
-pub fn scan() -> Vec<Process> {
+pub fn scan(with_paths: bool) -> Vec<Process> {
     let own = std::process::id() as i32;
+    let mut scratch = Vec::with_capacity(8192);
     native::pids()
         .into_iter()
         .filter(|&pid| pid > 0 && pid != own)
         .filter_map(|pid| {
             Some(Process {
                 pid,
-                name: info(pid)?.1,
-                path: path(pid),
+                name: native::info_with(pid, &mut scratch)?.1,
+                path: with_paths.then(|| path(pid)).flatten(),
             })
         })
         .collect()
@@ -208,7 +216,7 @@ pub fn scan() -> Vec<Process> {
 
 /// Process names lose `.exe`, so a `claude` trigger matches `claude.exe`.
 #[cfg(windows)]
-pub fn scan() -> Vec<Process> {
+pub fn scan(_with_paths: bool) -> Vec<Process> {
     use super::win32::*;
     let own = std::process::id();
     let mut processes = Vec::new();
@@ -243,7 +251,7 @@ pub fn scan() -> Vec<Process> {
 }
 
 #[cfg(not(any(target_os = "macos", windows)))]
-pub fn scan() -> Vec<Process> {
+pub fn scan(_with_paths: bool) -> Vec<Process> {
     Vec::new()
 }
 
@@ -279,7 +287,7 @@ mod tests {
         let mut child = std::process::Command::new(&link).arg("30").spawn().unwrap();
         let found = (0..100).find_map(|_| {
             std::thread::sleep(std::time::Duration::from_millis(50));
-            scan()
+            scan(false)
                 .into_iter()
                 .find(|process| process.pid == child.id() as i32)
         });
@@ -327,7 +335,7 @@ mod tests {
     #[test]
     fn scans_this_mac_quickly() {
         let started = std::time::Instant::now();
-        let processes = scan();
+        let processes = scan(true);
         assert!(processes.iter().any(|process| process.name == "launchd"
             || process.name == "Finder"
             || process.name == "zsh"
