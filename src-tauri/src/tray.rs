@@ -2,7 +2,7 @@ use crate::{
     core::settings::IconClick,
     core::{
         candle::Glyph,
-        session::{short_duration, Session},
+        session::{short_duration, Request, Session},
     },
     popover::{self, TRAY_ID},
     runtime::{AppState, Runtime},
@@ -24,10 +24,14 @@ struct Shown {
     glyph: Option<Glyph>,
     tooltip: String,
     title: Option<String>,
+    stoppable: Option<bool>,
 }
 
 #[derive(Default)]
 pub struct Presentation(Mutex<Shown>);
+
+/// The menu's Stop item, enabled only while there is something to stop.
+pub struct StopItem(MenuItem<tauri::Wry>);
 
 pub fn tooltip(state: &AppState, now: i64) -> String {
     let screen = if state.settings.keep_display_on {
@@ -92,6 +96,7 @@ pub fn update(app: &AppHandle, state: &AppState, now: i64) {
     let glyph = glyph(state, now);
     let tooltip = tooltip(state, now);
     let title = title(state, now);
+    let stoppable = state.session.is_on() || state.held_by.is_some();
     let revision = state.revision;
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
@@ -118,6 +123,13 @@ pub fn update(app: &AppHandle, state: &AppState, now: i64) {
         }
         if shown.title != title && set_tabular_title(&tray, title.as_deref()) {
             shown.title = title;
+        }
+        if shown.stoppable != Some(stoppable) {
+            if let Some(stop) = handle.try_state::<StopItem>() {
+                if stop.0.set_enabled(stoppable).is_ok() {
+                    shown.stoppable = Some(stoppable);
+                }
+            }
         }
     });
 }
@@ -152,21 +164,65 @@ pub fn icon(glyph: Glyph) -> Image<'static> {
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let show_item = MenuItem::with_id(app, "show", "Open Wick", true, None::<&str>)?;
+    let quick = |id: &str, label: &str| MenuItem::with_id(app, id, label, true, None::<&str>);
+    let fifteen = quick("for-15", "Keep awake for 15 minutes")?;
+    let hour = quick("for-60", "Keep awake for 1 hour")?;
+    let two_hours = quick("for-120", "Keep awake for 2 hours")?;
+    let forever = quick("indefinite", "Keep awake until stopped")?;
+    let stop_item = MenuItem::with_id(app, "stop", "Stop", false, None::<&str>)?;
     let settings_item = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "Quit Wick", true, Some("CmdOrCtrl+Q"))?;
-    let separator = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&show_item, &settings_item, &separator, &quit_item])?;
+    let menu = Menu::with_items(
+        app,
+        &[
+            &show_item,
+            &PredefinedMenuItem::separator(app)?,
+            &fifteen,
+            &hour,
+            &two_hours,
+            &forever,
+            &stop_item,
+            &PredefinedMenuItem::separator(app)?,
+            &settings_item,
+            &quit_item,
+        ],
+    )?;
+    app.manage(StopItem(stop_item));
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(icon(Glyph::Off))
         .icon_as_template(cfg!(target_os = "macos"))
         .tooltip("Wick · Off")
         .menu(&menu)
         .show_menu_on_left_click(false)
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "show" => popover::show(app, false),
-            "settings" => popover::show(app, true),
-            "quit" => app.exit(0),
-            _ => {}
+        .on_menu_event(|app, event| {
+            let runtime = app.state::<Arc<Runtime>>();
+            let result = match event.id.as_ref() {
+                "show" => {
+                    popover::show(app, false);
+                    Ok(())
+                }
+                "settings" => {
+                    popover::show(app, true);
+                    Ok(())
+                }
+                "quit" => {
+                    app.exit(0);
+                    Ok(())
+                }
+                "stop" => runtime.stop(app).map(|_| ()),
+                "indefinite" => runtime.start(app, Request::Indefinite).map(|_| ()),
+                id => match id
+                    .strip_prefix("for-")
+                    .and_then(|minutes| minutes.parse().ok())
+                {
+                    Some(minutes) => runtime.start(app, Request::For { minutes }).map(|_| ()),
+                    None => Ok(()),
+                },
+            };
+            if let Err(error) = result {
+                use tauri_plugin_notification::NotificationExt;
+                let _ = app.notification().builder().title(error).show();
+            }
         })
         .on_tray_icon_event(|tray, event| {
             let app = tray.app_handle();
