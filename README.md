@@ -23,12 +23,12 @@
 
 ## Install
 
-Download **v0.2.0** from [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
+Download **v0.3.0** from [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
 
 | Platform | Download |
 | --- | --- |
-| macOS 12+ · Apple Silicon and Intel | [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.2.0/Wick_0.2.0_universal.dmg) |
-| Windows 10/11 x64 | [Setup EXE](https://github.com/Abulkosim/wick/releases/download/v0.2.0/Wick_0.2.0_x64-setup.exe) · [MSI](https://github.com/Abulkosim/wick/releases/download/v0.2.0/Wick_0.2.0_x64_en-US.msi) |
+| macOS 12+ · Apple Silicon and Intel | [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.3.0/Wick_0.3.0_universal.dmg) |
+| Windows 10/11 x64 | [Setup EXE](https://github.com/Abulkosim/wick/releases/download/v0.3.0/Wick_0.3.0_x64-setup.exe) · [MSI](https://github.com/Abulkosim/wick/releases/download/v0.3.0/Wick_0.3.0_x64_en-US.msi) |
 
 Builds are not signed with an Apple Developer ID or a Windows publisher certificate, so the first launch shows a warning.
 
@@ -44,7 +44,9 @@ Updates are signed and verified in the app. Wick checks once a day and installs 
 
 | | |
 | --- | --- |
-| **Sessions** | Until stopped, 15 min, 1 hour, 2 hours, until a time (rolls to tomorrow), or a custom length up to 7 days. Time left stays right across sleep. |
+| **Sessions** | Until stopped, 15 min, 1 hour, 2 hours, until a time (rolls to tomorrow), or a custom length up to 7 days. **Add 15 min** extends a running one. Time left stays right across sleep and in-app updates. |
+| **Menu** | Right-click the candle for 15 minutes, 1 hour, 2 hours, until stopped, or Stop. |
+| **Keys** | In the popover: 1, 2, 3 for the presets, 0 until stopped, S to start or stop, + to add 15 minutes. |
 | **Display** | Keeps only the system awake by default. **Keep display on** also stops the screen from dimming and locking. |
 | **Triggers** | Stay awake while an app or command runs, on power, with an external display, or on a weekly schedule. Stop pauses a trigger until it ends. |
 | **Also awake** | Lists other apps holding the Mac awake, with their reason, including audio playing through macOS and `caffeinate` started by a tool. |
