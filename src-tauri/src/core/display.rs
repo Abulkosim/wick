@@ -1,15 +1,15 @@
-/// Whether a display other than the built-in one is active.
+/// Whether a display other than the built-in one is connected, even if it is asleep or mirrored.
 #[cfg(target_os = "macos")]
 pub fn external_connected() -> bool {
     #[link(name = "CoreGraphics", kind = "framework")]
     extern "C" {
-        fn CGGetActiveDisplayList(max: u32, displays: *mut u32, count: *mut u32) -> i32;
+        fn CGGetOnlineDisplayList(max: u32, displays: *mut u32, count: *mut u32) -> i32;
         fn CGDisplayIsBuiltin(display: u32) -> u32;
     }
 
     let mut displays = [0_u32; 16];
     let mut count = 0_u32;
-    let status = unsafe { CGGetActiveDisplayList(16, displays.as_mut_ptr(), &mut count) };
+    let status = unsafe { CGGetOnlineDisplayList(16, displays.as_mut_ptr(), &mut count) };
     status == 0
         && displays[..count.min(16) as usize]
             .iter()

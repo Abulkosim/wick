@@ -1,5 +1,5 @@
 use super::candle::Glyph;
-use chrono::{DateTime, Duration, NaiveTime, TimeZone};
+use chrono::{offset::LocalResult, DateTime, Duration, NaiveTime, TimeZone};
 use serde::{Deserialize, Serialize};
 
 pub const MAX_MINUTES: u32 = 7 * 24 * 60;
@@ -32,15 +32,15 @@ fn next_time<Tz: TimeZone>(now: &DateTime<Tz>, time: NaiveTime) -> Option<DateTi
     let mut day = now.date_naive();
     for _ in 0..3 {
         let candidate = day.and_time(time);
-        let local = timezone
-            .from_local_datetime(&candidate)
-            .earliest()
-            .or_else(|| {
-                timezone
-                    .from_local_datetime(&(candidate + Duration::hours(1)))
-                    .earliest()
-            });
-        if let Some(local) = local.filter(|local| local > now) {
+        let options = match timezone.from_local_datetime(&candidate) {
+            // Skipped by a spring-forward gap: use the same wall time an hour later.
+            LocalResult::None => vec![timezone
+                .from_local_datetime(&(candidate + Duration::hours(1)))
+                .earliest()],
+            // In a repeated autumn hour the first 01:45 may be past while the second is ahead.
+            mapped => vec![mapped.clone().earliest(), mapped.latest()],
+        };
+        if let Some(local) = options.into_iter().flatten().find(|local| local > now) {
             return Some(local);
         }
         day = day.succ_opt()?;
