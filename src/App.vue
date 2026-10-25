@@ -173,7 +173,7 @@ onUnmounted(() => {
           <div v-if="state.error" class="error-note" role="alert"><AppIcon name="alert" :size="16"/><p><strong>Could not keep your Mac awake.</strong> {{ state.error }}</p></div>
           <section class="card" aria-labelledby="duration-label">
             <h2 id="duration-label" class="card-label">Keep awake for</h2>
-            <DurationPicker :active="active" :busy="busy" :now="now" @start="startSession"/>
+            <DurationPicker :active="active" :busy="busy" @start="startSession"/>
           </section>
           <OthersCard v-if="state.others.length" :others="state.others" :also="on || held"/>
           <TriggersCard :triggers="state.triggers" :running="state.running" :busy="busy" :save="saveTriggers" :load-apps="runningApps"/>

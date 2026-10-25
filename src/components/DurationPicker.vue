@@ -4,7 +4,7 @@ import AppIcon from './AppIcon.vue'
 import type { StartRequest } from '../lib/model'
 import { customMinutes, parseClock, presets } from '../lib/session'
 
-const props = defineProps<{ active: string | null; busy: boolean; now: number }>()
+defineProps<{ active: string | null; busy: boolean }>()
 const emit = defineEmits<{ start: [request: StartRequest] }>()
 const editor = ref<'until' | 'custom' | null>(null)
 const untilValue = ref('')
@@ -16,7 +16,7 @@ const untilTime = computed(() => parseClock(untilValue.value))
 const custom = computed(() => customMinutes(Number(hours.value), Number(minutes.value)))
 
 function defaultUntil(): string {
-  const date = new Date(props.now + 60 * 60_000)
+  const date = new Date(Date.now() + 60 * 60_000)
   date.setMinutes(date.getMinutes() < 30 ? 30 : 60, 0, 0)
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }

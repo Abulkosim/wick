@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { createDemoState, demoApps } from './demo.ts'
 import { z } from 'zod'
 import { appStateSchema, defaultSettings, initialState, runningAppSchema, type AppState, type RunningApp, type Settings, type StartRequest, type Trigger } from './model.ts'
@@ -21,7 +21,13 @@ export function useWick() {
   let stopListening: (() => void) | undefined
   let destroyed = false
   let toastTimer: ReturnType<typeof setTimeout> | undefined
-  const clock = window.setInterval(() => { now.value = Date.now() }, 1000)
+  let clock: number | undefined
+  // Only a timed session shows a countdown, so only then does the clock tick.
+  watch(() => state.value.session.mode, mode => {
+    now.value = Date.now()
+    window.clearInterval(clock)
+    clock = mode === 'for' || mode === 'until' ? window.setInterval(() => { now.value = Date.now() }, 1000) : undefined
+  }, { immediate: true })
 
   function notify(text: string, kind: 'error' | 'success' = 'success'): void {
     clearTimeout(toastTimer)
@@ -132,7 +138,7 @@ export function useWick() {
   onUnmounted(() => {
     destroyed = true
     stopListening?.()
-    clearInterval(clock)
+    window.clearInterval(clock)
     clearTimeout(toastTimer)
   })
 

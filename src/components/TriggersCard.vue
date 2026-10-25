@@ -24,7 +24,7 @@ const conditions = computed(() => ([
   { kind: 'power', name: 'Power adapter', label: 'On power' },
   { kind: 'display', name: 'External display', label: 'External display connected' },
   { kind: 'schedule', name: 'Schedule', label: 'Schedule' },
-] as const).filter(option => option.kind === 'schedule' || !props.triggers.some(trigger => trigger.kind === option.kind)))
+] as const).filter(option => !(isWindows && option.kind === 'display')).filter(option => option.kind === 'schedule' || !props.triggers.some(trigger => trigger.kind === option.kind)))
 const days = ref<number[]>([0, 1, 2, 3, 4])
 const start = ref('09:00')
 const end = ref('18:00')
