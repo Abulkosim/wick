@@ -2,7 +2,7 @@
 
 Short version: [README → Install](../README.md#install). Downloads: [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
 
-Wick is free and open source. Builds are not signed with an Apple Developer ID or a Windows publisher certificate, so macOS and Windows warn on first launch. Updates are signed separately and verified in the app. Homebrew and winget are not available yet.
+Wick is free and open source. Builds are not signed with an Apple Developer ID or a Windows publisher certificate, so macOS and Windows warn on first launch. Updates are signed separately and verified in the app. winget is not available yet.
 
 | Platform | File |
 | --- | --- |
@@ -34,6 +34,14 @@ xattr -d com.apple.quarantine /Applications/Wick.app
 This removes the download flag macOS uses to trigger the check. Use it only for a file you downloaded from this repository's releases and [verified](#verify-a-download).
 
 Wick asks for no permissions. It has no Dock icon or app window; look for the candle in the menu bar. If the menu bar is full, the icon may be hidden behind the notch or by a menu bar manager.
+
+### Homebrew
+
+```sh
+brew install --cask abulkosim/tap/wick
+```
+
+The cask installs the same DMG from GitHub Releases and links the `wick` command. The first launch still needs **Open Anyway** (steps 3–7 above); `wick status` and the other commands work after that. Wick updates itself, so `brew upgrade` leaves it alone. `brew uninstall --cask wick` removes it; add `--zap` to also delete settings and history.
 
 ## Windows
 
@@ -78,7 +86,7 @@ Update checks send nothing about you. Wick has no telemetry. See [PRIVACY.md](..
 
 First turn off **Launch at login** in Wick's Settings, then right-click the candle and choose **Quit Wick**.
 
-**macOS.** Delete `Wick.app` from Applications. To remove settings and triggers, delete:
+**macOS.** Delete `Wick.app` from Applications (or `brew uninstall --cask --zap wick`). To remove settings, triggers and history, delete:
 
 ```
 ~/Library/Application Support/com.abulkosim.wick/
@@ -86,6 +94,6 @@ First turn off **Launch at login** in Wick's Settings, then right-click the cand
 
 If Launch at login was left on, also delete `~/Library/LaunchAgents/Wick.plist`.
 
-**Windows.** Open **Settings → Apps → Installed apps**, choose **Wick → Uninstall**. To remove settings and triggers, delete `%APPDATA%\com.abulkosim.wick\`.
+**Windows.** Open **Settings → Apps → Installed apps**, choose **Wick → Uninstall**. To remove settings, triggers and history, delete `%APPDATA%\com.abulkosim.wick\`.
 
 Quitting releases Wick's power assertion at once; Wick never changes `pmset` or other system settings, so there is nothing to restore.

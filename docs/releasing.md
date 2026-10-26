@@ -49,6 +49,14 @@ Actions are pinned to commit SHAs. Builds have read-only repository access; only
 
 The workflow refuses to replace assets on a published release. Never edit a published release's files or reuse a version; ship a new patch.
 
+## Homebrew
+
+`packaging/homebrew/Casks/wick.rb` is the cask; [Abulkosim/homebrew-tap](https://github.com/Abulkosim/homebrew-tap) serves it as `abulkosim/tap/wick`. Publishing a release runs `.github/workflows/homebrew.yml`, which reads the DMG checksum from the release's `SHA256SUMS.txt`, rewrites `version` and `sha256` with `packaging/homebrew/update-cask.mjs`, and pushes to the tap. Drafts and prereleases are refused, since their assets are not public.
+
+The workflow pushes with a write deploy key on the tap only (secret `HOMEBREW_TAP_DEPLOY_KEY`), gated by the variable `HOMEBREW_TAP_ENABLED=true`. To rotate it, delete the deploy key in the tap's settings, add a new one with write access, and replace the secret. Re-run for a tag with `gh workflow run homebrew.yml -f tag=vX.Y.Z`.
+
+After it runs, check with `brew update && brew livecheck --cask abulkosim/tap/wick` and `brew audit --cask --online abulkosim/tap/wick`. Change stanzas in `packaging/` first, then copy the cask to the tap; `brew style --cask` must be clean.
+
 ## Updates
 
 Tauri updater signatures are free. They authenticate downloads against the public key embedded in Wick; they do not replace Apple notarization.

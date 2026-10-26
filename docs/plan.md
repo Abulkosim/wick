@@ -113,9 +113,19 @@ Mac features first, Windows last, then the release. Presets dropped for now: the
 - [x] **4.7 Release v0.2.0.** Changelog, screenshots, draft, checksums, updater test from the installed v0.1.0. 👤 owner says "publish".
   Done 2026-10-23: published on the owner's "publish"; owner's Mac updated from v0.1.0 through the public updater path. Evidence in docs/verification.md.
 
+## Phase 5 — v0.4.0 ⛳
+
+- [x] **5.1 History.** Count the time Wick holds an assertion, per local day; "Awake today" card with seven day bars; Settings → History (off switch, Clear). Local `history.json`, 30 days. `wick status` gains `awakeTodayMinutes`.
+  Verify: pure tests for midnight split, pruning, damaged file, sleep excluded; runtime save/load test; e2e card, clear, off; real app writes `history.json` while awake.
+  Done 2026-10-26: wall time capped by the monotonic clock (stops during Mac sleep; Windows treats a >2 min tick gap as sleep). Saved at most once a minute while awake, on every stop and on quit. Card hidden until there is something to show. Live check in the release notes of 5.3.
+- [x] **5.2 Homebrew tap.** `Abulkosim/homebrew-tap` with `Casks/wick.rb`; `homebrew.yml` bumps it when a release is published (deploy key, no PAT).
+  Verify: `brew style`, `brew audit --online --strict`, `brew livecheck`, real install into a scratch appdir with `wick status` via the linked binary, uninstall; workflow bumps the tap on the v0.4.0 publish.
+  Done 2026-10-26: tap seeded with 0.3.0; style clean, audit passed, livecheck 0.3.0; install + `wick status` + uninstall passed (quarantined binary is killed until Open Anyway, now in caveats). Workflow check pending the v0.4.0 publish.
+- [ ] **5.3 Release v0.4.0.** Changelog, draft, checksums, updater test, publish, tap bump, owner's Mac updated.
+
 ## Later / maybe
 
-- History ("Awake 3h 12m today"), per-trigger notifications, Homebrew tap (gated, Margin `packaging/`).
+- Per-trigger notifications, winget (Margin `packaging/winget`).
 
 ## Not doing
 

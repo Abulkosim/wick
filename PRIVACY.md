@@ -22,6 +22,7 @@ All on your Mac, never sent anywhere:
 ## What Wick writes
 
 - `~/Library/Application Support/com.abulkosim.wick/settings.json` (`%APPDATA%\com.abulkosim.wick\` on Windows): your settings, triggers (app names and paths, command names) and the time of the last update check. Readable by your user only (0600). A damaged file is kept as `settings.json.bak-<time>` before any reset.
+- `~/Library/Application Support/com.abulkosim.wick/history.json`: minutes Wick kept the Mac awake on each of the last 30 days, nothing else. Off and clearable in Settings → History. A damaged file is set aside as `history.json.bak-<time>`.
 - `~/Library/Application Support/com.abulkosim.wick/status.json`: the current session, for `wick status`. Rewritten on every change.
 - `~/Library/LaunchAgents/Wick.plist`, only if you turn on **Launch at login**.
 - A sleep assertion named `Wick: …` while it keeps the Mac awake. macOS releases it when Wick quits or crashes.
