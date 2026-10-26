@@ -2,6 +2,7 @@ pub mod assertion;
 pub mod boot;
 pub mod candle;
 pub mod display;
+pub mod history;
 pub mod lid;
 pub mod lock;
 pub mod others;

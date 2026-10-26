@@ -5,7 +5,7 @@ import { appStateSchema, defaultSettings, initialState, runningAppSchema, type A
 import { start } from './session.ts'
 import { stopReason } from './power.ts'
 
-type Command = 'start_session' | 'stop_session' | 'extend_session' | 'set_display' | 'save_settings' | 'reset_store' | 'save_triggers' | 'resume_triggers'
+type Command = 'start_session' | 'stop_session' | 'extend_session' | 'set_display' | 'save_settings' | 'reset_store' | 'save_triggers' | 'resume_triggers' | 'clear_history'
 
 export function useWick() {
   const query = new URLSearchParams(window.location.search)
@@ -113,6 +113,14 @@ export function useWick() {
     return reset
   }
 
+  async function clearHistory(): Promise<boolean> {
+    const cleared = await perform('clear_history', undefined, () => {
+      state.value.history = state.value.history.map(day => ({ ...day, minutes: 0 }))
+    })
+    if (cleared) notify('History cleared.')
+    return cleared
+  }
+
   async function hideWindow(): Promise<void> {
     if (!desktop || demo) return
     await window.__TAURI__!.core.invoke('hide_window').catch(() => {})
@@ -142,5 +150,5 @@ export function useWick() {
     clearTimeout(toastTimer)
   })
 
-  return { state, loading, pending, message, now, demo, desktop, startSession, stopSession, extendSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, hideWindow, notify }
+  return { state, loading, pending, message, now, demo, desktop, startSession, stopSession, extendSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, clearHistory, hideWindow, notify }
 }

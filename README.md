@@ -30,6 +30,12 @@ Download **v0.3.0** from [GitHub Releases](https://github.com/Abulkosim/wick/rel
 | macOS 12+ · Apple Silicon and Intel | [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.3.0/Wick_0.3.0_universal.dmg) |
 | Windows 10/11 x64 | [Setup EXE](https://github.com/Abulkosim/wick/releases/download/v0.3.0/Wick_0.3.0_x64-setup.exe) · [MSI](https://github.com/Abulkosim/wick/releases/download/v0.3.0/Wick_0.3.0_x64_en-US.msi) |
 
+**Homebrew** (macOS):
+
+```sh
+brew install --cask abulkosim/tap/wick
+```
+
 Builds are not signed with an Apple Developer ID or a Windows publisher certificate, so the first launch shows a warning.
 
 **macOS.** Drag Wick to Applications and open it. When **“Wick” Not Opened** appears, click **Done**, then **System Settings → Privacy & Security → Open Anyway**. Wick lives in the menu bar, with no Dock icon.
@@ -54,6 +60,7 @@ Updates are signed and verified in the app. Wick checks once a day and installs 
 | **Screen lock** | Optionally pauses while the screen is locked and resumes on unlock (Mac). |
 | **Lid** | Warns "Closing the lid will sleep your Mac" when that is true, and stays quiet in clamshell mode. |
 | **Shortcut** | A global shortcut you record in Settings starts or stops from any app. |
+| **History** | "Awake today 3h 12m" with a bar per day for the last week. Kept on this computer for 30 days; turn it off or clear it in Settings → History. |
 | **Notifications** | "Session ended. Your Mac can sleep again." Only when Wick stops on its own. |
 | **Automation** | `wick start`, `wick start 45`, `wick start 16:30`, `wick stop`, `wick toggle`, and `wick status` (JSON). Links: `wick://start?minutes=45`, `wick://start?until=16:30`, `wick://stop`, `wick://toggle`. |
 
@@ -82,14 +89,14 @@ Wick has no closed-lid mode on purpose. Keeping a closed Mac awake without an ex
 
 ## Shortcuts, Raycast and scripts
 
-The app's binary doubles as a command line tool:
+The app's binary doubles as a command line tool. Homebrew links it as `wick`; otherwise:
 
 ```sh
 alias wick=/Applications/Wick.app/Contents/MacOS/wick
 wick start 45          # 45 minutes
 wick start 16:30       # until 16:30
 wick toggle
-wick status            # {"running":true,"awake":true,"session":{"mode":"for",…},"endsAt":…}
+wick status            # {"running":true,"awake":true,"session":{"mode":"for",…},"endsAt":…,"awakeTodayMinutes":192}
 ```
 
 In Shortcuts, use **Open URLs** with `wick://start?minutes=60`, `wick://start?until=18:00`, `wick://stop` or `wick://toggle`. Raycast and Alfred can open the same links.
@@ -100,7 +107,7 @@ Wick holds a standard power assertion, `PreventUserIdleSystemSleep`, or `Prevent
 
 ## Privacy
 
-No account, no telemetry, no analytics. The only network request is the daily update check against GitHub Releases, which sends nothing about you. Settings stay in `~/Library/Application Support/com.abulkosim.wick/`. Details: [PRIVACY.md](PRIVACY.md). Vulnerabilities: [SECURITY.md](SECURITY.md).
+No account, no telemetry, no analytics. The only network request is the daily update check against GitHub Releases, which sends nothing about you. Settings and history stay in `~/Library/Application Support/com.abulkosim.wick/`. Details: [PRIVACY.md](PRIVACY.md). Vulnerabilities: [SECURITY.md](SECURITY.md).
 
 ## Develop
 

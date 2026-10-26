@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { version } from '../../package.json'
-import type { Power, Settings } from '../lib/model'
+import type { Day, Power, Settings } from '../lib/model'
+import { hasHistory, minutesText, totalMinutes } from '../lib/history'
 import { hasBattery } from '../lib/power'
 import { isWindows } from '../lib/platform'
 import { shortDuration } from '../lib/session'
@@ -12,7 +13,7 @@ import ShortcutField from './ShortcutField.vue'
 import UpdateSettings from './settings/UpdateSettings.vue'
 import type { UpdateState } from '../lib/updater'
 
-const props = defineProps<{ updateState: UpdateState; updateBusy: boolean; demo: boolean; settings: Settings; power: Power; recovered: string[]; recovery: string | null; busy: boolean; save: (settings: Settings) => Promise<boolean>; reset: () => Promise<boolean> }>()
+const props = defineProps<{ updateState: UpdateState; updateBusy: boolean; demo: boolean; settings: Settings; power: Power; recovered: string[]; recovery: string | null; busy: boolean; save: (settings: Settings) => Promise<boolean>; reset: () => Promise<boolean>; clearHistory: () => Promise<boolean>; history: Day[] }>()
 defineEmits<{ back: []; checkUpdate: []; installUpdate: [] }>()
 
 const themes: { id: Settings['theme']; label: string; icon: 'system' | 'sun' | 'moon' }[] = [
@@ -79,6 +80,11 @@ function setClick(value: string): void {
       <section class="settings-section">
         <h2>Notifications</h2>
         <div class="setting-row"><div><span id="notify-end-label" class="setting-label">When a session ends</span><p>Also when the battery stops it.</p></div><AppSwitch :model-value="settings.notifyOnEnd" aria-labelledby="notify-end-label" :disabled="busy" @update:model-value="patch({ notifyOnEnd: $event })"/></div>
+      </section>
+      <section class="settings-section">
+        <h2>History</h2>
+        <div class="setting-row"><div><span id="history-label" class="setting-label">Keep a history</span><p>Per day, on this device only, for 30 days.</p></div><AppSwitch :model-value="settings.keepHistory" aria-labelledby="history-label" :disabled="busy" @update:model-value="patch({ keepHistory: $event })"/></div>
+        <div class="setting-row"><div><span class="setting-label">Last 7 days</span><p>{{ hasHistory(history) ? `${minutesText(totalMinutes(history))} awake` : 'Nothing recorded yet.' }}</p></div><button class="button button-small" :disabled="busy || !hasHistory(history)" @click="clearHistory">Clear history</button></div>
       </section>
       <section class="settings-section">
         <h2>Appearance</h2>

@@ -1,7 +1,7 @@
 import type { UpdateState } from './updater.ts'
-import { initialState, type AppState, type RunningApp, type Trigger } from './model.ts'
+import { initialState, type AppState, type Day, type RunningApp, type Trigger } from './model.ts'
 
-export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off', 'clamshell', 'update-available', 'locked', 'conditions'] as const
+export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off', 'clamshell', 'update-available', 'locked', 'conditions', 'history'] as const
 
 export const demoApps: RunningApp[] = [
   { name: 'Final Cut Pro', path: '/Applications/Final Cut Pro.app' },
@@ -15,11 +15,22 @@ export const demoTriggers = (): Trigger[] => [
   { id: 'demo-ffmpeg', kind: 'process', name: 'ffmpeg', enabled: false },
 ]
 
+/** The last seven days ending today, oldest first. */
+export function demoHistory(minutes: number[], now = Date.now()): Day[] {
+  return minutes.map((value, index) => {
+    const date = new Date(now)
+    date.setDate(date.getDate() - (minutes.length - 1 - index))
+    const pad = (part: number) => String(part).padStart(2, '0')
+    return { date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`, minutes: value }
+  })
+}
+
 export function createDemoState(scenario: string | null, now = Date.now()): AppState {
   const state = initialState()
   state.power = { onBattery: true, percent: 82, lowPowerMode: false }
   state.lidSleeps = true
   const minutes = (value: number): number => value * 60_000
+  if (scenario && !['off', 'recovery', 'error', 'battery'].includes(scenario)) state.history = demoHistory([95, 210, 0, 160, 312, 48, 192], now)
   switch (scenario) {
     case 'timed':
       state.session = { mode: 'for', startedAt: now - minutes(18), endsAt: now + minutes(42) }
@@ -90,6 +101,9 @@ export function createDemoState(scenario: string | null, now = Date.now()): AppS
       state.power = { onBattery: false, percent: 100, lowPowerMode: false }
       state.running = ['demo-power']
       state.heldBy = 'on power'
+      break
+    case 'history':
+      state.session = { mode: 'for', startedAt: now - minutes(25), endsAt: now + minutes(95) }
       break
     case 'error':
       state.error = 'macOS refused the sleep assertion (IOKit error 0xe00002c2).'

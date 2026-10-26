@@ -76,6 +76,7 @@ pub fn run() {
             commands::reset_store,
             commands::save_triggers,
             commands::resume_triggers,
+            commands::clear_history,
             commands::running_apps,
             updates::get_update_status,
             updates::check_for_update,
@@ -138,6 +139,7 @@ pub fn run() {
             tauri::RunEvent::Reopen { .. } => popover::show(app, false),
             tauri::RunEvent::Exit => {
                 let runtime = app.state::<Arc<Runtime>>();
+                runtime.flush_history();
                 if !runtime.keeps_session_on_exit() {
                     let _ = runtime.stop(app);
                 }

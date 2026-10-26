@@ -23,6 +23,7 @@ export const settingsSchema = z.object({
   autoCheckUpdates: z.boolean(),
   showTimeLeft: z.boolean(),
   pauseWhenLocked: z.boolean(),
+  keepHistory: z.boolean(),
 })
 
 export const powerSchema = z.object({
@@ -56,6 +57,11 @@ export const otherSchema = z.object({
   parent: z.string().max(256).nullable(),
 })
 
+export const daySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  minutes: z.number().int().min(0).max(25 * 60),
+})
+
 export const runningAppSchema = z.object({ name: z.string(), path: z.string() })
 
 export const appStateSchema = z.object({
@@ -74,6 +80,7 @@ export const appStateSchema = z.object({
   others: z.array(otherSchema),
   recovery: z.string().nullable(),
   recovered: z.array(z.string()),
+  history: z.array(daySchema).max(31),
 })
 
 export const startRequestSchema = z.discriminatedUnion('mode', [
@@ -89,9 +96,10 @@ export type Trigger = z.infer<typeof triggerSchema>
 export type Schedule = z.infer<typeof scheduleSchema>
 export type RunningApp = z.infer<typeof runningAppSchema>
 export type Other = z.infer<typeof otherSchema>
+export type Day = z.infer<typeof daySchema>
 export type AppState = z.infer<typeof appStateSchema>
 export type StartRequest = z.infer<typeof startRequestSchema>
 
-export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open', launchAtLogin: false, shortcut: null, batteryGuard: true, batteryThreshold: 20, stopInLowPowerMode: false, notifyOnEnd: true, autoCheckUpdates: true, showTimeLeft: false, pauseWhenLocked: false }
+export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open', launchAtLogin: false, shortcut: null, batteryGuard: true, batteryThreshold: 20, stopInLowPowerMode: false, notifyOnEnd: true, autoCheckUpdates: true, showTimeLeft: false, pauseWhenLocked: false, keepHistory: true }
 
-export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings }, error: null, notice: null, power: { onBattery: false, percent: null, lowPowerMode: false }, lidSleeps: null, pausedByLock: false, triggers: [], running: [], heldBy: null, pausedBy: null, others: [], recovery: null, recovered: [] })
+export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings }, error: null, notice: null, power: { onBattery: false, percent: null, lowPowerMode: false }, lidSleeps: null, pausedByLock: false, triggers: [], running: [], heldBy: null, pausedBy: null, others: [], recovery: null, recovered: [], history: [] })

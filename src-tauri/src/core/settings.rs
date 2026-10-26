@@ -37,6 +37,8 @@ pub struct Settings {
     pub auto_check_updates: bool,
     pub show_time_left: bool,
     pub pause_when_locked: bool,
+    /// Count the time Wick keeps the computer awake, per day, on this computer only.
+    pub keep_history: bool,
 }
 
 pub const BATTERY_THRESHOLDS: std::ops::RangeInclusive<u8> = 5..=80;
@@ -57,6 +59,7 @@ impl Default for Settings {
             auto_check_updates: true,
             show_time_left: false,
             pause_when_locked: false,
+            keep_history: true,
         }
     }
 }
@@ -190,6 +193,13 @@ impl Settings {
                 "pauseWhenLocked",
                 defaults.pause_when_locked,
                 "Pause while locked",
+                notes,
+            ),
+            keep_history: field(
+                &map,
+                "keepHistory",
+                defaults.keep_history,
+                "Keep a history",
                 notes,
             ),
         };

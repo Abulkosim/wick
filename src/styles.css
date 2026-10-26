@@ -1197,3 +1197,73 @@ button:disabled:hover {
 :root[data-platform=windows] .popover-arrow {
   display: none;
 }
+.history-card {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.history-summary .card-label {
+  margin-bottom: 4px;
+}
+.history-today {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -.01em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.history-week {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.history-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.history-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.history-track {
+  position: relative;
+  display: block;
+  width: 8px;
+  height: 38px;
+  border-radius: 4px;
+  background: var(--track);
+  overflow: hidden;
+}
+.history-bar {
+  position: absolute;
+  inset: auto 0 0;
+  border-radius: 4px;
+  background: color-mix(in srgb,var(--accent),transparent 45%);
+  transition: height .25s ease;
+}
+.history-day.today .history-bar {
+  background: var(--accent);
+}
+.history-initial {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--tertiary);
+}
+.history-day.today .history-initial {
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) {
+  .history-bar {
+    transition: none;
+  }
+}
