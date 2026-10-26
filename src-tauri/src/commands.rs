@@ -41,6 +41,11 @@ pub fn stop_session(app: AppHandle, runtime: State<'_, Arc<Runtime>>) -> Result<
 }
 
 #[tauri::command]
+pub fn clear_history(app: AppHandle, runtime: State<'_, Arc<Runtime>>) -> Result<AppState, String> {
+    runtime.clear_history(&app)
+}
+
+#[tauri::command]
 pub fn set_display(
     app: AppHandle,
     runtime: State<'_, Arc<Runtime>>,

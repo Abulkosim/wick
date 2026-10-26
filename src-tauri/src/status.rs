@@ -16,6 +16,7 @@ struct Status<'a> {
     paused_by: Option<&'a str>,
     paused_while_locked: bool,
     keep_display_on: bool,
+    awake_today_minutes: u32,
     boot: Option<i64>,
     /// Set only around a restart Wick starts itself, so only that restart resumes the session.
     resume: bool,
@@ -32,6 +33,7 @@ pub fn snapshot_with(state: &AppState, pid: u32, resume: bool) -> Value {
         paused_by: state.paused_by.as_deref(),
         paused_while_locked: state.paused_by_lock,
         keep_display_on: state.settings.keep_display_on,
+        awake_today_minutes: state.history.last().map_or(0, |day| day.minutes),
         boot: crate::core::boot::boot_time(),
         resume,
     })

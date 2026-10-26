@@ -91,6 +91,11 @@ pub fn load(path: &Path) -> Result<StoredState, String> {
 pub fn save(path: &Path, state: &StoredState) -> Result<(), String> {
     state.settings.validate()?;
     triggers::validate_all(&state.triggers)?;
+    write_json(path, state)
+}
+
+/// Writes owner-only JSON and swaps it in atomically.
+pub(crate) fn write_json(path: &Path, value: &impl Serialize) -> Result<(), String> {
     let parent = path.parent().ok_or("Invalid settings location.")?;
     fs::create_dir_all(parent).map_err(|_| "Wick could not create its settings folder.")?;
     let mut file =
@@ -102,7 +107,7 @@ pub fn save(path: &Path, state: &StoredState) -> Result<(), String> {
             .set_permissions(fs::Permissions::from_mode(0o600))
             .map_err(|_| "Wick could not protect its settings file.")?;
     }
-    serde_json::to_writer_pretty(&mut file, state).map_err(|_| "Could not encode settings.")?;
+    serde_json::to_writer_pretty(&mut file, value).map_err(|_| "Could not encode settings.")?;
     file.write_all(b"\n")
         .map_err(|_| "Could not write settings.")?;
     file.as_file()
@@ -134,7 +139,7 @@ pub fn reset(path: &Path, state: &StoredState) -> Result<Option<PathBuf>, String
     Ok(target)
 }
 
-fn backup_path(path: &Path) -> Result<PathBuf, String> {
+pub(crate) fn backup_path(path: &Path) -> Result<PathBuf, String> {
     let name = path
         .file_name()
         .and_then(|name| name.to_str())

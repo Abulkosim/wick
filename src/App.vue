@@ -9,6 +9,8 @@ import DurationPicker from './components/DurationPicker.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import TriggersCard from './components/TriggersCard.vue'
 import OthersCard from './components/OthersCard.vue'
+import HistoryCard from './components/HistoryCard.vue'
+import { hasHistory } from './lib/history'
 import { othersSummary } from './lib/others'
 import StatusCandle from './components/StatusCandle.vue'
 import { useWick } from './lib/wick'
@@ -20,7 +22,7 @@ import { footerNote } from './lib/power'
 import { isWindows } from './lib/platform'
 import { isTyping, keyAction } from './lib/keys'
 
-const { state, pending, message, now, demo, desktop, startSession, stopSession, extendSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, hideWindow } = useWick()
+const { state, pending, message, now, demo, desktop, startSession, stopSession, extendSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, clearHistory, hideWindow } = useWick()
 const query = new URLSearchParams(location.search)
 const updater = useUpdater({ demo, desktop, initial: demo ? createDemoUpdateState(query.get('state')) : undefined })
 const placementSchema = z.object({ revision: z.number().int().nonnegative(), arrowX: z.number().finite().nullable() })
@@ -186,6 +188,7 @@ onUnmounted(() => {
               <AppSwitch id="keep-display" :model-value="state.settings.keepDisplayOn" :disabled="busy" @update:model-value="setDisplay"/>
             </div>
           </section>
+          <HistoryCard v-if="state.settings.keepHistory && hasHistory(state.history)" :days="state.history"/>
         </main>
         <footer class="app-footer">
           <span class="footer-note"><template v-if="footer"><AppIcon :name="footer.icon" :size="15"/><span class="footer-text">{{ footer.text }}</span></template></span>
@@ -195,7 +198,7 @@ onUnmounted(() => {
           </div>
         </footer>
         </template>
-        <SettingsPanel v-else :update-state="updater.state.value" :update-busy="updater.busy.value" :demo="demo" :settings="state.settings" :power="state.power" :recovered="state.recovered" :recovery="state.recovery" :busy="busy" :save="saveSettings" :reset="resetStore" @back="page = 'overview'" @check-update="updater.check" @install-update="updater.install"/>
+        <SettingsPanel v-else :update-state="updater.state.value" :update-busy="updater.busy.value" :demo="demo" :settings="state.settings" :power="state.power" :recovered="state.recovered" :recovery="state.recovery" :busy="busy" :save="saveSettings" :reset="resetStore" :clear-history="clearHistory" :history="state.history" @back="page = 'overview'" @check-update="updater.check" @install-update="updater.install"/>
         <div v-if="demo" class="preview-ribbon"><span class="preview-dot"/>Interface preview<span>Sample data</span></div>
         <Transition name="toast"><div v-if="message" class="toast-message" :class="{ 'toast-error': message.kind === 'error' }" :role="message.kind === 'error' ? 'alert' : 'status'"><AppIcon :name="message.kind === 'error' ? 'alert' : 'check'" :size="15"/><span>{{ message.text }}</span><button class="icon-button" aria-label="Dismiss message" @click="message = null"><AppIcon name="close" :size="13"/></button></div></Transition>
       </div>

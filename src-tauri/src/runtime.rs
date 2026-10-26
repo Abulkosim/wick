@@ -1,7 +1,9 @@
 use crate::{
     core::{
         assertion::{self, Assertion, Kind},
-        display, lid, lock,
+        display,
+        history::{self, Day, History, Tracker},
+        lid, lock,
         others::{self, Other},
         power::{self, Power},
         processes,
@@ -23,6 +25,7 @@ use tokio::sync::Notify;
 
 const TICK: Duration = Duration::from_secs(5);
 const IDLE_TICK: Duration = Duration::from_secs(60);
+const SAVE_HISTORY_EVERY_MS: i64 = 60_000;
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -50,6 +53,8 @@ pub struct AppState {
     /// Set when the settings file can't be read. Saving stays off until the owner resets it.
     pub recovery: Option<String>,
     pub recovered: Vec<String>,
+    /// Minutes Wick kept the Mac awake on each of the last seven days, today last.
+    pub history: Vec<Day>,
 }
 
 #[derive(Default)]
@@ -63,6 +68,11 @@ struct Inner {
     /// The trigger holding the Mac awake right now.
     held_id: Option<String>,
     last_update_check_at: Option<String>,
+    history: History,
+    history_path: Option<PathBuf>,
+    tracker: Tracker,
+    history_saved_at: i64,
+    history_dirty: bool,
 }
 
 #[derive(Default)]
@@ -156,6 +166,30 @@ impl Inner {
         self.view.running = active.iter().map(|trigger| trigger.id.clone()).collect();
     }
 
+    /// Counts the time an assertion is held, saving at most once a minute while it is.
+    /// `closing` ends the count as if it were released.
+    fn track(&mut self, now: i64, closing: bool) {
+        let holding = !closing && self.assertion.is_some() && self.view.settings.keep_history;
+        if let Some((from, to)) = self.tracker.advance(holding, now, history::monotonic_ms()) {
+            self.history.add(from, to, &chrono::Local);
+            self.history_dirty = true;
+        }
+        let today = history::local_day(now);
+        if self.history_dirty && (!holding || now - self.history_saved_at >= SAVE_HISTORY_EVERY_MS)
+        {
+            self.history.prune(today);
+            let saved = self
+                .history_path
+                .as_ref()
+                .is_none_or(|path| history::save(path, &self.history).is_ok());
+            if saved {
+                self.history_dirty = false;
+                self.history_saved_at = now;
+            }
+        }
+        self.view.history = self.history.recent(today, history::SHOWN_DAYS);
+    }
+
     fn changed(&mut self) {
         self.view.revision = self.view.revision.saturating_add(1);
     }
@@ -188,6 +222,9 @@ impl Runtime {
         if !stored.recovered.is_empty() {
             let _ = store::backup(&store_path);
         }
+        let history_path = store_path.with_file_name(history::FILE);
+        let history = history::load(&history_path);
+        let today = history::local_day(now_ms());
         Self {
             inner: Mutex::new(Inner {
                 view: AppState {
@@ -197,9 +234,12 @@ impl Runtime {
                     triggers: stored.triggers,
                     recovery,
                     recovered: stored.recovered,
+                    history: history.recent(today, history::SHOWN_DAYS),
                     ..AppState::default()
                 },
                 store_path: Some(store_path),
+                history,
+                history_path: Some(history_path),
                 last_update_check_at: stored.last_update_check_at,
                 ..Inner::default()
             }),
@@ -245,6 +285,7 @@ impl Runtime {
             }
         }
         inner.view.error = None;
+        inner.track(now, false);
         let changed = inner.view != previous;
         if changed {
             inner.changed();
@@ -302,6 +343,26 @@ impl Runtime {
 
     pub fn keeps_session_on_exit(&self) -> bool {
         self.keep_on_exit.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Saves the time counted so far, for a quit or restart that keeps the session.
+    pub fn flush_history(&self) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.track(now_ms(), true);
+        }
+    }
+
+    pub fn clear_history(&self, app: &AppHandle) -> Result<AppState, String> {
+        self.update(app, |inner, now| {
+            if let Some(path) = &inner.history_path {
+                history::remove(path)?;
+            }
+            let holding = inner.assertion.is_some();
+            inner.tracker.advance(holding, now, history::monotonic_ms());
+            inner.history = History::default();
+            inner.history_dirty = false;
+            Ok(())
+        })
     }
 
     pub fn extend(&self, app: &AppHandle, minutes: u32) -> Result<AppState, String> {
@@ -709,6 +770,30 @@ mod tests {
         inner.view.settings.keep_display_on = true;
         assert!(inner.persist().unwrap_err().contains("Reset settings"));
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "{ damaged");
+    }
+
+    #[test]
+    fn history_saves_when_counting_stops_and_loads_on_the_next_launch() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.json");
+        let noon = chrono::Local::now()
+            .date_naive()
+            .and_hms_opt(12, 0, 0)
+            .and_then(|time| time.and_local_timezone(chrono::Local).earliest())
+            .unwrap()
+            .timestamp_millis();
+        {
+            let runtime = Runtime::new(path.clone());
+            let mut inner = runtime.inner.lock().unwrap();
+            inner.history.add(noon - 120_000, noon, &chrono::Local);
+            inner.history_dirty = true;
+            inner.track(noon, true);
+            assert!(!inner.history_dirty);
+            assert_eq!(inner.view.history.len(), 7);
+            assert_eq!(inner.view.history[6].minutes, 2);
+        }
+        let today = Runtime::new(path).state().history;
+        assert_eq!(today.last().unwrap().minutes, 2);
     }
 
     #[test]
