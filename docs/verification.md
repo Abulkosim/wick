@@ -2,6 +2,29 @@
 
 What was checked for each release, newest first.
 
+## v0.4.0 — 2026-10-26
+
+Tag `v0.4.0`, CI run [40265194461](https://github.com/Abulkosim/wick/actions/runs/40265194461): frontend, macOS universal, Windows x64 and the draft release passed. PR [#4](https://github.com/Abulkosim/wick/pull/4) checks passed before the merge; `main` run [40264596436](https://github.com/Abulkosim/wick/actions/runs/40264596436) passed before tagging.
+
+- Local suite (`scripts/check-all.sh`): all passed, including new tests for history (midnight split, 30-day prune, damaged file set aside, sleep excluded by the monotonic clock, save and reload), the history card, Settings → History and the cask updater.
+- Live on a local release build: `wick start 2` wrote `history.json` with 60 039 ms after a minute (save while awake) and 119 996 ms once the session ended; `wick status` showed `awakeTodayMinutes`; no assertion left after quit.
+- Draft: 8/8 checksums OK; provenance for DMG, archive, both Windows installers, `latest.json`, `SHA256SUMS.txt`; SBOM attestation on the DMG; `latest.json` 0.4.0 with all five platform entries. DMG app universal, codesign valid, 0.4.0.
+- `updater_install` against the draft archive: tampered and wrong-version rejected; 0.4.0 universal installed, codesign valid.
+- Published 2026-10-26 03:53 UTC, marked latest. Homebrew workflow run [40266282448](https://github.com/Abulkosim/wick/actions/runs/40266282448) pushed `wick 0.4.0` to the tap with the DMG checksum; `brew livecheck` 0.4.0, `brew audit --online` passed. Before release, a real `brew install --cask` (0.3.0) into a scratch appdir linked `wick`, ran `wick status` once quarantine was cleared, and uninstalled cleanly.
+- Owner's Mac updated 0.3.0 → 0.4.0 from the live endpoint (`tests/public_update.rs`); its indefinite session restarted with display on; `wick status` answers with `awakeTodayMinutes`.
+- Pending 👤: the history card on screen after a day of use; Windows VM.
+
+Checksums:
+
+    36058d8a8b41779ef8d3cac66c8b37fb5e39383583f6cbcca09550545b9e46a6  latest.json
+    569549a2c8ba7208bde4b147e1f16d694d7fe06fda9da18771aa72a9ecb2b828  Wick_0.4.0_universal.dmg
+    f961906c05e52a8f54e5c2856119c062ee0ba6273ace38c5eff07399295f2de3  Wick_0.4.0_x64_en-US.msi
+    0b37e383bb4b406bb7845d2a4861e8a1293775c4b8687525a9111f94e659b439  Wick_0.4.0_x64_en-US.msi.sig
+    423500852dcb87b2e2f31199384f73f2080f46c503624e1872747bcb469b4eab  Wick_0.4.0_x64-setup.exe
+    41521d1f552d13e41d3c41904290ece394d30efc35c34223ea986950619ebcf3  Wick_0.4.0_x64-setup.exe.sig
+    e118c951ddb68ba24b636fc615ffe196392a59894894560ec448c3ae60e58cce  Wick.app.tar.gz
+    ba2738c0f531f53b524f797b4427383ff70d0654160bf8ea3ed6ec3a8e1ca26f  Wick.app.tar.gz.sig
+
 ## v0.3.0 — 2026-10-25
 
 Tag `v0.3.0`, CI run [40154976385](https://github.com/Abulkosim/wick/actions/runs/40154976385): frontend, macOS universal, Windows x64 and the draft release passed. `main` run [40154543608](https://github.com/Abulkosim/wick/actions/runs/40154543608) passed first.
