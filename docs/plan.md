@@ -124,6 +124,19 @@ Mac features first, Windows last, then the release. Presets dropped for now: the
 - [x] **5.3 Release v0.4.0.** Changelog, draft, checksums, updater test, publish, tap bump, owner's Mac updated.
   Done 2026-10-26: merged through PR #4, published on the owner's go-ahead; the tap bumped itself on publish. Evidence in docs/verification.md.
 
+## Phase 6 — v0.5.0 ⛳
+
+- [x] **6.1 Compact history card, taller popover.** One-row card; popover cap 640 → 720 px (placement still clamps to the work area).
+  Verify: native preview of the three-trigger state fits without scrolling; fit e2e.
+  Done 2026-10-27: the triggers + history state renders at 638 px.
+- [x] **6.2 Network and CPU triggers.** "Network above 1 MB/s" and "CPU above 25%" conditions; busy until quiet for 2 minutes; Stop pauses until quiet.
+  Verify: pure tests for rates, wraps, hysteresis and validation; live CPU load test; live download makes a network trigger busy; e2e add, hold, pause, resume.
+  Done 2026-10-27: macOS hands apps 32-bit, KB-rounded byte counters (netstat, an Apple binary, sees 64-bit), so drops after a 32-bit value count as wraps. Live: a 500 KB/s download made a 100 KB/s trigger busy; spinning every core made a 30% CPU trigger busy. Windows uses GetIfTable2 hardware rows (layout test) and GetSystemTimes; real Windows check 👤.
+- [x] **6.3 Raycast extension.** `raycast/`: Keep Awake (state, today's time, presets, typed minutes or time), Toggle, Keep Awake for, Stop. Talks through `wick://` links and `wick status`.
+  Verify: unit tests for status text and input; `ray build`; `ray lint`; CI builds it.
+  Done 2026-10-27: tests, build and ESLint/Prettier pass. `ray lint`'s author check got HTTP 500 from Raycast's user API, even for known users. 👤 confirm the Raycast username in `raycast/package.json` (`author`), try it with `npm run dev`, then `npm run publish` to open the store PR from your account.
+- [ ] **6.4 Release v0.5.0.**
+
 ## Later / maybe
 
 - Per-trigger notifications, winget (Margin `packaging/winget`).
