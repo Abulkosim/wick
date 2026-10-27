@@ -52,3 +52,6 @@ jobs:
       - name: Audit production dependencies
         continue-on-error: false
         run: pnpm audit --prod --audit-level high
+      - name: Audit the Raycast extension
+        working-directory: raycast
+        run: npm audit --omit=dev --audit-level high
