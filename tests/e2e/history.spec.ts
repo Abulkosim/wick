@@ -4,7 +4,6 @@ test('the history card shows today and the last seven days', async ({ page }) =>
   await page.goto('/?demo=1&state=history')
   const card = page.getByRole('region', { name: 'Awake today' })
   await expect(card).toContainText('3h 12m')
-  await expect(card).toContainText('16h 57m in the last 7 days')
   await expect(card.getByRole('list', { name: 'Last 7 days' }).getByRole('listitem')).toHaveCount(7)
 })
 

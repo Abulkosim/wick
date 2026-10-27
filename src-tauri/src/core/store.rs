@@ -241,6 +241,7 @@ mod tests {
             name: "claude".into(),
             path: None,
             schedule: None,
+            threshold: None,
             enabled: true,
         }];
         save(&path, &state).unwrap();

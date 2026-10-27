@@ -27,10 +27,10 @@ for (const scenario of ['off', 'held', 'others']) {
     await page.goto('/')
     await expect.poll(() => page.evaluate(() => window.__FIT__?.at(-1) ?? 0)).toBeGreaterThan(400)
     const height = await page.evaluate(() => window.__FIT__!.at(-1)!)
-    expect(height).toBeLessThanOrEqual(640)
+    expect(height).toBeLessThanOrEqual(720)
     await page.setViewportSize({ width: 360, height })
     const body = page.locator('.popover-body')
-    if (height < 640) await expect.poll(() => body.evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1)
+    if (height < 720) await expect.poll(() => body.evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1)
     else await expect.poll(() => body.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true)
   })
 }

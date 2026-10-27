@@ -42,10 +42,11 @@ export const scheduleSchema = z.object({
 
 export const triggerSchema = z.object({
   id: z.string().regex(/^[A-Za-z0-9-]{1,64}$/),
-  kind: z.enum(['app', 'process', 'power', 'display', 'schedule']),
+  kind: z.enum(['app', 'process', 'power', 'display', 'schedule', 'network', 'cpu']),
   name: z.string().min(1).max(64),
   path: z.string().max(1024).optional(),
   schedule: scheduleSchema.optional(),
+  threshold: z.number().int().min(1).max(1_000_000).optional(),
   enabled: z.boolean(),
 })
 

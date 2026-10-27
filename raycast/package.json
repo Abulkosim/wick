@@ -1,0 +1,68 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "wick",
+  "title": "Wick",
+  "description": "Start, stop and check Wick, the menu bar app that keeps your Mac awake.",
+  "icon": "extension-icon.png",
+  "author": "abulkosim",
+  "categories": ["System", "Productivity"],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "wick",
+      "title": "Keep Awake",
+      "subtitle": "Wick",
+      "description": "See whether your Mac is kept awake and start or stop a session.",
+      "mode": "view"
+    },
+    {
+      "name": "toggle",
+      "title": "Toggle Keep Awake",
+      "subtitle": "Wick",
+      "description": "Start Wick's default session, or stop whatever keeps your Mac awake.",
+      "mode": "no-view"
+    },
+    {
+      "name": "start",
+      "title": "Keep Awake for",
+      "subtitle": "Wick",
+      "description": "Keep your Mac awake for a number of minutes, until a time, or until you stop it.",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "duration",
+          "placeholder": "45 or 16:30",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "stop",
+      "title": "Stop Keeping Awake",
+      "subtitle": "Wick",
+      "description": "End Wick's session so your Mac can sleep.",
+      "mode": "no-view"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "2.8.2",
+    "@raycast/utils": "2.3.2"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "2.2.0",
+    "@types/node": "22.19.17",
+    "@types/react": "19.0.10",
+    "eslint": "9.39.5",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "test": "node --test src/*.test.ts",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}

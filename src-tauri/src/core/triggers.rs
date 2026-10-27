@@ -18,7 +18,14 @@ pub enum TriggerKind {
     Display,
     /// Inside a weekly time window.
     Schedule,
+    /// Network traffic above a threshold, in KB/s.
+    Network,
+    /// CPU use above a threshold, in percent.
+    Cpu,
 }
+
+pub const NETWORK_THRESHOLDS: std::ops::RangeInclusive<u32> = 10..=1_000_000;
+pub const CPU_THRESHOLDS: std::ops::RangeInclusive<u32> = 1..=100;
 
 /// What a trigger can look at on each tick.
 #[derive(Default)]
@@ -28,6 +35,8 @@ pub struct Context<'a> {
     pub external_display: bool,
     /// Local weekday (0 = Monday) and minutes past midnight.
     pub clock: (u8, u32),
+    /// Ids of activity triggers that saw activity within the last two minutes.
+    pub busy: &'a [String],
 }
 
 /// "Stay awake while <name> is running". Apps match by bundle path, processes by name.
@@ -41,6 +50,9 @@ pub struct Trigger {
     pub path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub schedule: Option<Schedule>,
+    /// KB/s for network, percent for CPU.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub threshold: Option<u32>,
     pub enabled: bool,
 }
 
@@ -68,12 +80,27 @@ impl Trigger {
         if self.schedule.is_some() {
             return Err("Only schedules have days and times.".into());
         }
+        let range = match self.kind {
+            TriggerKind::Network => Some(NETWORK_THRESHOLDS),
+            TriggerKind::Cpu => Some(CPU_THRESHOLDS),
+            _ => None,
+        };
+        match (range, self.threshold) {
+            (Some(range), Some(threshold)) if range.contains(&threshold) => {}
+            (Some(_), _) => return Err("Choose how busy counts as busy.".into()),
+            (None, Some(_)) => return Err("Only activity has a threshold.".into()),
+            (None, None) => {}
+        }
         match (self.kind, self.path.as_deref()) {
             (TriggerKind::Schedule, _) => unreachable!(),
-            (TriggerKind::Power | TriggerKind::Display, None) => Ok(()),
-            (TriggerKind::Power | TriggerKind::Display, Some(_)) => {
-                Err("A condition has no app path.".into())
-            }
+            (
+                TriggerKind::Power | TriggerKind::Display | TriggerKind::Network | TriggerKind::Cpu,
+                None,
+            ) => Ok(()),
+            (
+                TriggerKind::Power | TriggerKind::Display | TriggerKind::Network | TriggerKind::Cpu,
+                Some(_),
+            ) => Err("A condition has no app path.".into()),
             (TriggerKind::App, Some(path))
                 if path.starts_with('/') && path.ends_with(".app") && path.len() <= 1024 =>
             {
@@ -95,6 +122,8 @@ impl Trigger {
                 Some(schedule) => format!("on schedule until {}", schedule.end),
                 None => "on schedule".into(),
             },
+            TriggerKind::Network => "the network is busy".into(),
+            TriggerKind::Cpu => "the CPU is busy".into(),
         }
     }
 
@@ -105,6 +134,8 @@ impl Trigger {
             TriggerKind::Power => "you unplug".into(),
             TriggerKind::Display => "the display is disconnected".into(),
             TriggerKind::Schedule => "the schedule ends".into(),
+            TriggerKind::Network => "the network is quiet".into(),
+            TriggerKind::Cpu => "the CPU is quiet".into(),
         }
     }
 
@@ -117,7 +148,8 @@ impl Trigger {
                     .schedule
                     .as_ref()
                     .is_some_and(|schedule| schedule.contains(context.clock.0, context.clock.1)),
-                _ => context
+                TriggerKind::Network | TriggerKind::Cpu => context.busy.contains(&self.id),
+                TriggerKind::App | TriggerKind::Process => context
                     .processes
                     .iter()
                     .any(|process| self.matches(process)),
@@ -126,7 +158,11 @@ impl Trigger {
 
     pub fn matches(&self, process: &Process) -> bool {
         match self.kind {
-            TriggerKind::Power | TriggerKind::Display | TriggerKind::Schedule => false,
+            TriggerKind::Power
+            | TriggerKind::Display
+            | TriggerKind::Schedule
+            | TriggerKind::Network
+            | TriggerKind::Cpu => false,
             TriggerKind::App => self
                 .path
                 .as_deref()
@@ -154,7 +190,10 @@ pub fn validate_all(triggers: &[Trigger]) -> Result<(), String> {
         if triggers[..index].iter().any(|other| other.id == trigger.id) {
             return Err("Two triggers share an id.".into());
         }
-        let condition = matches!(trigger.kind, TriggerKind::Power | TriggerKind::Display);
+        let condition = matches!(
+            trigger.kind,
+            TriggerKind::Power | TriggerKind::Display | TriggerKind::Network | TriggerKind::Cpu
+        );
         if condition
             && triggers[..index]
                 .iter()
@@ -233,6 +272,7 @@ mod tests {
             name: name.into(),
             path: Some(path.into()),
             schedule: None,
+            threshold: None,
             enabled: true,
         }
     }
@@ -244,6 +284,7 @@ mod tests {
             name: name.into(),
             path: None,
             schedule: None,
+            threshold: None,
             enabled: true,
         }
     }
@@ -316,6 +357,7 @@ mod tests {
             name: "condition".into(),
             path: None,
             schedule: None,
+            threshold: None,
             enabled: true,
         }
     }
@@ -345,6 +387,37 @@ mod tests {
         let mut with_path = power;
         with_path.path = Some("/Applications/X.app".into());
         assert!(with_path.validate().is_err());
+    }
+
+    #[test]
+    fn activity_holds_while_busy_and_needs_a_threshold() {
+        let mut network = condition("n", TriggerKind::Network);
+        assert!(network.validate().is_err());
+        network.threshold = Some(1_000);
+        assert!(network.validate().is_ok());
+        network.threshold = Some(5);
+        assert!(network.validate().is_err());
+        network.threshold = Some(1_000);
+        let mut cpu = condition("c", TriggerKind::Cpu);
+        cpu.threshold = Some(101);
+        assert!(cpu.validate().is_err());
+        cpu.threshold = Some(25);
+        let mut power = condition("p", TriggerKind::Power);
+        power.threshold = Some(25);
+        assert!(power.validate().is_err());
+        let busy = ["n".to_string()];
+        let context = Context {
+            busy: &busy,
+            ..Context::default()
+        };
+        assert!(network.holds(&context));
+        assert!(!cpu.holds(&context));
+        assert_eq!(network.phrase(), "the network is busy");
+        assert_eq!(cpu.until(), "the CPU is quiet");
+        assert!(validate_all(&[network.clone(), cpu.clone()]).is_ok());
+        let mut second = network.clone();
+        second.id = "m".into();
+        assert!(validate_all(&[network, second]).is_err());
     }
 
     #[test]

@@ -111,3 +111,115 @@ pub fn process_alive(pid: u32) -> bool {
         ok != 0 && code == STILL_ACTIVE
     }
 }
+
+/// `FILETIME` as one 100 ns count.
+#[repr(C)]
+#[derive(Default, Clone, Copy)]
+pub struct FileTime {
+    pub low: u32,
+    pub high: u32,
+}
+
+impl FileTime {
+    fn ticks(self) -> u64 {
+        (u64::from(self.high) << 32) | u64::from(self.low)
+    }
+}
+
+/// `MIB_IF_ROW2` (1352 bytes), with only the fields Wick reads named.
+#[repr(C)]
+pub struct MibIfRow2 {
+    _identity: [u8; 8],
+    pub interface_index: u32,
+    _names: [u8; 1116],
+    pub if_type: u32,
+    _media: [u8; 20],
+    /// Bit 0: hardware interface. Bit 1: filter interface.
+    pub flags: u8,
+    _status: [u8; 55],
+    pub in_octets: u64,
+    _in_counts: [u8; 64],
+    pub out_octets: u64,
+    _out_counts: [u8; 64],
+}
+
+#[repr(C)]
+pub struct MibIfTable2 {
+    pub entries: u32,
+    pub table: [MibIfRow2; 1],
+}
+
+const IF_TYPE_SOFTWARE_LOOPBACK: u32 = 24;
+
+#[link(name = "kernel32")]
+extern "system" {
+    pub fn GetSystemTimes(idle: *mut FileTime, kernel: *mut FileTime, user: *mut FileTime) -> i32;
+}
+
+#[link(name = "iphlpapi")]
+extern "system" {
+    pub fn GetIfTable2(table: *mut *mut MibIfTable2) -> u32;
+    pub fn FreeMibTable(memory: *const std::ffi::c_void);
+}
+
+/// Busy and total CPU time across all cores. Kernel time includes idle time.
+pub fn cpu_times() -> Option<(u64, u64)> {
+    let (mut idle, mut kernel, mut user) = Default::default();
+    if unsafe { GetSystemTimes(&mut idle, &mut kernel, &mut user) } == 0 {
+        return None;
+    }
+    let total = FileTime::ticks(kernel) + FileTime::ticks(user);
+    Some((total.saturating_sub(FileTime::ticks(idle)), total))
+}
+
+/// Bytes in and bytes out for each physical adapter, keyed like `activity::Counters`; filter
+/// and loopback rows would count the same traffic again.
+pub fn network_bytes() -> Vec<(u32, u64)> {
+    let mut table: *mut MibIfTable2 = std::ptr::null_mut();
+    if unsafe { GetIfTable2(&mut table) } != 0 || table.is_null() {
+        return Vec::new();
+    }
+    let rows = unsafe {
+        std::slice::from_raw_parts(
+            std::ptr::addr_of!((*table).table).cast::<MibIfRow2>(),
+            (*table).entries as usize,
+        )
+    };
+    let interfaces = rows
+        .iter()
+        .filter(|row| {
+            row.flags & 0b01 != 0
+                && row.flags & 0b10 == 0
+                && row.if_type != IF_TYPE_SOFTWARE_LOOPBACK
+        })
+        .flat_map(|row| {
+            let key = row.interface_index.wrapping_mul(2);
+            [(key, row.in_octets), (key.wrapping_add(1), row.out_octets)]
+        })
+        .collect();
+    unsafe { FreeMibTable(table.cast()) };
+    interfaces
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn interface_rows_match_the_windows_layout() {
+        assert_eq!(std::mem::size_of::<MibIfRow2>(), 1352);
+        assert_eq!(std::mem::offset_of!(MibIfRow2, interface_index), 8);
+        assert_eq!(std::mem::offset_of!(MibIfRow2, if_type), 1128);
+        assert_eq!(std::mem::offset_of!(MibIfRow2, flags), 1152);
+        assert_eq!(std::mem::offset_of!(MibIfRow2, in_octets), 1208);
+        assert_eq!(std::mem::offset_of!(MibIfRow2, out_octets), 1280);
+        assert_eq!(std::mem::offset_of!(MibIfTable2, table), 8);
+    }
+
+    #[test]
+    fn reads_live_counters() {
+        let (busy, total) = cpu_times().unwrap();
+        assert!(total >= busy);
+        assert!(!network_bytes().is_empty() || std::env::var_os("CI").is_some());
+    }
+}

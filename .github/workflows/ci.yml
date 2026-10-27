@@ -51,6 +51,12 @@ jobs:
         run: |
           pnpm test
           node --test scripts/*.test.mjs packaging/homebrew/*.test.mjs
+      - name: Check the Raycast extension
+        working-directory: raycast
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npx ray build -e dist
       - name: Install browser engines
         # Ubuntu's package mirror sometimes stalls; retry instead of waiting out the job timeout.
         timeout-minutes: 32

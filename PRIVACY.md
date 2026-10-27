@@ -18,6 +18,7 @@ All on your Mac, never sent anywhere:
 - **Running processes**: names, executable paths and parent process. All processes only while a trigger is on, or once to list running apps when you add one; otherwise only the processes holding a power assertion. Every 5 seconds at most.
 - **Power source**: on battery or power, charge level, Low Power Mode.
 - **Lid state**: whether closing the lid would sleep the Mac, from `IOPMrootDomain`.
+- **Activity**, only while a network or CPU trigger is on: total bytes sent and received per network adapter, and total CPU time, every 5 seconds. Only the totals; never what is sent, where, or by which app.
 
 ## What Wick writes
 

@@ -18,7 +18,7 @@
 </p>
 
 - **One click.** Start until you stop it, or for 15 minutes, an hour, two hours, until a time, or any length. The menu bar candle burns down as the time runs out.
-- **While something runs.** "Stay awake while **Xcode** is running", or **claude**, **codex**, **ffmpeg**, **xcodebuild**. Also on power, with an external display, or on a schedule.
+- **While something runs.** "Stay awake while **Xcode** is running", or **claude**, **codex**, **ffmpeg**, **xcodebuild**, or while the network or CPU is busy. Also on power, with an external display, or on a schedule.
 - **Says what else is awake.** "caffeinate · Started by claude", "Google Chrome · Playing audio". No more `pmset -g assertions`.
 
 ## Install
@@ -54,7 +54,7 @@ Updates are signed and verified in the app. Wick checks once a day and installs 
 | **Menu** | Right-click the candle for 15 minutes, 1 hour, 2 hours, until stopped, or Stop. |
 | **Keys** | In the popover: 1, 2, 3 for the presets, 0 until stopped, S to start or stop, + to add 15 minutes. |
 | **Display** | Keeps only the system awake by default. **Keep display on** also stops the screen from dimming and locking. |
-| **Triggers** | Stay awake while an app or command runs, on power, with an external display, or on a weekly schedule. Stop pauses a trigger until it ends. |
+| **Triggers** | Stay awake while an app or command runs, while the network or CPU is busy (until it's quiet for 2 minutes), on power, with an external display, or on a weekly schedule. Stop pauses a trigger until it ends. |
 | **Also awake** | Lists other apps holding the Mac awake, with their reason, including audio playing through macOS and `caffeinate` started by a tool. |
 | **Battery** | Stops below a level you choose (20% by default), and optionally in Low Power Mode. |
 | **Screen lock** | Optionally pauses while the screen is locked and resumes on unlock (Mac). |
@@ -99,7 +99,9 @@ wick toggle
 wick status            # {"running":true,"awake":true,"session":{"mode":"for",…},"endsAt":…,"awakeTodayMinutes":192}
 ```
 
-In Shortcuts, use **Open URLs** with `wick://start?minutes=60`, `wick://start?until=18:00`, `wick://stop` or `wick://toggle`. Raycast and Alfred can open the same links.
+In Shortcuts, use **Open URLs** with `wick://start?minutes=60`, `wick://start?until=18:00`, `wick://stop` or `wick://toggle`. Alfred can open the same links.
+
+**Raycast:** the [Wick extension](raycast/) (Keep Awake, Toggle Keep Awake, Keep Awake for, Stop Keeping Awake) shows the current state and today's time awake, and starts a session for any number of minutes or until a time.
 
 ## How it works
 

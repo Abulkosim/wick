@@ -17,6 +17,16 @@ updates:
     groups:
       frontend:
         patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /raycast
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      raycast:
+        patterns: ["*"]
   - package-ecosystem: cargo
     directory: /src-tauri
     schedule:

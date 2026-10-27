@@ -9,7 +9,23 @@ export function triggerId(): string {
   return `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-export const dayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+/** KB/s for network, percent for CPU, with the defaults in the middle. */
+export const thresholds = { network: [100, 1000, 10_000], cpu: [10, 25, 50] } as const
+export const defaultThreshold = { network: 1000, cpu: 25 } as const
+
+/** "100 KB/s", "1 MB/s", "2.5 MB/s". */
+export function rateLabel(kilobytes: number): string {
+  if (kilobytes < 1000) return `${kilobytes} KB/s`
+  const megabytes = kilobytes / 1000
+  return `${Number.isInteger(megabytes) ? megabytes : megabytes.toFixed(1)} MB/s`
+}
+
+/** "1 MB/s" or "25%": what counts as busy for an activity trigger. */
+export function thresholdLabel(kind: 'network' | 'cpu', threshold: number): string {
+  return kind === 'network' ? rateLabel(threshold) : `${threshold}%`
+}
+
+export const dayLetters =['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 /** Mirrors Rust's `Schedule::days_label`. */

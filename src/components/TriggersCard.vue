@@ -6,7 +6,7 @@ import AppSwitch from './ui/AppSwitch.vue'
 import AppTooltip from './ui/AppTooltip.vue'
 import type { RunningApp, Trigger } from '../lib/model'
 import { isWindows } from '../lib/platform'
-import { dayLetters, daysLabel, processSuggestions, triggerId, validProcessName, validSchedule } from '../lib/triggers'
+import { dayLetters, daysLabel, defaultThreshold, processSuggestions, thresholdLabel, thresholds, triggerId, validProcessName, validSchedule } from '../lib/triggers'
 
 const props = defineProps<{ triggers: Trigger[]; running: string[]; busy: boolean; save: (triggers: Trigger[]) => Promise<boolean>; loadApps: () => Promise<RunningApp[]> }>()
 const adding = ref(false)
@@ -19,16 +19,25 @@ const addButton = ref<HTMLButtonElement | null>(null)
 const appOptions = computed(() => apps.value.filter(app => !props.triggers.some(trigger => trigger.path === app.path)).map(app => ({ value: app.path, label: app.name })))
 const suggestions = computed(() => processSuggestions.filter(name => !props.triggers.some(trigger => trigger.kind === 'process' && trigger.name === name)))
 const nameError = computed(() => processName.value.trim() && !validProcessName(processName.value) ? 'Type a command name, like ffmpeg.' : null)
-const condition = ref<'power' | 'display' | 'schedule' | null>(null)
+const condition = ref<'power' | 'display' | 'schedule' | 'network' | 'cpu' | null>(null)
 const conditions = computed(() => ([
   { kind: 'power', name: 'Power adapter', label: 'On power' },
   { kind: 'display', name: 'External display', label: 'External display connected' },
   { kind: 'schedule', name: 'Schedule', label: 'Schedule' },
+  { kind: 'network', name: 'Network activity', label: 'Network busy' },
+  { kind: 'cpu', name: 'CPU activity', label: 'CPU busy' },
 ] as const).filter(option => !(isWindows && option.kind === 'display')).filter(option => option.kind === 'schedule' || !props.triggers.some(trigger => trigger.kind === option.kind)))
 const days = ref<number[]>([0, 1, 2, 3, 4])
 const start = ref('09:00')
 const end = ref('18:00')
 const scheduleError = computed(() => validSchedule(days.value, start.value, end.value))
+const threshold = ref<number>(defaultThreshold.network)
+const activity = computed(() => condition.value === 'network' || condition.value === 'cpu' ? condition.value : null)
+
+function pickCondition(kind: NonNullable<typeof condition.value>): void {
+  condition.value = kind
+  if (kind === 'network' || kind === 'cpu') threshold.value = defaultThreshold[kind]
+}
 const canAdd = computed(() => kind.value === 'app' ? Boolean(appPath.value) : kind.value === 'process' ? validProcessName(processName.value) : condition.value === 'schedule' ? !scheduleError.value : condition.value !== null)
 
 function toggleDay(day: number): void {
@@ -41,10 +50,12 @@ function status(trigger: Trigger): string {
   if (trigger.kind === 'schedule') return now ? 'On now' : 'Off now'
   if (trigger.kind === 'power') return now ? 'Plugged in' : 'On battery'
   if (trigger.kind === 'display') return now ? 'Connected' : 'Not connected'
+  if (trigger.kind === 'network' || trigger.kind === 'cpu') return now ? 'Busy' : 'Quiet'
   return now ? 'Running' : 'Not running'
 }
 
 function sentence(trigger: Trigger): { strong: string; rest: string; lead?: string } {
+  if (trigger.kind === 'network' || trigger.kind === 'cpu') return { strong: trigger.kind === 'network' ? 'Network' : 'CPU', rest: ` above ${thresholdLabel(trigger.kind, trigger.threshold ?? defaultThreshold[trigger.kind])}` }
   if (trigger.kind === 'schedule' && trigger.schedule) return { strong: daysLabel(trigger.schedule.days), rest: ` ${trigger.schedule.start}–${trigger.schedule.end}` }
   if (trigger.kind === 'power') return { lead: '', strong: 'On power', rest: '' }
   if (trigger.kind === 'display') return { strong: 'External display', rest: ' connected' }
@@ -55,6 +66,7 @@ function label(trigger: Trigger): string {
   if (trigger.kind === 'schedule') return `Stay awake ${trigger.name}`
   if (trigger.kind === 'power') return 'Stay awake while on power'
   if (trigger.kind === 'display') return 'Stay awake while an external display is connected'
+  if (trigger.kind === 'network' || trigger.kind === 'cpu') return `Stay awake while ${trigger.kind === 'network' ? 'the network' : 'the CPU'} is busy`
   return `Stay awake while ${trigger.name} is running`
 }
 
@@ -70,7 +82,7 @@ async function open(): Promise<void> {
 
 async function choose(next: 'app' | 'process' | 'condition'): Promise<void> {
   kind.value = next
-  if (next === 'condition') condition.value = conditions.value[0]?.kind ?? null
+  if (next === 'condition') { const first = conditions.value[0]?.kind; if (first) pickCondition(first); else condition.value = null }
   if (next === 'process') { await nextTick(); processInput.value?.focus() }
 }
 
@@ -87,6 +99,8 @@ async function add(): Promise<void> {
   const schedule = { days: days.value, start: start.value, end: end.value }
   const trigger: Trigger = kind.value === 'condition' && picked?.kind === 'schedule'
     ? { id: triggerId(), kind: 'schedule', name: `${daysLabel(schedule.days)} ${schedule.start}–${schedule.end}`, schedule, enabled: true }
+    : kind.value === 'condition' && picked && (picked.kind === 'network' || picked.kind === 'cpu')
+    ? { id: triggerId(), kind: picked.kind, name: picked.name, threshold: threshold.value, enabled: true }
     : kind.value === 'condition' && picked
     ? { id: triggerId(), kind: picked.kind, name: picked.name, enabled: true }
     : kind.value === 'app' && app
@@ -113,12 +127,12 @@ function remove(id: string): void {
     <p v-if="!triggers.length && !adding" class="card-empty">{{ isWindows ? 'A program is running, like ffmpeg or claude.' : 'An app or command is running, like Xcode or claude.' }}</p>
     <ul v-if="triggers.length" class="trigger-list">
       <li v-for="trigger in triggers" :key="trigger.id" class="trigger-row" :class="{ running: status(trigger) === 'Running', disabled: !trigger.enabled }">
-        <span class="trigger-mark"><AppIcon :name="trigger.kind === 'app' ? 'app' : trigger.kind === 'power' ? 'bolt' : trigger.kind === 'display' ? 'display' : trigger.kind === 'schedule' ? 'clock' : 'terminal'" :size="15"/></span>
+        <span class="trigger-mark"><AppIcon :name="trigger.kind === 'app' ? 'app' : trigger.kind === 'power' ? 'bolt' : trigger.kind === 'display' ? 'display' : trigger.kind === 'schedule' ? 'clock' : trigger.kind === 'network' ? 'network' : trigger.kind === 'cpu' ? 'cpu' : 'terminal'" :size="15"/></span>
         <span class="trigger-copy">
           <span class="trigger-sentence">{{ sentence(trigger).lead }}<strong>{{ sentence(trigger).strong }}</strong>{{ sentence(trigger).rest }}</span>
           <span class="trigger-status"><span class="status-dot"/>{{ status(trigger) }}</span>
         </span>
-        <AppTooltip text="Remove"><button class="icon-button trigger-remove" :aria-label="`Remove ${trigger.kind === 'power' || trigger.kind === 'display' ? trigger.name.toLowerCase() : trigger.kind === 'schedule' ? `schedule ${trigger.name}` : trigger.name}`" :disabled="busy" @click="remove(trigger.id)"><AppIcon name="close" :size="13"/></button></AppTooltip>
+        <AppTooltip text="Remove"><button class="icon-button trigger-remove" :aria-label="`Remove ${trigger.kind === 'power' || trigger.kind === 'display' || trigger.kind === 'network' || trigger.kind === 'cpu' ? trigger.name.toLowerCase() : trigger.kind === 'schedule' ? `schedule ${trigger.name}` : trigger.name}`" :disabled="busy" @click="remove(trigger.id)"><AppIcon name="close" :size="13"/></button></AppTooltip>
         <AppSwitch :model-value="trigger.enabled" :aria-label="label(trigger)" :disabled="busy" @update:model-value="update(trigger.id, { enabled: $event })"/>
       </li>
     </ul>
@@ -134,7 +148,14 @@ function remove(id: string): void {
       </template>
       <template v-else-if="kind === 'condition'">
         <div v-if="conditions.length" class="condition-options" role="radiogroup" aria-label="Condition">
-          <button v-for="option in conditions" :key="option.kind" type="button" role="radio" class="duration-option" :class="{ selected: condition === option.kind }" :aria-checked="condition === option.kind" @click="condition = option.kind">{{ option.label }}</button>
+          <button v-for="option in conditions" :key="option.kind" type="button" role="radio" class="duration-option" :class="{ selected: condition === option.kind }" :aria-checked="condition === option.kind" @click="pickCondition(option.kind)">{{ option.label }}</button>
+        </div>
+        <div v-if="activity" class="activity-editor">
+          <div class="threshold-options" role="radiogroup" aria-label="Busy above">
+            <span>Above</span>
+            <button v-for="value in thresholds[activity]" :key="value" type="button" role="radio" class="threshold-chip" :class="{ selected: threshold === value }" :aria-checked="threshold === value" @click="threshold = value">{{ thresholdLabel(activity, value) }}</button>
+          </div>
+          <p class="card-empty">Stays awake until it’s quiet for 2 minutes.</p>
         </div>
         <div v-if="condition === 'schedule'" class="schedule-editor">
           <div class="day-chips" role="group" aria-label="Days">

@@ -1,5 +1,6 @@
 use crate::{
     core::{
+        activity,
         assertion::{self, Assertion, Kind},
         display,
         history::{self, Day, History, Tracker},
@@ -81,6 +82,7 @@ pub struct Runtime {
     wake: Notify,
     pub update_wake: Notify,
     keep_on_exit: std::sync::atomic::AtomicBool,
+    activity: Mutex<activity::Monitor>,
 }
 
 /// Local weekday (0 = Monday) and minutes past midnight, for schedules.
@@ -246,6 +248,7 @@ impl Runtime {
             wake: Notify::new(),
             update_wake: Notify::new(),
             keep_on_exit: Default::default(),
+            activity: Default::default(),
         }
     }
 
@@ -509,7 +512,14 @@ impl Runtime {
         } else {
             Vec::new()
         };
+        let counters = activity::read(&snapshot.triggers, now);
+        let busy = self
+            .activity
+            .lock()
+            .map(|mut monitor| monitor.update(&snapshot.triggers, counters))
+            .unwrap_or_default();
         let context = triggers::Context {
+            busy: &busy,
             processes: &processes,
             on_power: !power.on_battery,
             external_display: enabled(TriggerKind::Display) && display::external_connected(),
@@ -716,6 +726,7 @@ mod tests {
             name: "x".into(),
             path: None,
             schedule: None,
+            threshold: None,
             enabled: true,
         }
     }
