@@ -51,7 +51,7 @@ const arrowStyle = computed(() => {
 const shell = ref<HTMLElement | null>(null)
 const popover = ref<HTMLElement | null>(null)
 const scroller = ref<HTMLElement | null>(null)
-const fullHeight = 640
+const fullHeight = 720
 let fitHeight = 0
 let fitFrame = 0
 let fitObserver: ResizeObserver | undefined

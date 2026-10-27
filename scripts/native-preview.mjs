@@ -22,7 +22,7 @@ for (const spec of specs) {
   await page.goto('http://127.0.0.1:1420/')
   await page.waitForTimeout(400)
   if (page_ === 'settings') { await page.getByRole('button', { name: 'Open settings' }).click(); await page.waitForTimeout(300) }
-  const h = page_ === 'settings' ? 640 : await page.evaluate(() => window.__FIT__.at(-1))
+  const h = page_ === 'settings' ? 720 : await page.evaluate(() => window.__FIT__.at(-1))
   await page.setViewportSize({ width: 372, height: h })
   await page.waitForTimeout(200)
   await page.screenshot({ path: `${out}/n-${scenario}-${theme}-${backdrop}${page_ ? '-' + page_ : ''}.png`, omitBackground: backdrop === 'none' })

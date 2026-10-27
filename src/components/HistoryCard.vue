@@ -2,11 +2,10 @@
 import { computed } from 'vue'
 import AppTooltip from './ui/AppTooltip.vue'
 import type { Day } from '../lib/model'
-import { bars, minutesText, totalMinutes } from '../lib/history'
+import { bars, minutesText } from '../lib/history'
 
 const props = defineProps<{ days: Day[] }>()
 const today = computed(() => minutesText(props.days.at(-1)?.minutes ?? 0))
-const week = computed(() => minutesText(totalMinutes(props.days)))
 const list = computed(() => bars(props.days))
 </script>
 
@@ -15,7 +14,6 @@ const list = computed(() => bars(props.days))
     <div class="history-summary">
       <h2 id="history-label" class="card-label">Awake today</h2>
       <p class="history-today">{{ today }}</p>
-      <p class="history-week">{{ week }} in the last 7 days</p>
     </div>
     <ol class="history-bars" aria-label="Last 7 days">
       <AppTooltip v-for="bar in list" :key="bar.date" :text="`${bar.label} · ${bar.duration}`">

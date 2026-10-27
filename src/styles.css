@@ -1199,25 +1199,21 @@ button:disabled:hover {
 }
 .history-card {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding-top: 11px;
+  padding-bottom: 11px;
 }
 .history-summary .card-label {
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 .history-today {
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 600;
   line-height: 1.1;
   letter-spacing: -.01em;
   color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-.history-week {
-  margin-top: 3px;
-  font-size: 12px;
-  color: var(--tertiary);
   font-variant-numeric: tabular-nums;
 }
 .history-bars {
@@ -1232,13 +1228,13 @@ button:disabled:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 .history-track {
   position: relative;
   display: block;
-  width: 8px;
-  height: 38px;
+  width: 7px;
+  height: 26px;
   border-radius: 4px;
   background: var(--track);
   overflow: hidden;

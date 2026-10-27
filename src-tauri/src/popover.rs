@@ -6,7 +6,7 @@ use tauri_plugin_positioner::{Position, WindowExt};
 
 pub const TRAY_ID: &str = "wick";
 const POPOVER_WIDTH: f64 = 360.0;
-const POPOVER_HEIGHT: f64 = 640.0;
+const POPOVER_HEIGHT: f64 = 720.0;
 const POPOVER_MIN_HEIGHT: f64 = 160.0;
 
 #[derive(Default)]
