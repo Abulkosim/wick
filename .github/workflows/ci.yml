@@ -61,11 +61,16 @@ jobs:
         # Ubuntu's package mirror sometimes stalls; retry instead of waiting out the job timeout.
         timeout-minutes: 32
         run: |
+          printf 'Acquire::http::Timeout "30";\nAcquire::Retries "3";\n' | sudo tee /etc/apt/apt.conf.d/99-wick-retries >/dev/null
           for attempt in 1 2 3; do
             if timeout 600 pnpm exec playwright install --with-deps chromium webkit; then
               exit 0
             fi
             echo "Browser install attempt $attempt stalled or failed; retrying."
+            # A timed-out attempt leaves apt running under sudo, holding the dpkg lock.
+            sudo pkill -x apt-get || true
+            while sudo fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 2; done
+            sudo dpkg --configure -a || true
           done
           exit 1
       - name: Run browser tests
