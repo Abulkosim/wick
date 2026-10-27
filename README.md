@@ -13,7 +13,7 @@
 [Download](https://github.com/Abulkosim/wick/releases/latest) · [Install](#install) · [What it does](#what-it-does) · [Privacy](#privacy) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
 
 <p>
-  <img src="docs/images/popover-light.png" alt="Wick awake for two hours, with 3h 12m awake today and a bar for each of the last 7 days" width="300" />
+  <img src="docs/images/popover-light.png" alt="Wick awake while the network is busy, with network and CPU triggers and 3h 12m awake today" width="300" />
   <img src="docs/images/others-dark.png" alt="Wick in dark mode listing caffeinate, Google Chrome and zoom.us as also keeping the Mac awake" width="300" />
 </p>
 
@@ -23,12 +23,12 @@
 
 ## Install
 
-Download **v0.4.0** from [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
+Download **v0.5.0** from [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
 
 | Platform | Download |
 | --- | --- |
-| macOS 12+ · Apple Silicon and Intel | [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.4.0/Wick_0.4.0_universal.dmg) |
-| Windows 10/11 x64 | [Setup EXE](https://github.com/Abulkosim/wick/releases/download/v0.4.0/Wick_0.4.0_x64-setup.exe) · [MSI](https://github.com/Abulkosim/wick/releases/download/v0.4.0/Wick_0.4.0_x64_en-US.msi) |
+| macOS 12+ · Apple Silicon and Intel | [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.5.0/Wick_0.5.0_universal.dmg) |
+| Windows 10/11 x64 | [Setup EXE](https://github.com/Abulkosim/wick/releases/download/v0.5.0/Wick_0.5.0_x64-setup.exe) · [MSI](https://github.com/Abulkosim/wick/releases/download/v0.5.0/Wick_0.5.0_x64_en-US.msi) |
 
 **Homebrew** (macOS):
 
