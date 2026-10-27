@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { daysLabel, triggerId, validProcessName, validSchedule } from '../../src/lib/triggers.ts'
+import { daysLabel, rateLabel, thresholdLabel, triggerId, validProcessName, validSchedule } from '../../src/lib/triggers.ts'
+
+test('activity thresholds read as rates and percentages', () => {
+  assert.equal(rateLabel(100), '100 KB/s')
+  assert.equal(rateLabel(1000), '1 MB/s')
+  assert.equal(rateLabel(2500), '2.5 MB/s')
+  assert.equal(rateLabel(10_000), '10 MB/s')
+  assert.equal(thresholdLabel('cpu', 25), '25%')
+  assert.equal(thresholdLabel('network', 100), '100 KB/s')
+})
 
 test('process names match the Rust rules', () => {
   assert.ok(validProcessName('claude'))

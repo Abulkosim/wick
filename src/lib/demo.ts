@@ -1,7 +1,7 @@
 import type { UpdateState } from './updater.ts'
 import { initialState, type AppState, type Day, type RunningApp, type Trigger } from './model.ts'
 
-export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off', 'clamshell', 'update-available', 'locked', 'conditions', 'history'] as const
+export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off', 'clamshell', 'update-available', 'locked', 'conditions', 'history', 'activity'] as const
 
 export const demoApps: RunningApp[] = [
   { name: 'Final Cut Pro', path: '/Applications/Final Cut Pro.app' },
@@ -101,6 +101,14 @@ export function createDemoState(scenario: string | null, now = Date.now()): AppS
       state.power = { onBattery: false, percent: 100, lowPowerMode: false }
       state.running = ['demo-power']
       state.heldBy = 'on power'
+      break
+    case 'activity':
+      state.triggers = [
+        { id: 'demo-network', kind: 'network', name: 'Network activity', threshold: 1000, enabled: true },
+        { id: 'demo-cpu', kind: 'cpu', name: 'CPU activity', threshold: 25, enabled: true },
+      ]
+      state.running = ['demo-network']
+      state.heldBy = 'the network is busy'
       break
     case 'history':
       state.session = { mode: 'for', startedAt: now - minutes(25), endsAt: now + minutes(95) }

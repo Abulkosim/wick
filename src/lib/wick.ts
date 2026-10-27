@@ -69,7 +69,7 @@ export function useWick() {
   })
   const stopSession = () => perform('stop_session', undefined, () => {
     if (state.value.session.mode === 'off' && state.value.heldBy) {
-      state.value.pausedBy = state.value.heldBy.replace(/ is running$/, ' quits').replace(/^on power$/, 'you unplug').replace(/^an external display is connected$/, 'the display is disconnected')
+      state.value.pausedBy = state.value.heldBy.replace(/ is running$/, ' quits').replace(/^on power$/, 'you unplug').replace(/^an external display is connected$/, 'the display is disconnected').replace(/ is busy$/, ' is quiet')
       state.value.heldBy = null
     }
     state.value.session = { mode: 'off' }
@@ -81,7 +81,7 @@ export function useWick() {
     state.value.session = { ...session, endsAt: Math.max(session.endsAt, Date.now()) + minutes * 60_000 }
   })
   const resumeTriggers = () => perform('resume_triggers', undefined, () => {
-    if (state.value.pausedBy) state.value.heldBy = state.value.pausedBy.replace(/ quits$/, ' is running').replace(/^you unplug$/, 'on power').replace(/^the display is disconnected$/, 'an external display is connected')
+    if (state.value.pausedBy) state.value.heldBy = state.value.pausedBy.replace(/ quits$/, ' is running').replace(/^you unplug$/, 'on power').replace(/^the display is disconnected$/, 'an external display is connected').replace(/ is quiet$/, ' is busy')
     state.value.pausedBy = null
   })
   const saveTriggers = (triggers: Trigger[]) => perform('save_triggers', { triggers }, () => {

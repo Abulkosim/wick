@@ -1,3 +1,4 @@
+pub mod activity;
 pub mod assertion;
 pub mod boot;
 pub mod candle;

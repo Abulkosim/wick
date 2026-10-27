@@ -81,6 +81,47 @@ test('a condition holds the Mac awake and pauses until it ends', async ({ page }
   await expect(page.getByRole('status')).toContainText('Paused until you unplug')
 })
 
+test('adds network and CPU activity with a threshold', async ({ page }) => {
+  await page.goto('/?demo=1&state=off')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('radio', { name: 'Condition' }).click()
+  await page.getByRole('radio', { name: 'Network busy' }).click()
+  await expect(page.getByRole('radio', { name: '1 MB/s' })).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('radio', { name: '10 MB/s' }).click()
+  await expect(page.getByText('Stays awake until it’s quiet for 2 minutes.')).toBeVisible()
+  await page.locator('.trigger-form').getByRole('button', { name: 'Add' }).click()
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('radio', { name: 'Condition' }).click()
+  await expect(page.getByRole('radio', { name: 'Network busy' })).toHaveCount(0)
+  await page.getByRole('radio', { name: 'CPU busy' }).click()
+  await expect(page.getByRole('radio', { name: '25%' })).toHaveAttribute('aria-checked', 'true')
+  await page.locator('.trigger-form').getByRole('button', { name: 'Add' }).click()
+  await expect(page.locator('.trigger-row')).toHaveText([/Network above 10 MB\/s.*Quiet/, /CPU above 25%.*Quiet/])
+  await expect(page.getByRole('switch', { name: 'Stay awake while the CPU is busy' })).toBeChecked()
+})
+
+test('busy activity holds the Mac awake and pauses until it is quiet', async ({ page }) => {
+  await page.goto('/?demo=1&state=activity')
+  await expect(page.getByRole('status')).toContainText('While the network is busy')
+  await expect(page.locator('.trigger-row').first()).toContainText('Busy')
+  await page.getByRole('button', { name: 'Stop' }).click()
+  await expect(page.getByRole('status')).toContainText('Paused until the network is quiet')
+  await page.getByRole('button', { name: 'Resume' }).click()
+  await expect(page.getByRole('status')).toContainText('While the network is busy')
+})
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`screenshot activity ${theme}`, async ({ page }, testInfo) => {
+    await page.goto(`/?demo=1&state=activity&theme=${theme}`)
+    await page.locator('.app-shell').screenshot({ path: testInfo.outputPath(`activity-${theme}.png`) })
+    await page.goto(`/?demo=1&state=off&theme=${theme}`)
+    await page.getByRole('button', { name: 'Add', exact: true }).click()
+    await page.getByRole('radio', { name: 'Condition' }).click()
+    await page.getByRole('radio', { name: 'CPU busy' }).click()
+    await page.locator('.app-shell').screenshot({ path: testInfo.outputPath(`activity-form-${theme}.png`) })
+  })
+}
+
 test('adds a weekday schedule and an overnight one', async ({ page }) => {
   await page.goto('/?demo=1&state=off')
   await page.getByRole('button', { name: 'Add', exact: true }).click()
