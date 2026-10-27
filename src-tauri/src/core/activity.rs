@@ -384,4 +384,31 @@ mod tests {
         let (busy, total) = counters.cpu.unwrap();
         assert!(total > busy && busy > 0);
     }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_busy_cpu_holds_a_cpu_trigger() {
+        let list = [trigger("c", TriggerKind::Cpu, 30)];
+        let mut monitor = Monitor::default();
+        let start = std::time::Instant::now();
+        monitor.update(&list, read(&list, 0));
+        let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let spinners: Vec<_> = (0..std::thread::available_parallelism().map_or(4, |n| n.get()))
+            .map(|_| {
+                let stop = stop.clone();
+                std::thread::spawn(move || {
+                    while !stop.load(std::sync::atomic::Ordering::Relaxed) {
+                        std::hint::spin_loop();
+                    }
+                })
+            })
+            .collect();
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+        let busy = monitor.update(&list, read(&list, start.elapsed().as_millis() as i64));
+        stop.store(true, std::sync::atomic::Ordering::Relaxed);
+        spinners
+            .into_iter()
+            .for_each(|spinner| spinner.join().unwrap());
+        assert_eq!(busy, ["c"]);
+    }
 }
