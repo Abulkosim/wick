@@ -2,6 +2,31 @@
 
 What was checked for each release, newest first.
 
+## v0.5.0 — 2026-10-27
+
+Tag `v0.5.0`, CI run [40483032343](https://github.com/Abulkosim/wick/actions/runs/40483032343): macOS universal, Windows x64 and the draft release passed; the browser job's first attempt stalled on Ubuntu's apt mirror (dpkg lock left behind) and passed on re-run. PR [#6](https://github.com/Abulkosim/wick/pull/6) checks passed before the merge; `main` run [](https://github.com/Abulkosim/wick/actions/runs/) passed before tagging.
+
+- Local suite (`scripts/check-all.sh`): all passed, now including the Raycast extension's tests and `ray build`.
+- Activity triggers: pure tests for rates, 32-bit wraps, resets, the 2-minute quiet period and validation. Live on this Mac: a 500 KB/s download made a 100 KB/s network trigger busy; spinning every core made a 30% CPU trigger busy (now a test). On the Windows runner, the `MIB_IF_ROW2` layout test and live `GetIfTable2`/`GetSystemTimes` reads passed.
+- Found while testing: macOS hands apps 32-bit, KB-rounded interface byte counters (`netstat` sees 64-bit), so drops after a 32-bit value count as wraps.
+- Draft: 8/8 checksums OK; provenance for DMG, archive, both Windows installers, `latest.json`, `SHA256SUMS.txt`; SBOM attestation on the DMG; `latest.json` 0.5.0 with all five platform entries. DMG app universal, codesign valid, 0.5.0.
+- `updater_install` against the draft archive: tampered and wrong-version rejected; 0.5.0 universal installed, codesign valid.
+- Published 2026-10-27 10:01 UTC, marked latest. Homebrew workflow run [40485227070](https://github.com/Abulkosim/wick/actions/runs/40485227070) pushed `wick 0.5.0` with the DMG checksum.
+- Owner's Mac updated 0.4.0 → 0.5.0 from the live endpoint (`tests/public_update.rs`); history kept (491 minutes today), indefinite session restarted with display on.
+- Raycast: `ray build`, ESLint and Prettier pass; `ray lint`'s author check got HTTP 500 from Raycast's user API, even for known users.
+- Pending 👤: confirm the Raycast `author`, try the extension (`npm run dev` in `raycast/`) and publish it; Windows VM.
+
+Checksums:
+
+    a0680cb7b3eca636a147499f739238f6e5228c8eff27d811a6626ebc92e5c12c  latest.json
+    33d2a2af35f9de1b7c69a721a2858b631ec5b7f0420916a8e8cf9ab2503c5724  Wick_0.5.0_universal.dmg
+    fa44161145025995d5f73b2c6839dfd96a30b0d33adacdd212455d1e8a187718  Wick_0.5.0_x64_en-US.msi
+    cafcce07b76e2d1f7bb4e21888134a03d82cc8079aee31719c942df7aa69bdc7  Wick_0.5.0_x64_en-US.msi.sig
+    8ba5b45ce0646c4774ceabe7920b2f5ab82d93bdc5406b14fa1f3bb168a2ca59  Wick_0.5.0_x64-setup.exe
+    48a3ab481277773dab53684244b01f1529d5752041898df5760de740f0f53e4c  Wick_0.5.0_x64-setup.exe.sig
+    b40174e0e5d008d8bb78ca20454b887c2f1499a9f5635e5382820ec96f2e59ed  Wick.app.tar.gz
+    cbb90091d695c7de8242dd2abbbcecab2c714d4f601beb3c0ddc97a827a0adf6  Wick.app.tar.gz.sig
+
 ## v0.4.0 — 2026-10-26
 
 Tag `v0.4.0`, CI run [40265194461](https://github.com/Abulkosim/wick/actions/runs/40265194461): frontend, macOS universal, Windows x64 and the draft release passed. PR [#4](https://github.com/Abulkosim/wick/pull/4) checks passed before the merge; `main` run [40264596436](https://github.com/Abulkosim/wick/actions/runs/40264596436) passed before tagging.

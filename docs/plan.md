@@ -135,7 +135,8 @@ Mac features first, Windows last, then the release. Presets dropped for now: the
 - [x] **6.3 Raycast extension.** `raycast/`: Keep Awake (state, today's time, presets, typed minutes or time), Toggle, Keep Awake for, Stop. Talks through `wick://` links and `wick status`.
   Verify: unit tests for status text and input; `ray build`; `ray lint`; CI builds it.
   Done 2026-10-27: tests, build and ESLint/Prettier pass. `ray lint`'s author check got HTTP 500 from Raycast's user API, even for known users. 👤 confirm the Raycast username in `raycast/package.json` (`author`), try it with `npm run dev`, then `npm run publish` to open the store PR from your account.
-- [ ] **6.4 Release v0.5.0.**
+- [x] **6.4 Release v0.5.0.**
+  Done 2026-10-27: merged through PR #6, published, tap bumped itself, owner's Mac updated. Evidence in docs/verification.md.
 
 ## Later / maybe
 
