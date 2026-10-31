@@ -143,7 +143,8 @@ Mac features first, Windows last, then the release. Presets dropped for now: the
 - [x] **7.1 Trigger notifications.** Settings → Notifications → "When a trigger ends" (off by default): "Xcode quit. Your Mac can sleep again.", "Unplugged…", "The network is quiet…". Only when nothing else keeps the Mac awake; not on Stop, during a session, or when the battery guard lets go.
   Verify: runtime test for each of those cases; e2e of the setting.
   Done 2026-10-31.
-- [ ] **7.2 Release v0.6.0.**
+- [x] **7.2 Release v0.6.0.**
+  Done 2026-10-31: merged through PR #9, published, tap bumped itself, owner's Mac updated. Evidence in docs/verification.md.
 
 ## Later / maybe
 

@@ -2,6 +2,28 @@
 
 What was checked for each release, newest first.
 
+## v0.6.0 — 2026-10-31
+
+Tag `v0.6.0`, CI run [41223052164](https://github.com/Abulkosim/wick/actions/runs/41223052164): frontend, macOS universal, Windows x64 and the draft release passed. PR [#9](https://github.com/Abulkosim/wick/pull/9) checks passed before the merge; `main` run [41222421535](https://github.com/Abulkosim/wick/actions/runs/41222421535) passed before tagging.
+
+- Local suite (`scripts/check-all.sh`): all passed, including a runtime test that a trigger ending notifies only when nothing else holds the Mac (not after Stop, during a session, or when the battery guard lets go) and an e2e test of the new setting.
+- Draft: 8/8 checksums OK; provenance for DMG, archive, both Windows installers, `latest.json`, `SHA256SUMS.txt`; SBOM attestation on the DMG; `latest.json` 0.6.0 with all five platform entries. DMG app universal, codesign valid, 0.6.0.
+- `updater_install` against the draft archive: tampered and wrong-version rejected; 0.6.0 universal installed, codesign valid.
+- Published 2026-10-31 17:15 UTC, marked latest. Homebrew workflow run [41223655991](https://github.com/Abulkosim/wick/actions/runs/41223655991) pushed `wick 0.6.0` with the DMG checksum.
+- Owner's Mac updated 0.5.0 → 0.6.0 from the live endpoint (`tests/public_update.rs`), codesign valid. Wick was not running, so it was left closed.
+- Pending 👤: see a trigger notification banner on screen (turn on Settings → Notifications → When a trigger ends); Raycast store submission; Windows VM.
+
+Checksums:
+
+    a085ea7a7632deb268564cc65a0c5aebfe1b1fae50064139615b10bb574d474f  latest.json
+    a2224d9791db60b218025df2a75930966d0929e53d44e8e89733581bcd1a725b  Wick_0.6.0_universal.dmg
+    f55ba7b37a6870ef339b4e96bb688072f289b90ecd3e3e8b9e846382daaf635f  Wick_0.6.0_x64_en-US.msi
+    11e6cac05c68b79d336f8b16274f8ab3873562de2dbad3ab921b3c6160e85024  Wick_0.6.0_x64_en-US.msi.sig
+    1056069f7d1912d881c71f8f3beaa1a99df8a669f132c3da979622e044bc99ec  Wick_0.6.0_x64-setup.exe
+    436bab186868dccf15fff8e7619eb43750f97a7592325e7a2852390344187a88  Wick_0.6.0_x64-setup.exe.sig
+    b75672b7a8a6d7ff690d3d9c8bf32ff07981c6a91ccf3ddf3f052c1f632bb91e  Wick.app.tar.gz
+    e4cbff5dddebbc0f08af79c7154cb0ea1b4679d43e5cef5a0854f963bf0ea065  Wick.app.tar.gz.sig
+
 ## v0.5.0 — 2026-10-27
 
 Tag `v0.5.0`, CI run [40483032343](https://github.com/Abulkosim/wick/actions/runs/40483032343): macOS universal, Windows x64 and the draft release passed; the browser job's first attempt stalled on Ubuntu's apt mirror (dpkg lock left behind) and passed on re-run. PR [#6](https://github.com/Abulkosim/wick/pull/6) checks passed before the merge; `main` run [](https://github.com/Abulkosim/wick/actions/runs/) passed before tagging.
