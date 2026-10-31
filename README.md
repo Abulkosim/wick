@@ -61,7 +61,7 @@ Updates are signed and verified in the app. Wick checks once a day and installs 
 | **Lid** | Warns "Closing the lid will sleep your Mac" when that is true, and stays quiet in clamshell mode. |
 | **Shortcut** | A global shortcut you record in Settings starts or stops from any app. |
 | **History** | "Awake today 3h 12m" with a bar per day for the last week. Kept on this computer for 30 days; turn it off or clear it in Settings → History. |
-| **Notifications** | "Session ended. Your Mac can sleep again." Only when Wick stops on its own. |
+| **Notifications** | "Session ended. Your Mac can sleep again." Only when Wick stops on its own. Optionally when a trigger ends: "Xcode quit. Your Mac can sleep again." |
 | **Automation** | `wick start`, `wick start 45`, `wick start 16:30`, `wick stop`, `wick toggle`, and `wick status` (JSON). Links: `wick://start?minutes=45`, `wick://start?until=16:30`, `wick://stop`, `wick://toggle`. |
 
 <p>

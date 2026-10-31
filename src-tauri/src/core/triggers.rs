@@ -139,6 +139,18 @@ impl Trigger {
         }
     }
 
+    /// "Xcode quit", "Unplugged": what happened when this trigger stopped holding.
+    pub fn ended(&self) -> String {
+        match self.kind {
+            TriggerKind::App | TriggerKind::Process => format!("{} quit", self.name.trim()),
+            TriggerKind::Power => "Unplugged".into(),
+            TriggerKind::Display => "External display disconnected".into(),
+            TriggerKind::Schedule => "Schedule ended".into(),
+            TriggerKind::Network => "The network is quiet".into(),
+            TriggerKind::Cpu => "The CPU is quiet".into(),
+        }
+    }
+
     pub fn holds(&self, context: &Context) -> bool {
         self.enabled
             && match self.kind {
