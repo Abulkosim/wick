@@ -23,12 +23,12 @@
 
 ## Install
 
-Download **v0.5.0** from [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
+Download **v0.6.0** from [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
 
 | Platform | Download |
 | --- | --- |
-| macOS 12+ · Apple Silicon and Intel | [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.5.0/Wick_0.5.0_universal.dmg) |
-| Windows 10/11 x64 | [Setup EXE](https://github.com/Abulkosim/wick/releases/download/v0.5.0/Wick_0.5.0_x64-setup.exe) · [MSI](https://github.com/Abulkosim/wick/releases/download/v0.5.0/Wick_0.5.0_x64_en-US.msi) |
+| macOS 12+ · Apple Silicon and Intel | [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.6.0/Wick_0.6.0_universal.dmg) |
+| Windows 10/11 x64 | [Setup EXE](https://github.com/Abulkosim/wick/releases/download/v0.6.0/Wick_0.6.0_x64-setup.exe) · [MSI](https://github.com/Abulkosim/wick/releases/download/v0.6.0/Wick_0.6.0_x64_en-US.msi) |
 
 **Homebrew** (macOS):
 

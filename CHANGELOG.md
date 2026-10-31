@@ -2,6 +2,7 @@
 
 | Version | Date (UTC) | Changes |
 | --- | --- | --- |
+| [v0.6.0](changelogs/v0.6.0.md) | 2026-10-31 | Notifications when a trigger ends. |
 | [v0.5.0](changelogs/v0.5.0.md) | 2026-10-27 | Network and CPU triggers, compact history card, Raycast extension. |
 | [v0.4.0](changelogs/v0.4.0.md) | 2026-10-26 | History of time awake per day, Homebrew cask. |
 | [v0.3.0](changelogs/v0.3.0.md) | 2026-10-25 | Tray quick actions, Add 15 min, popover keys, sessions survive updates, lighter background work. |
