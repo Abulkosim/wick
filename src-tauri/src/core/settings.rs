@@ -34,6 +34,8 @@ pub struct Settings {
     pub battery_threshold: u8,
     pub stop_in_low_power_mode: bool,
     pub notify_on_end: bool,
+    /// Notify when a trigger that was keeping the Mac awake ends.
+    pub notify_on_trigger: bool,
     pub auto_check_updates: bool,
     pub show_time_left: bool,
     pub pause_when_locked: bool,
@@ -56,6 +58,7 @@ impl Default for Settings {
             battery_threshold: 20,
             stop_in_low_power_mode: false,
             notify_on_end: true,
+            notify_on_trigger: false,
             auto_check_updates: true,
             show_time_left: false,
             pause_when_locked: false,
@@ -172,6 +175,13 @@ impl Settings {
                 "notifyOnEnd",
                 defaults.notify_on_end,
                 "Session notifications",
+                notes,
+            ),
+            notify_on_trigger: field(
+                &map,
+                "notifyOnTrigger",
+                defaults.notify_on_trigger,
+                "Trigger notifications",
                 notes,
             ),
             auto_check_updates: field(

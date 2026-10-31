@@ -192,6 +192,25 @@ impl Inner {
         self.view.history = self.history.recent(today, history::SHOWN_DAYS);
     }
 
+    /// After `evaluate_triggers`: the notification for a trigger that held the Mac and has now
+    /// ended, leaving nothing holding it. A Stop, a session or the battery guard taking over
+    /// says nothing.
+    fn trigger_ended(&self, before: Option<&str>) -> Option<String> {
+        let before = before?;
+        if self.view.session.is_on()
+            || self.held_id.is_some()
+            || self.view.running.iter().any(|id| id == before)
+        {
+            return None;
+        }
+        let trigger = self
+            .view
+            .triggers
+            .iter()
+            .find(|trigger| trigger.id == before)?;
+        Some(format!("{}. Your Mac can sleep again.", trigger.ended()))
+    }
+
     fn changed(&mut self) {
         self.view.revision = self.view.revision.saturating_add(1);
     }
@@ -542,7 +561,11 @@ impl Runtime {
             if let Some(lid_sleeps) = lid_sleeps {
                 inner.view.lid_sleeps = lid_sleeps;
             }
+            let before = inner.held_id.clone();
             inner.evaluate_triggers(&context, &power);
+            if let Some(message) = inner.trigger_ended(before.as_deref()) {
+                ended = Some((message, inner.view.settings.notify_on_trigger));
+            }
             if let Due::End { notice, message } = due(&inner.view, power, now) {
                 inner.view.session = Session::Off;
                 inner.view.notice = notice;
@@ -768,6 +791,38 @@ mod tests {
         assert_eq!(inner.view.paused_by, None);
         inner.evaluate_triggers(&plugged, &Power::default());
         assert_eq!(inner.view.held_by.as_deref(), Some("on power"));
+    }
+
+    #[test]
+    fn a_trigger_that_ends_says_so_unless_something_else_holds() {
+        let mut inner = Inner::default();
+        let mut xcode = trigger("x", TriggerKind::App);
+        xcode.name = "Xcode".into();
+        inner.view.triggers = vec![xcode, trigger("p", TriggerKind::Power)];
+        let plugged = triggers::Context {
+            on_power: true,
+            ..triggers::Context::default()
+        };
+        inner.evaluate_triggers(&plugged, &Power::default());
+        let before = inner.held_id.clone();
+        inner.evaluate_triggers(&triggers::Context::default(), &Power::default());
+        assert_eq!(
+            inner.trigger_ended(before.as_deref()).as_deref(),
+            Some("Unplugged. Your Mac can sleep again.")
+        );
+        inner.evaluate_triggers(&plugged, &Power::default());
+        inner.view.session = Session::Indefinite { started_at: 0 };
+        inner.evaluate_triggers(&triggers::Context::default(), &Power::default());
+        assert_eq!(inner.trigger_ended(Some("p")), None);
+        inner.view.session = Session::Off;
+        let low = Power {
+            on_battery: true,
+            percent: Some(5),
+            low_power_mode: false,
+        };
+        inner.evaluate_triggers(&plugged, &low);
+        assert_eq!(inner.trigger_ended(Some("p")), None);
+        assert_eq!(inner.trigger_ended(None), None);
     }
 
     #[test]

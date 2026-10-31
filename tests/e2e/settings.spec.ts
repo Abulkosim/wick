@@ -66,6 +66,14 @@ test('records, rejects and removes a shortcut', async ({ page }) => {
   await expect(field).toHaveText('Record shortcut')
 })
 
+test('trigger notifications are off until turned on', async ({ page }) => {
+  await page.goto('/?demo=1&state=off&page=settings')
+  const toggle = page.getByRole('switch', { name: 'When a trigger ends' })
+  await expect(toggle).not.toBeChecked()
+  await toggle.click()
+  await expect(toggle).toBeChecked()
+})
+
 test('launch at login toggles', async ({ page }) => {
   await page.goto('/?demo=1&state=off&page=settings')
   const toggle = page.getByRole('switch', { name: 'Launch at login' })
