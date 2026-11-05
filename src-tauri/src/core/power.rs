@@ -118,7 +118,12 @@ pub fn read() -> Power {
     }
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+#[cfg(target_os = "linux")]
+pub fn read() -> Power {
+    super::linux::system::power()
+}
+
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 pub fn read() -> Power {
     Power::default()
 }

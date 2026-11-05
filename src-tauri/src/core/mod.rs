@@ -5,6 +5,7 @@ pub mod candle;
 pub mod display;
 pub mod history;
 pub mod lid;
+pub mod linux;
 pub mod lock;
 pub mod others;
 pub mod power;

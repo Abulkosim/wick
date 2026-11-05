@@ -37,15 +37,25 @@ pub fn screen_locked() -> bool {
         .unwrap_or(false)
 }
 
-#[cfg(not(target_os = "macos"))]
+/// logind's `LockedHint`, which GNOME, KDE and most lockers set.
+#[cfg(target_os = "linux")]
+pub fn screen_locked() -> bool {
+    super::linux::bus::screen_locked()
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 pub fn screen_locked() -> bool {
     false
 }
 
 #[cfg(test)]
 mod tests {
+    /// CI machines are never locked; a developer's may be while tests run.
     #[test]
-    fn an_unlocked_test_run_reads_unlocked() {
-        assert!(!super::screen_locked());
+    fn an_unlocked_ci_run_reads_unlocked() {
+        let locked = super::screen_locked();
+        if std::env::var_os("CI").is_some() {
+            assert!(!locked);
+        }
     }
 }

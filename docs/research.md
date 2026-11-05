@@ -156,6 +156,38 @@ Reddit was unreachable from the research environment; complaints come from App S
 [chromium]: https://chromium.googlesource.com/git/chromium/+/trunk/content/browser/power_save_blocker_win.cc
 [ms]: https://learn.microsoft.com/en-us/windows/win32/power/power-management-functions
 
+## Linux
+
+Researched 2026-11-05 for v0.7.0.
+
+**Keeping awake.** There is no single switch; each layer honours its own lock.
+
+| Mechanism | Who honours it | Released when | Notes |
+| --- | --- | --- | --- |
+| XDG portal `org.freedesktop.portal.Inhibit.Inhibit(window, flags, options)`; flags 4 = suspend, 8 = idle ([spec](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.Inhibit.html)) | GNOME (gnome-session inhibitors, which gsd-power checks before its idle suspend), KDE (PowerDevil), others with a portal backend | `Request.Close`, or the caller's D-Bus connection closes | The desktop-level equivalent of `PreventUserIdle*Sleep`. No prompt. |
+| systemd-logind `Inhibit(what, who, why, mode)` → file descriptor ([D-Bus API](https://www.freedesktop.org/software/systemd/man/latest/org.freedesktop.login1.html), [inhibitor locks](https://systemd.io/INHIBITOR_LOCKS/)) | logind itself: `IdleAction`, `systemctl suspend` | The fd closes (quit, crash) | `idle` blocks logind's idle action only; `sleep` also blocks a manual suspend unless `-i`. Listed by `systemd-inhibit --list`. Lid close ignores sleep locks by default (`LidSwitchIgnoreInhibited=yes`). |
+| `org.freedesktop.ScreenSaver.Inhibit(app, reason)` → cookie ([idle-inhibit spec](https://specifications.freedesktop.org/idle-inhibit-spec/latest/)) | KDE, Xfce, older desktops | `UnInhibit`, or the connection closes (most implementations) | Display only. Fallback when there's no portal. |
+
+Choice: portal (suspend, plus idle with **Keep display on**) and a logind `idle` lock always; the ScreenSaver call only without a portal; a logind `sleep` lock only when neither desktop interface answers (bare window managers, where an idle script would otherwise suspend). All are tied to Wick's process, like IOKit assertions.
+
+**Reading state.**
+
+- Battery and adapter: `/sys/class/power_supply/*/{type,online,status,capacity,energy_*,charge_*,scope}` ([kernel ABI](https://www.kernel.org/doc/html/latest/power/power_supply_class.html)). `scope=Device` marks peripheral batteries.
+- Low Power Mode: power-profiles-daemon's `ActiveProfile == "power-saver"` (`org.freedesktop.UPower.PowerProfiles`, formerly `net.hadess.PowerProfiles`) ([project](https://gitlab.freedesktop.org/upower/power-profiles-daemon)).
+- Screen lock: logind `Session.LockedHint`, set by GNOME, KDE and most lockers.
+- Lid: `/proc/acpi/button/lid/*/state` for presence; logind `HandleLidSwitch`, `HandleLidSwitchExternalPower`, `HandleLidSwitchDocked`, `Docked`, `OnExternalPower` for the action; a `handle-lid-switch` block inhibitor means the desktop decides instead.
+- External displays: `/sys/class/drm/card*-*/status`; `eDP`, `LVDS` and `DSI` connectors are built-in panels.
+- Processes: `/proc/<pid>/{stat,cmdline,exe}`; argv[0] is what users typed, the kernel name is cut at 15 bytes.
+- Activity: `/proc/net/dev` (64-bit counters) for interfaces backed by a device (`/sys/class/net/*/device`), `/proc/stat` for CPU time.
+- Who else: logind `ListInhibitors` (block-mode `idle`/`sleep` rows; delay locks are housekeeping), GNOME `org.gnome.SessionManager.GetInhibitors`, KDE `PolicyAgent.ListInhibitions`.
+
+**Shell.**
+
+- Tray: `tray-icon`'s default libappindicator backend never reports clicks, so a click can only open the menu. Its `ksni` backend speaks StatusNotifierItem directly: left click activates, right click opens the menu, no libappindicator needed. KDE, Xfce, Cinnamon, Budgie and GNOME with the AppIndicator extension (on by default in Ubuntu) host it; vanilla GNOME has no tray at all.
+- Window placement: Wayland doesn't let apps position their own windows; on X11 the popover can sit at the panel corner.
+- Global shortcuts: Tauri's plugin works on X11 only; on Wayland the desktop's own shortcut settings can run `wick toggle`.
+- Updates: tauri-plugin-updater 2.14 installs AppImage updates in place and `.deb`/`.rpm` updates through `pkexec` ([updater](https://v2.tauri.app/plugin/updater/)); it picks `linux-x86_64-{appimage,deb,rpm}` from `latest.json`.
+
 ## Name
 
 Checked brew casks, Mac App Store (iTunes Search API), GitHub. `Abulkosim/<name>` free for all.

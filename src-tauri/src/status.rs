@@ -71,7 +71,17 @@ pub fn default_directory() -> Option<PathBuf> {
     std::env::var_os("APPDATA").map(|data| PathBuf::from(data).join("com.abulkosim.wick"))
 }
 
-#[cfg(not(windows))]
+/// Tauri's app data directory on Linux: `$XDG_DATA_HOME`, else `~/.local/share`.
+#[cfg(target_os = "linux")]
+pub fn default_directory() -> Option<PathBuf> {
+    std::env::var_os("XDG_DATA_HOME")
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")))
+        .map(|data| data.join("com.abulkosim.wick"))
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
 pub fn default_directory() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .map(|home| PathBuf::from(home).join("Library/Application Support/com.abulkosim.wick"))

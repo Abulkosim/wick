@@ -35,6 +35,8 @@ pub struct Held {
 pub struct Assertion {
     #[cfg_attr(not(any(target_os = "macos", windows)), allow(dead_code))]
     id: usize,
+    #[cfg(target_os = "linux")]
+    _inhibition: super::linux::bus::Inhibition,
     pub kind: Kind,
 }
 
@@ -132,7 +134,18 @@ pub fn create(kind: Kind, name: &str, _timeout: Option<Duration>) -> Result<Asse
     }
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+/// Desktop portal and logind inhibitors, released when dropped or when Wick exits. Sessions end
+/// on time through the ticker; inhibitors have no timeout of their own.
+#[cfg(target_os = "linux")]
+pub fn create(kind: Kind, name: &str, _timeout: Option<Duration>) -> Result<Assertion, String> {
+    Ok(Assertion {
+        id: 0,
+        _inhibition: super::linux::bus::inhibit(name, kind == Kind::Display)?,
+        kind,
+    })
+}
+
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 pub fn create(_kind: Kind, _name: &str, _timeout: Option<Duration>) -> Result<Assertion, String> {
     Err("Keeping awake isn't available on this system.".into())
 }

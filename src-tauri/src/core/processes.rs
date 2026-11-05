@@ -180,7 +180,10 @@ mod native {
 #[cfg(target_os = "macos")]
 pub use native::{info, path};
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
+pub use super::linux::system::{info, path};
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 pub fn info(_pid: i32) -> Option<(i32, String)> {
     None
 }
@@ -190,7 +193,7 @@ pub fn path(pid: i32) -> Option<String> {
     super::win32::process_path(pid as u32)
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 pub fn path(_pid: i32) -> Option<String> {
     None
 }
@@ -250,7 +253,24 @@ pub fn scan(_with_paths: bool) -> Vec<Process> {
     processes
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+/// Names from argv[0], so a `claude` trigger matches however it was started.
+#[cfg(target_os = "linux")]
+pub fn scan(with_paths: bool) -> Vec<Process> {
+    let own = std::process::id() as i32;
+    super::linux::system::pids()
+        .into_iter()
+        .filter(|&pid| pid > 0 && pid != own)
+        .filter_map(|pid| {
+            Some(Process {
+                pid,
+                name: info(pid)?.1,
+                path: with_paths.then(|| path(pid)).flatten(),
+            })
+        })
+        .collect()
+}
+
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 pub fn scan(_with_paths: bool) -> Vec<Process> {
     Vec::new()
 }

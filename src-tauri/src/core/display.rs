@@ -22,7 +22,13 @@ pub fn external_connected() -> bool {
     unsafe { super::win32::GetSystemMetrics(super::win32::SM_CMONITORS) > 1 }
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+/// A connected DRM connector that isn't the laptop panel (eDP, LVDS, DSI).
+#[cfg(target_os = "linux")]
+pub fn external_connected() -> bool {
+    super::linux::system::external_display()
+}
+
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 pub fn external_connected() -> bool {
     false
 }
