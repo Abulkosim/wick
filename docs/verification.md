@@ -2,6 +2,36 @@
 
 What was checked for each release, newest first.
 
+## v0.7.0 — 2026-11-05
+
+The Linux release. Tag `v0.7.0`, CI run [41979379718](https://github.com/Abulkosim/wick/actions/runs/41979379718): frontend, macOS universal, Windows x64, Linux x64 and the draft release passed. Built through PRs [#10](https://github.com/Abulkosim/wick/pull/10) (core), [#11](https://github.com/Abulkosim/wick/pull/11) (shell), [#14](https://github.com/Abulkosim/wick/pull/14) (packages and pipeline) and [#15](https://github.com/Abulkosim/wick/pull/15) (release prep), each green before merging; `main` run [41978694191](https://github.com/Abulkosim/wick/actions/runs/41978694191) passed before tagging.
+
+- Local suite (`scripts/check-all.sh`) on macOS; Linux clippy, tests and builds in an Ubuntu 22.04 container with real systemd, logind, polkit and D-Bus (`scripts/linux/Dockerfile`).
+- Linux, in the container: a real click on the tray icon under an Xfce panel opens the popover at the icon; Off, Awake and Settings screenshotted; no panel → titled window that survives focus loss; xfce4-power-manager reports Wick's inhibitor and drops it on exit; `systemd-inhibit --list` shows `Wick` while awake and nothing after stop or `kill -9`; installing the deb makes `xdg-open wick://start?minutes=1` and `wick://stop` work; a signed bundle build (throwaway key) passed the AppImage updater test.
+- Linux, on the x86_64 runner of the tag build: `updater_install_linux` on the signed AppImage (tampered bytes and mismatched signed version rejected, then installed and executable); the smoke test on the binary and on the AppImage (the runner user gets logind's idle lock; polkit refuses the sleep lock there, as designed).
+- Draft: 14/14 checksums OK; provenance for the DMG, archive, both Windows installers, AppImage, deb, rpm, `latest.json`, `SHA256SUMS.txt`; SBOM attestations on the DMG and AppImage; `latest.json` 0.7.0 with nine platform entries including `linux-x86_64`, `-appimage`, `-deb`, `-rpm`. Released deb: amd64, `Exec=wick %u`, `MimeType=x-scheme-handler/wick;`; rpm x86_64.
+- Mac: `updater_install` against the draft archive passed; DMG universal, codesign valid, 0.7.0.
+- Published 2026-11-05 06:51 UTC, marked latest; `latest.json` and the AppImage resolve publicly. Homebrew workflow run [41983222960](https://github.com/Abulkosim/wick/actions/runs/41983222960) pushed `wick 0.7.0` with the DMG checksum.
+- Owner's Mac updated 0.6.0 → 0.7.0 from the live endpoint; history kept, the open-ended session restarted.
+- Pending 👤: Linux on real hardware with GNOME (AppIndicator extension) and KDE, Wayland, and an in-app update from 0.7.0 to the next release; Windows VM. Codex cross-review next (plan 8.5).
+
+Checksums:
+
+    ddc03ac3b674197a3a7074bdd09ccd842001023673fbd9d10f95f468b1197327  latest.json
+    601d36264c766aac2c5f675eaf0ea1fee31f3eb337d7064904e207ae1fa0e5d3  Wick_0.7.0_amd64.AppImage
+    caccbca0541ef221f0062adaf211ff5e9cf806527771a51cde0956df7a0cfe8d  Wick_0.7.0_amd64.AppImage.sig
+    869569db78d0549a7a629e6cd4acb4444f8599356d29e292e9e991c911352e7b  Wick_0.7.0_amd64.deb
+    be2a47856dc605434b6b486c428cea4bb693e8a04aa95818073f752f073f1821  Wick_0.7.0_amd64.deb.sig
+    10ffc976fad43a570276179987a43b6c771b7a2cbf5861ce14876c8780a20b2e  Wick_0.7.0_universal.dmg
+    029be63533f04a4c47ec8e4ff7c29d3cab4b3519901b97b2ecfb2e47b644427d  Wick_0.7.0_x64_en-US.msi
+    ea383538b3f0a82794a9e7e6d6bf5cf78a83f0f488cfd7d2396ab08e769066bd  Wick_0.7.0_x64_en-US.msi.sig
+    55a22507deb37a6067d21419917ce11401e181da069dec77ec7c0a13073fb780  Wick_0.7.0_x64-setup.exe
+    1aebe812213a1abed371dec9985d4e693684484d15dbed56da62f1b2ce4580dd  Wick_0.7.0_x64-setup.exe.sig
+    18e3ac30c3538ba0599084e82077d50b110dfeab9dc270ac095a65579cac4726  Wick-0.7.0-1.x86_64.rpm
+    5b59f0fc1e19c7359d6eeca078b7f1cc4d27b76e5facfaa4f5c9b268873d04ef  Wick-0.7.0-1.x86_64.rpm.sig
+    dc971c30a4632cb8c781a3b3f290f2cb3006e01b9523d1d44f38157232e46a21  Wick.app.tar.gz
+    1eb19e762184ba15f8a85e8c99111ab686045c99ed030b540f348278776d8073  Wick.app.tar.gz.sig
+
 ## v0.6.0 — 2026-10-31
 
 Tag `v0.6.0`, CI run [41223052164](https://github.com/Abulkosim/wick/actions/runs/41223052164): frontend, macOS universal, Windows x64 and the draft release passed. PR [#9](https://github.com/Abulkosim/wick/pull/9) checks passed before the merge; `main` run [41222421535](https://github.com/Abulkosim/wick/actions/runs/41222421535) passed before tagging.
