@@ -192,6 +192,11 @@ button:disabled:hover {
 .desktop-stage .popover-arrow {
   top: 9px;
 }
+/* Linux has no common UI font and Debian's default is wide; ship Inter there. macOS and
+   Windows keep their system fonts, so the bundled files never load on them. */
+:root[data-platform=linux] {
+  font-family: "Inter Variable",Inter,"Adwaita Sans",Cantarell,Ubuntu,"Noto Sans",sans-serif;
+}
 :root[data-platform=windows] .desktop-stage .app-shell {
   padding: 6px;
 }
