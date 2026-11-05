@@ -159,10 +159,15 @@ mod tests {
         let link = directory.path().join("a-very-long-command-name");
         std::os::unix::fs::symlink("/bin/sleep", &link).unwrap();
         let mut child = std::process::Command::new(&link).arg("30").spawn().unwrap();
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        let name = info(child.id() as i32).map(|(_, name)| name);
+        // Mid-exec the kernel name is set but the arguments aren't readable yet, so poll.
+        let found = (0..100).find_map(|_| {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            info(child.id() as i32)
+                .map(|(_, name)| name)
+                .filter(|name| name == "a-very-long-command-name")
+        });
         child.kill().unwrap();
         let _ = child.wait();
-        assert_eq!(name.as_deref(), Some("a-very-long-command-name"));
+        assert!(found.is_some(), "argv[0] never became the process name");
     }
 }
