@@ -32,7 +32,28 @@ fn perform(app: &tauri::AppHandle, args: &[String]) -> bool {
     true
 }
 
+/// Tells the page which platform it runs on before any script loads. WebKitGTK's user agent
+/// can claim to be Safari on macOS, so the page can't work it out reliably itself.
+fn platform_script() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    let platform = if cfg!(target_os = "macos") {
+        "mac"
+    } else if cfg!(windows) {
+        "windows"
+    } else {
+        "linux"
+    };
+    tauri::plugin::Builder::new("wick-platform")
+        .js_init_script(format!("window.__WICK_PLATFORM__ = {platform:?};"))
+        .build()
+}
+
 pub fn run() {
+    // WebKitGTK's DMA-BUF renderer draws blank windows on some GPU drivers (NVIDIA, older
+    // Mesa); the popover is small enough that the shared-memory path costs nothing.
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
     let args: Vec<String> = std::env::args().collect();
     match cli::parse(&args) {
         Ok(Some(cli::Intent::Status)) => {
@@ -55,6 +76,7 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(platform_script())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -92,7 +114,24 @@ pub fn run() {
             let path = app.path().app_data_dir()?.join("settings.json");
             let runtime = Arc::new(Runtime::new(path));
             app.manage(runtime.clone());
-            tray::setup(app.handle())?;
+            let mut tray_missing = false;
+            if let Err(error) = tray::setup(app.handle()) {
+                // Linux desktops without a StatusNotifier host (GNOME without the AppIndicator
+                // extension) have no tray; Wick still works as a window.
+                if !cfg!(target_os = "linux") {
+                    return Err(error.into());
+                }
+                eprintln!("wick: no tray available ({error}); opening as a window");
+                popover::use_window(app.handle());
+                tray_missing = true;
+            }
+            #[cfg(target_os = "linux")]
+            if app.env().appimage.is_some() {
+                // Packages register wick:// in their .desktop file; an AppImage does it itself.
+                if let Err(error) = app.deep_link().register_all() {
+                    eprintln!("wick: could not register wick:// links: {error}");
+                }
+            }
             let linker = app.handle().clone();
             app.deep_link().on_open_url(move |event| {
                 for url in event.urls() {
@@ -112,13 +151,17 @@ pub fn run() {
             updates::start_background_checks(app.handle().clone(), runtime.clone());
             runtime::start_ticker(app.handle().clone(), runtime);
             let args: Vec<String> = std::env::args().collect();
-            if !perform(app.handle(), &args) && !args.iter().any(|arg| arg == "--background") {
+            let background = args.iter().any(|arg| arg == "--background") && !tray_missing;
+            if !perform(app.handle(), &args) && !background {
                 popover::show(app.handle(), false);
             }
             Ok(())
         })
         .on_window_event(|window, event| match event {
             WindowEvent::Focused(false) => {
+                if popover::framed(window.app_handle()) {
+                    return;
+                }
                 if let Ok(mut last_blur) =
                     window.app_handle().state::<Visibility>().last_blur.lock()
                 {

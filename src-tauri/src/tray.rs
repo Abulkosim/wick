@@ -15,8 +15,9 @@ use tauri::{
     AppHandle, Manager,
 };
 
-/// 18 pt at 2x on macOS; 32 px suits Windows at 100–200% scaling.
-const ICON_SIZE: u32 = if cfg!(windows) { 32 } else { 36 };
+/// 18 pt at 2x on macOS; 32 px suits Windows at 100–200% scaling and Linux panels, which scale
+/// the pixmap to their own size.
+const ICON_SIZE: u32 = if cfg!(target_os = "macos") { 36 } else { 32 };
 
 #[derive(Default)]
 struct Shown {
@@ -143,7 +144,7 @@ pub fn update(app: &AppHandle, state: &AppState, now: i64) {
     });
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
 pub fn icon(glyph: Glyph) -> Image<'static> {
     Image::new_owned(
         crate::core::candle::template_rgba(ICON_SIZE, glyph),
@@ -159,16 +160,47 @@ pub fn icon(glyph: Glyph) -> Image<'static> {
         .open(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
         .and_then(|key| key.get_u32("SystemUsesLightTheme"))
         .is_ok_and(|value| value == 1);
-    let ink = if light {
-        [0x1f, 0x2a, 0x24]
-    } else {
-        [0xf2, 0xf5, 0xf0]
-    };
     Image::new_owned(
-        crate::core::candle::tinted_rgba(ICON_SIZE, glyph, ink),
+        crate::core::candle::tinted_rgba(ICON_SIZE, glyph, ink(!light)),
         ICON_SIZE,
         ICON_SIZE,
     )
+}
+
+/// Panels don't tint pixmaps either. GNOME's top bar is dark in every theme; elsewhere the
+/// panel usually follows the desktop's colour scheme. Many desktops report none, so the candle
+/// also gets a halo in the opposite colour and reads on either.
+#[cfg(target_os = "linux")]
+pub fn icon(glyph: Glyph) -> Image<'static> {
+    let desktop = std::env::var("XDG_CURRENT_DESKTOP")
+        .unwrap_or_default()
+        .to_lowercase();
+    let scheme = crate::core::linux::bus::color_scheme();
+    let dark_panel = if ["gnome", "ubuntu", "unity", "pantheon"]
+        .iter()
+        .any(|name| desktop.contains(name))
+    {
+        true
+    } else if desktop.contains("kde") {
+        scheme == Some(1)
+    } else {
+        scheme != Some(2)
+    };
+    Image::new_owned(
+        crate::core::candle::outlined_rgba(ICON_SIZE, glyph, ink(dark_panel), ink(!dark_panel)),
+        ICON_SIZE,
+        ICON_SIZE,
+    )
+}
+
+/// Ink for a tray that doesn't tint its icons.
+#[cfg(not(target_os = "macos"))]
+fn ink(dark_panel: bool) -> [u8; 3] {
+    if dark_panel {
+        [0xf2, 0xf5, 0xf0]
+    } else {
+        [0x1f, 0x2a, 0x24]
+    }
 }
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
@@ -239,9 +271,11 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
+                position,
                 ..
             } = event
             {
+                popover::remember_click(app, position.x, position.y);
                 let runtime = app.state::<Arc<Runtime>>();
                 if runtime.state().settings.icon_click == IconClick::Toggle {
                     let _ = runtime.toggle(app);

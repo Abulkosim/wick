@@ -42,6 +42,9 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["NSA
 
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = "5"
+# StatusNotifierItem instead of libappindicator: a left click reaches Wick (AppIndicator only
+# ever opens the menu) and no libappindicator is needed at run time.
+tray-icon = { version = "0.25", default-features = false, features = ["ksni"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-registry = "0.6"

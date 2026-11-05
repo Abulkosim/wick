@@ -15,13 +15,67 @@ pub struct Visibility {
     theme: Mutex<Option<Option<tauri::Theme>>>,
     pub placement: Mutex<PopoverPlacement>,
     content_height: Mutex<Option<f64>>,
+    /// Where the tray icon was last clicked, on panels that report it (Linux).
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+    click: Mutex<Option<(f64, f64)>>,
 }
 
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PopoverPlacement {
     pub revision: u64,
     pub arrow_x: Option<f64>,
+    /// No tray to anchor to: Wick is an ordinary window with a title bar.
+    pub framed: bool,
+    /// Whether a global shortcut can be registered (not on Wayland).
+    pub shortcuts: bool,
+}
+
+impl Default for PopoverPlacement {
+    fn default() -> Self {
+        Self {
+            revision: 0,
+            arrow_x: None,
+            framed: false,
+            shortcuts: !wayland(),
+        }
+    }
+}
+
+/// Wayland lets neither apps place their own windows nor grab keys globally.
+pub fn wayland() -> bool {
+    cfg!(target_os = "linux")
+        && (std::env::var_os("WAYLAND_DISPLAY").is_some()
+            || std::env::var("XDG_SESSION_TYPE").is_ok_and(|kind| kind == "wayland"))
+}
+
+/// Notes where the tray icon was clicked, to open the popover beside it.
+pub fn remember_click(app: &AppHandle, x: f64, y: f64) {
+    if let Ok(mut click) = app.state::<Visibility>().click.lock() {
+        *click = (x > 0.0 || y > 0.0).then_some((x, y));
+    }
+}
+
+/// Without a tray (GNOME with no AppIndicator extension), Wick lives in a normal window:
+/// a title bar to move and close it, a taskbar entry, and no hiding when it loses focus.
+pub fn use_window(app: &AppHandle) {
+    if let Ok(mut placement) = app.state::<Visibility>().placement.lock() {
+        placement.framed = true;
+        placement.revision = placement.revision.saturating_add(1);
+    }
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_decorations(true);
+        let _ = window.set_skip_taskbar(false);
+        let _ = window.set_always_on_top(false);
+        let _ = window.set_shadow(true);
+    }
+}
+
+pub fn framed(app: &AppHandle) -> bool {
+    app.state::<Visibility>()
+        .placement
+        .lock()
+        .is_ok_and(|placement| placement.framed)
 }
 
 fn popover_height(requested: Option<f64>) -> f64 {
@@ -78,6 +132,25 @@ fn layout(work: Bounds, anchor: Option<Bounds>, scale: f64, macos: bool, height:
             height,
         },
         arrow_x,
+    }
+}
+
+/// Linux panels don't say where their icons are: open at the end of the panel, top right
+/// when the panel is at the top (GNOME) or the screen has none, bottom right otherwise.
+#[cfg_attr(not(any(target_os = "linux", test)), allow(dead_code))]
+fn panel_corner(work: Bounds, screen: Bounds, scale: f64) -> Bounds {
+    let x = work.x + work.width - 24.0 * scale;
+    let bottom_panel = work.y + work.height < screen.y + screen.height && work.y <= screen.y;
+    let y = if bottom_panel {
+        work.y + work.height
+    } else {
+        work.y - 1.0
+    };
+    Bounds {
+        x,
+        y,
+        width: 1.0,
+        height: 1.0,
     }
 }
 
@@ -231,6 +304,19 @@ fn place(app: &AppHandle, window: &tauri::WebviewWindow) {
         if window.move_window_constrained(position).is_err() {
             let _ = window.center();
         }
+        let clicked = app
+            .state::<Visibility>()
+            .click
+            .lock()
+            .ok()
+            .and_then(|click| *click)
+            .filter(|_| cfg!(target_os = "linux") && !framed(app))
+            .map(|(x, y)| {
+                (
+                    tauri::PhysicalPosition::new(x, y),
+                    tauri::PhysicalSize::new(1.0, 1.0),
+                )
+            });
         let anchor = app
             .tray_by_id(TRAY_ID)
             .and_then(|tray| tray.rect().ok().flatten())
@@ -240,7 +326,8 @@ fn place(app: &AppHandle, window: &tauri::WebviewWindow) {
                     rect.size.to_physical::<f64>(1.0),
                 )
             })
-            .filter(|(_, size)| size.width > 0.0 && size.height > 0.0);
+            .filter(|(_, size)| size.width > 0.0 && size.height > 0.0)
+            .or(clicked);
         let monitor = anchor
             .and_then(|(position, _)| {
                 window
@@ -252,23 +339,30 @@ fn place(app: &AppHandle, window: &tauri::WebviewWindow) {
         let mut arrow_x = None;
         if let Some(monitor) = monitor {
             let work = monitor.work_area();
-            let placed = layout(
-                Bounds {
-                    x: f64::from(work.position.x),
-                    y: f64::from(work.position.y),
-                    width: f64::from(work.size.width),
-                    height: f64::from(work.size.height),
-                },
-                anchor.map(|(position, size)| Bounds {
+            let work = Bounds {
+                x: f64::from(work.position.x),
+                y: f64::from(work.position.y),
+                width: f64::from(work.size.width),
+                height: f64::from(work.size.height),
+            };
+            let screen = Bounds {
+                x: f64::from(monitor.position().x),
+                y: f64::from(monitor.position().y),
+                width: f64::from(monitor.size().width),
+                height: f64::from(monitor.size().height),
+            };
+            let anchor = anchor
+                .map(|(position, size)| Bounds {
                     x: position.x,
                     y: position.y,
                     width: size.width,
                     height: size.height,
-                }),
-                monitor.scale_factor(),
-                false,
-                height,
-            );
+                })
+                .or_else(|| {
+                    (cfg!(target_os = "linux") && !framed(app))
+                        .then(|| panel_corner(work, screen, monitor.scale_factor()))
+                });
+            let placed = layout(work, anchor, monitor.scale_factor(), false, height);
             let resized = window.set_size(tauri::PhysicalSize::new(
                 placed.frame.width as u32,
                 placed.frame.height as u32,
@@ -330,6 +424,37 @@ pub fn toggle(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn linux_opens_at_the_panel_end() {
+        let screen = Bounds {
+            x: 0.0,
+            y: 0.0,
+            width: 1920.0,
+            height: 1080.0,
+        };
+        let top = Bounds {
+            y: 32.0,
+            height: 1048.0,
+            ..screen
+        };
+        let placed = layout(top, Some(panel_corner(top, screen, 1.0)), 1.0, false, 400.0);
+        assert_eq!((placed.frame.x, placed.frame.y), (1560.0, 32.0));
+        let bottom = Bounds {
+            height: 1032.0,
+            ..screen
+        };
+        let placed = layout(
+            bottom,
+            Some(panel_corner(bottom, screen, 2.0)),
+            2.0,
+            false,
+            400.0,
+        );
+        assert_eq!(placed.frame.x + placed.frame.width, 1920.0);
+        assert_eq!(placed.frame.y + placed.frame.height, 1032.0);
+        assert_eq!(placed.arrow_x, None);
+    }
 
     fn bounds(x: f64, y: f64, width: f64, height: f64) -> Bounds {
         Bounds {
