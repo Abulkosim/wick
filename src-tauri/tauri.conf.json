@@ -39,8 +39,8 @@
     "active": true,
     "targets": "all",
     "category": "Utility",
-    "shortDescription": "Keeps your Mac awake",
-    "longDescription": "Keep your Mac awake on demand, for a set time, or while an app or process is running. A quiet menu bar app.",
+    "shortDescription": "Keeps your computer awake",
+    "longDescription": "Keep your computer awake on demand, for a set time, or while an app, command, download or build is running. A quiet menu bar and tray app for macOS, Windows and Linux.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -53,6 +53,14 @@
       "signingIdentity": "-"
     },
     "createUpdaterArtifacts": true,
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/wick.desktop"
+      },
+      "rpm": {
+        "desktopTemplate": "linux/wick.desktop"
+      }
+    },
     "windows": {
       "nsis": {
         "displayLanguageSelector": false,

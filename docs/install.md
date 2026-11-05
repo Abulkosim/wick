@@ -2,12 +2,13 @@
 
 Short version: [README → Install](../README.md#install). Downloads: [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
 
-Wick is free and open source. Builds are not signed with an Apple Developer ID or a Windows publisher certificate, so macOS and Windows warn on first launch. Updates are signed separately and verified in the app. winget is not available yet.
+Wick is free and open source. Builds are not signed with an Apple Developer ID or a Windows publisher certificate, so macOS and Windows warn on first launch. Updates are signed separately and verified in the app. winget and Linux package repositories (apt, dnf, Flathub) are not available yet.
 
 | Platform | File |
 | --- | --- |
 | macOS 12+ · Apple Silicon and Intel | `Wick_<version>_universal.dmg` |
 | Windows 10/11 x64 (from v0.2.0) | `Wick_<version>_x64-setup.exe` (recommended) or `Wick_<version>_x64_en-US.msi` |
+| Linux x86_64 (from v0.7.0), glibc 2.35+: Ubuntu 22.04, Debian 12, Fedora 36 and newer | `Wick_<version>_amd64.AppImage` (any distribution), `Wick_<version>_amd64.deb` or `Wick-<version>-1.x86_64.rpm` |
 
 ## macOS
 
@@ -56,6 +57,36 @@ A managed device may hide **Run anyway**. See [Microsoft Defender SmartScreen](h
 
 **What differs on Windows.** Wick keeps the PC awake with a standard power request (`powercfg /requests` lists it as Wick). It can't list other apps' requests without administrator rights, has no lid warning, and triggers are commands (`ffmpeg`, `claude`), power and monitors rather than apps.
 
+## Linux
+
+Pick one:
+
+- **AppImage** (any distribution, updates itself):
+
+  ```sh
+  chmod +x Wick_<version>_amd64.AppImage
+  ./Wick_<version>_amd64.AppImage
+  ```
+
+  Keep it somewhere permanent, such as `~/Applications`, before turning on **Launch at login**: the login entry points at the file. If it won't start with a FUSE error, install `libfuse2` (Ubuntu 22.04: `sudo apt install libfuse2`; 24.04: `sudo apt install libfuse2t64`).
+- **Debian, Ubuntu, Mint, Pop!_OS:** `sudo apt install ./Wick_<version>_amd64.deb`
+- **Fedora, openSUSE:** `sudo dnf install ./Wick-<version>-1.x86_64.rpm`
+
+Open **Wick** from your applications. The candle sits in the panel's tray: left-click opens Wick, right-click shows the menu.
+
+**The tray.** KDE Plasma, Xfce, Cinnamon and Ubuntu's GNOME show it out of the box. Plain GNOME (Fedora, Debian) has no tray: install the [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/) extension, or use Wick without a tray: it then opens as a normal window, and opening Wick again from your applications brings it back.
+
+**How Wick keeps it awake.** Through your desktop's own inhibitor (the XDG portal on GNOME and KDE, PowerManagement on Xfce) and a systemd-logind lock, so `systemd-inhibit --list` shows `Wick` while it's on. Without a desktop that answers, logind also blocks suspend; `systemctl suspend -i` still suspends. Closing the lid still suspends unless your desktop is set to ignore it.
+
+**What differs on Linux.**
+
+- Triggers are commands (`ffmpeg`, `claude`), network, CPU, power, displays and schedules, not apps.
+- "Who else" lists logind inhibitors and what GNOME or KDE hold for apps.
+- On Wayland, apps can't register global shortcuts or place their own windows. Bind `wick toggle` to a key in your desktop's keyboard settings; the popover opens where your desktop puts it.
+- `wick` is on your `PATH` with the `.deb` and `.rpm` (`wick status`, `wick start 45`); with the AppImage, call the file.
+
+**Updates.** The AppImage replaces itself. The `.deb` and `.rpm` install updates through `pkexec`, which asks for your password; you can also update with your package manager by installing the new file.
+
 ## Verify a download
 
 Each release includes `SHA256SUMS.txt`. Compare your file's checksum with it:
@@ -66,6 +97,10 @@ shasum -a 256 Wick_<version>_universal.dmg
 
 ```powershell
 Get-FileHash Wick_<version>_x64-setup.exe -Algorithm SHA256
+```
+
+```sh
+sha256sum Wick_<version>_amd64.AppImage
 ```
 
 Releases also carry GitHub build attestations and an SPDX SBOM (`wick-<version>.sbom.spdx.json`). With the [GitHub CLI](https://cli.github.com), check that a file was built by this repository's release workflow:
@@ -96,4 +131,6 @@ If Launch at login was left on, also delete `~/Library/LaunchAgents/Wick.plist`.
 
 **Windows.** Open **Settings → Apps → Installed apps**, choose **Wick → Uninstall**. To remove settings, triggers and history, delete `%APPDATA%\com.abulkosim.wick\`.
 
-Quitting releases Wick's power assertion at once; Wick never changes `pmset` or other system settings, so there is nothing to restore.
+**Linux.** `sudo apt remove wick` or `sudo dnf remove wick`, or delete the AppImage. To remove settings, triggers and history, delete `~/.local/share/com.abulkosim.wick/`. If Launch at login was left on, also delete `~/.config/autostart/Wick.desktop`; an AppImage also leaves `~/.local/share/applications/wick-handler.desktop` for `wick://` links.
+
+Quitting releases Wick's power assertion or inhibitors at once; Wick never changes `pmset`, logind settings or other system settings, so there is nothing to restore.

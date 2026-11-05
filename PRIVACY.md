@@ -12,7 +12,7 @@ One host, for update checks:
 
 ## What Wick reads
 
-All on your Mac, never sent anywhere:
+All on your computer, never sent anywhere:
 
 - **Power assertions** from macOS (`IOPMCopyAssertionsByProcess`), the same list `pmset -g assertions` shows, to list what else keeps the Mac awake.
 - **Running processes**: names, executable paths and parent process. All processes only while a trigger is on, or once to list running apps when you add one; otherwise only the processes holding a power assertion. Every 5 seconds at most.
@@ -29,5 +29,7 @@ All on your Mac, never sent anywhere:
 - A sleep assertion named `Wick: …` while it keeps the Mac awake. macOS releases it when Wick quits or crashes.
 
 On Windows, a power request named after the session while Wick keeps the PC awake; Windows clears it when Wick exits.
+
+On Linux, files live in `~/.local/share/com.abulkosim.wick/` (`$XDG_DATA_HOME` if set), and Launch at login writes `~/.config/autostart/Wick.desktop`. While awake, Wick holds desktop and systemd-logind inhibitors named `Wick: …`; they end when Wick exits. Wick reads power and lid state from `/sys`, `/proc` and logind, process names from `/proc`, and other inhibitors from logind, GNOME or KDE, all locally.
 
 Wick never changes `pmset` or any other system setting, needs no administrator password, and asks for no permissions.

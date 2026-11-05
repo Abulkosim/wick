@@ -11,10 +11,13 @@ export function releaseAssetNames(version) {
     mac: 'Wick.app.tar.gz',
     nsis: `Wick_${version}_x64-setup.exe`,
     msi: `Wick_${version}_x64_en-US.msi`,
+    appimage: `Wick_${version}_amd64.AppImage`,
+    deb: `Wick_${version}_amd64.deb`,
+    rpm: `Wick-${version}-1.x86_64.rpm`,
   }
 }
 
-export const signedAssets = (assets) => [assets.mac, assets.nsis, assets.msi]
+export const signedAssets = (assets) => [assets.mac, assets.nsis, assets.msi, assets.appimage, assets.deb, assets.rpm]
 
 export async function createUpdaterManifest({ directory, version, publicKey, repository, notes = '', date = new Date() }) {
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error('Invalid release version.')
@@ -35,6 +38,10 @@ export async function createUpdaterManifest({ directory, version, publicKey, rep
     [assets.mac, ['darwin-aarch64', 'darwin-x86_64']],
     [assets.nsis, ['windows-x86_64-nsis', 'windows-x86_64']],
     [assets.msi, ['windows-x86_64-msi']],
+    // Plain linux-x86_64 is the fallback for an updater that can't tell how Wick was installed.
+    [assets.appimage, ['linux-x86_64-appimage', 'linux-x86_64']],
+    [assets.deb, ['linux-x86_64-deb']],
+    [assets.rpm, ['linux-x86_64-rpm']],
   ]) {
     const signature = (await readFile(join(directory, `${name}.sig`), 'utf8')).trim()
     await verifyUpdaterSignature(join(directory, name), signature, publicKey, version)
@@ -59,5 +66,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     notes: await readFile(`changelogs/${tag}.md`, 'utf8'),
   })
   await writeFile(join(directory, 'latest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
-  console.log(`Verified three signed artifacts and generated the updater manifest for ${tag}.`)
+  console.log(`Verified six signed artifacts and generated the updater manifest for ${tag}.`)
 }
