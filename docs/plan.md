@@ -146,6 +146,28 @@ Mac features first, Windows last, then the release. Presets dropped for now: the
 - [x] **7.2 Release v0.6.0.**
   Done 2026-10-31: merged through PR #9, published, tap bumped itself, owner's Mac updated. Evidence in docs/verification.md.
 
+## Phase 8 — Linux → v0.7.0 ⛳
+
+Asked for publicly ("Any plans for a Linux version?"), promised for the end of the week. Every step lands as its own PR, merged once CI is green. x86_64 first; arm64 later.
+
+Decisions (research in [research.md](research.md#linux)):
+
+- **Keeping awake:** the XDG desktop portal `Inhibit` (Suspend, plus Idle with **Keep display on**) is what GNOME, KDE and other desktops honour; a systemd-logind `idle` block inhibitor covers logind's own `IdleAction` and shows up in `systemd-inhibit --list` as "Wick". Without a portal, `org.freedesktop.ScreenSaver.Inhibit` keeps the display on. All three end when Wick's D-Bus connection or file descriptor closes, so a quit or crash releases them like an IOKit assertion. Never `sleep` inhibitors: a manual suspend must still work, as on macOS.
+- **Tray:** StatusNotifierItem (`tray-icon`'s `ksni` backend), so a left click opens the popover and no libappindicator is needed. Icon ink follows the panel: light on GNOME's always-dark bar, otherwise the portal's colour scheme. With no tray host (GNOME without the AppIndicator extension), Wick opens as a small window instead of disappearing.
+- **Popover:** frameless, placed at the panel corner on X11; Wayland compositors place it themselves. Square-ish 8 px radius like Windows, no arrow.
+- **Readers:** battery from `/sys/class/power_supply`, Low Power Mode from power-profiles-daemon (`power-saver`), lock from logind `LockedHint`, lid from `/proc/acpi/button/lid` plus logind `HandleLidSwitch*`, external displays from `/sys/class/drm`, processes from `/proc`, activity from `/proc/net/dev` and `/proc/stat`, who else from logind `ListInhibitors`.
+- **Packages:** AppImage (in-app updates), `.deb` and `.rpm` (updates through pkexec, or the package manager). Built on Ubuntu 22.04 for glibc 2.35+.
+- **Copy:** "Mac" on macOS, "PC" on Windows, "computer" on Linux.
+
+- [ ] **8.1 Linux core.** Inhibitors, power, lock, lid, displays, boot time, processes, activity, who else, status path; a Linux CI job (fmt, clippy, tests, build).
+  Verify: pure parser tests with fixtures; live tests in Docker (Ubuntu 22.04, aarch64) and on the CI runner: the inhibitor shows in `systemd-inhibit --list` and goes on drop and on kill.
+- [ ] **8.2 Linux shell.** KSNI tray with click and themed ink, no-host fallback window, popover placement and look, deep links for AppImage, platform-aware copy and settings, Wayland shortcut note.
+  Verify: e2e `?platform=linux`; headless smoke test (Xvfb + D-Bus) in CI: `wick start 1` → inhibitor listed, `wick status` JSON, stop → gone; screenshot under a real panel in Docker.
+- [ ] **8.3 Linux packages and release pipeline.** AppImage, deb, rpm; signed updater artifacts; `latest.json` linux entries; checksums, attestations; install docs.
+  Verify: script tests; CI release dry run builds all three; AppImage update installs in Docker.
+- [ ] **8.4 Release v0.7.0.**
+- [ ] **8.5 Cross-review with Codex** after the release; fixes go out as a patch.
+
 ## Later / maybe
 
 - winget (Margin `packaging/winget`).
