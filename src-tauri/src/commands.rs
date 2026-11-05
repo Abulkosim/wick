@@ -144,6 +144,10 @@ pub fn fit_popover(app: AppHandle, height: f64) -> Result<(), String> {
 
 #[tauri::command]
 pub fn hide_window(app: AppHandle) -> Result<(), String> {
+    // Escape hides the popover; the no-tray window stays, or nothing could bring it back.
+    if popover::framed(&app) {
+        return Ok(());
+    }
     app.get_webview_window("main")
         .ok_or("Window is unavailable.")?
         .hide()
