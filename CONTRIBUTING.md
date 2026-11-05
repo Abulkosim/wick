@@ -15,7 +15,7 @@ Wick keeps a Mac awake from the menu bar. Questions go to [Discussions](https://
 
 - Node.js 24 and pnpm 11.25.0 (pinned in `package.json`).
 - Stable Rust via [rustup](https://rustup.rs), 1.90 or newer, with `clippy` and `rustfmt`.
-- macOS with Xcode Command Line Tools ([Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)).
+- macOS with Xcode Command Line Tools, Windows with WebView2, or Linux with the WebKitGTK toolchain: on Ubuntu/Debian `sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf` ([Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)). The AppIndicator package is only needed to bundle; the tray speaks StatusNotifierItem itself.
 - Playwright browsers for e2e tests: `pnpm exec playwright install chromium webkit`.
 
 ## Run
@@ -31,11 +31,25 @@ To work on the interface without the app, use the browser preview:
 pnpm dev
 ```
 
-Open the printed URL with `?demo=1`. Add `&theme=light` or `&theme=dark`, `&page=settings`, and `&state=` one of the scenarios in [`src/lib/demo.ts`](src/lib/demo.ts): `off`, `timed`, `until`, `indefinite`, `display`, `battery`, `desktop`, `clamshell`, `held`, `paused`, `triggers`, `others`, `others-off`, `error`, `recovery`, `recovered`, `update-available`.
+Open the printed URL with `?demo=1`. Add `&theme=light` or `&theme=dark`, `&page=settings`, `&platform=windows` or `&platform=linux` (with `&wayland=1` or `&framed=1` for the Linux variants), and `&state=` one of the scenarios in [`src/lib/demo.ts`](src/lib/demo.ts): `off`, `timed`, `until`, `indefinite`, `display`, `battery`, `desktop`, `clamshell`, `held`, `paused`, `triggers`, `others`, `others-off`, `error`, `recovery`, `recovered`, `update-available`.
 
 `scripts/native-preview.mjs` renders the desktop popover at the height the app asks macOS for, over a light, dark or transparent backdrop, which is closer to the real window than the preview stage.
 
-The running app also takes `wick start [minutes]` and `wick stop` from the command line, which is handy for checking `pmset -g assertions`.
+The running app also takes `wick start [minutes]` and `wick stop` from the command line, which is handy for checking `pmset -g assertions` (or `systemd-inhibit --list` on Linux). On Linux without a desktop, `xvfb-run -a dbus-run-session -- bash scripts/linux-smoke.sh path/to/wick` runs the same checks CI does.
+
+### Linux from another computer
+
+`scripts/linux/Dockerfile` is a Linux desktop in a container: systemd with logind, D-Bus, Xvfb and an Xfce panel for the tray.
+
+```sh
+docker build -t wick-linux scripts/linux
+docker run -d --name wick-linux --privileged --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+  --tmpfs /run --tmpfs /run/lock -v "$PWD":/src -v wick-target:/target wick-linux
+pnpm build   # the container builds Rust only
+docker exec -w /src/src-tauri -e CARGO_TARGET_DIR=/target wick-linux \
+  bash -c 'cargo build --features tauri/custom-protocol && dbus-run-session -- cargo test'
+docker exec -w /tmp wick-linux xvfb-run -a dbus-run-session -- bash /src/scripts/linux-smoke.sh /target/debug/wick
+```
 
 ## Test
 
