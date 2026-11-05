@@ -159,12 +159,15 @@ Decisions (research in [research.md](research.md#linux)):
 - **Packages:** AppImage (in-app updates), `.deb` and `.rpm` (updates through pkexec, or the package manager). Built on Ubuntu 22.04 for glibc 2.35+.
 - **Copy:** "Mac" on macOS, "PC" on Windows, "computer" on Linux.
 
-- [ ] **8.1 Linux core.** Inhibitors, power, lock, lid, displays, boot time, processes, activity, who else, status path; a Linux CI job (fmt, clippy, tests, build).
+- [x] **8.1 Linux core.** Inhibitors, power, lock, lid, displays, boot time, processes, activity, who else, status path; a Linux CI job (fmt, clippy, tests, build).
   Verify: pure parser tests with fixtures; live tests in Docker (Ubuntu 22.04, aarch64) and on the CI runner: the inhibitor shows in `systemd-inhibit --list` and goes on drop and on kill.
-- [ ] **8.2 Linux shell.** KSNI tray with click and themed ink, no-host fallback window, popover placement and look, deep links for AppImage, platform-aware copy and settings, Wayland shortcut note.
+  Done 2026-11-05 (PR #10): parsers tested on every platform; the live logind test passes in the container and on the runner. Found on the way: tauri-plugin-deep-link 2.6 doesn't build with rust-ini ≥ 0.21.2 (pinned, Dependabot told), and async-executor 1.14.0 was yanked.
+- [x] **8.2 Linux shell.** KSNI tray with click and themed ink, no-host fallback window, popover placement and look, deep links for AppImage, platform-aware copy and settings, Wayland shortcut note.
   Verify: e2e `?platform=linux`; headless smoke test (Xvfb + D-Bus) in CI: `wick start 1` → inhibitor listed, `wick status` JSON, stop → gone; screenshot under a real panel in Docker.
-- [ ] **8.3 Linux packages and release pipeline.** AppImage, deb, rpm; signed updater artifacts; `latest.json` linux entries; checksums, attestations; install docs.
+  Done 2026-11-05 (PR #11): under a real Xfce panel a click opens the popover at the icon; no panel → titled window. Found and fixed: Xfce's GTK portal accepts a suspend inhibit it can't honour (now PowerManagement + a sleep lock where needed, checked against xfce4-power-manager); WebKitGTK left stale text in a transparent window (opaque on Linux, resizable so the fit works); WebKitGTK's user agent can claim macOS (Rust now tells the page); panel colour is unknowable (candle with a halo). On the runner polkit refuses the sleep lock to a non-seat user and the idle lock is kept.
+- [x] **8.3 Linux packages and release pipeline.** AppImage, deb, rpm; signed updater artifacts; `latest.json` linux entries; checksums, attestations; install docs.
   Verify: script tests; CI release dry run builds all three; AppImage update installs in Docker.
+  Done 2026-11-05 (PR #14): signed bundle build with a throwaway key gave all three packages and signatures; `updater_install_linux` passed on that AppImage; the AppImage passed the smoke test; the deb's desktop entry now passes `%u`, and `xdg-open wick://…` works after installing it. Inter ships for Linux (Debian's DejaVu cut the title).
 - [ ] **8.4 Release v0.7.0.**
 - [ ] **8.5 Cross-review with Codex** after the release; fixes go out as a patch.
 

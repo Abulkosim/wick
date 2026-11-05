@@ -144,8 +144,8 @@ footer a:hover { color: var(--ink); }
 <main>
   <div class="wrap hero">
     <div>
-      <h1>Keeps your Mac awake</h1>
-      <p class="lede">On demand, for a set time, or while an app or command runs. And it tells you what else is keeping your Mac awake.</p>
+      <h1>Keeps your computer awake</h1>
+      <p class="lede">On demand, for a set time, or while an app or command runs. And it tells you what else is keeping it awake. For macOS, Windows and Linux.</p>
       <div class="actions">
         <a class="btn btn-primary" href="https://github.com/Abulkosim/wick/releases/latest">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>
@@ -155,8 +155,12 @@ footer a:hover { color: var(--ink); }
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>
           Download for Windows
         </a>
+        <a class="btn btn-secondary" href="https://github.com/Abulkosim/wick/blob/main/docs/install.md#linux">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>
+          Download for Linux
+        </a>
       </div>
-      <p class="meta">Free and open source · MIT · macOS 12+ and Windows 10/11 · <a href="https://github.com/Abulkosim/wick">GitHub</a></p>
+      <p class="meta">Free and open source · MIT · macOS 12+, Windows 10/11 and Linux · <a href="https://github.com/Abulkosim/wick">GitHub</a></p>
     </div>
     <figure class="shot">
       <picture>
@@ -194,8 +198,8 @@ footer a:hover { color: var(--ink); }
     <div class="wrap cols">
       <div class="prose">
         <h2 id="how">How it works</h2>
-        <p>Wick holds a standard macOS power assertion, the same thing <code>caffeinate</code> does. You can see it in <code>pmset -g assertions</code>.</p>
-        <p><strong>Nothing left behind.</strong> macOS releases the assertion when Wick quits or crashes. Wick needs no administrator password and asks for no permissions.</p>
+        <p>Wick holds a standard power assertion on macOS, the same thing <code>caffeinate</code> does (<code>pmset -g assertions</code>), a power request on Windows, and desktop and systemd-logind inhibitors on Linux (<code>systemd-inhibit --list</code>).</p>
+        <p><strong>Nothing left behind.</strong> The system releases them when Wick quits or crashes. Wick needs no administrator password and asks for no permissions.</p>
       </div>
       <div class="prose">
         <h2>Privacy</h2>
@@ -219,6 +223,7 @@ footer a:hover { color: var(--ink); }
         <p><strong>macOS 12+.</strong> Open the universal <code>.dmg</code> and move Wick to Applications. If macOS blocks it, go to System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>.</p>
         <p><strong>Homebrew.</strong> <code>brew install --cask abulkosim/tap/wick</code></p>
         <p><strong>Windows 10/11.</strong> Run the <code>-setup.exe</code>. If SmartScreen warns, choose More info → <strong>Run anyway</strong>.</p>
+        <p><strong>Linux.</strong> Run the AppImage, or install the <code>.deb</code> or <code>.rpm</code>. The candle sits in the panel's tray; on plain GNOME, Wick opens as a window.</p>
       </div>
     </div>
   </section>
