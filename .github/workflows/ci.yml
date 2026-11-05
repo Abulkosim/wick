@@ -130,7 +130,7 @@ jobs:
         run: |
           printf 'Acquire::http::Timeout "30";\nAcquire::Retries "3";\n' | sudo tee /etc/apt/apt.conf.d/99-wick-retries >/dev/null
           for attempt in 1 2 3; do
-            if timeout 420 bash -c 'sudo apt-get update && sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libxdo-dev libssl-dev patchelf file dbus dbus-x11 xvfb'; then
+            if timeout 420 bash -c 'sudo apt-get update && sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf file dbus dbus-x11 xvfb'; then
               exit 0
             fi
             echo "Package install attempt $attempt stalled or failed; retrying."
