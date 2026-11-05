@@ -3,13 +3,14 @@ import AppIcon from './AppIcon.vue'
 import AppTooltip from './ui/AppTooltip.vue'
 import type { Other } from '../lib/model'
 import { otherDetail } from '../lib/others'
+import { device } from '../lib/platform'
 
 defineProps<{ others: Other[]; also: boolean }>()
 </script>
 
 <template>
   <section class="card others-card" aria-labelledby="others-label">
-    <h2 id="others-label" class="card-label">{{ also ? 'Also keeping your Mac awake' : 'Keeping your Mac awake' }}</h2>
+    <h2 id="others-label" class="card-label">{{ also ? `Also keeping your ${device} awake` : `Keeping your ${device} awake` }}</h2>
     <ul class="trigger-list">
       <li v-for="other in others" :key="other.pid" class="trigger-row other-row">
         <span class="trigger-mark"><AppIcon :name="other.parent || other.name === 'caffeinate' ? 'terminal' : 'app'" :size="15"/></span>

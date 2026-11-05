@@ -19,14 +19,14 @@ import { createDemoUpdateState } from './lib/demo'
 import { activePreset, detail, fraction, shortDuration, title } from './lib/session'
 import type { StartRequest } from './lib/model'
 import { footerNote } from './lib/power'
-import { isWindows } from './lib/platform'
+import { device, isMac, platform } from './lib/platform'
 import { isTyping, keyAction } from './lib/keys'
 
 const { state, pending, message, now, demo, desktop, startSession, stopSession, extendSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, clearHistory, hideWindow } = useWick()
 const query = new URLSearchParams(location.search)
 const updater = useUpdater({ demo, desktop, initial: demo ? createDemoUpdateState(query.get('state')) : undefined })
-const placementSchema = z.object({ revision: z.number().int().nonnegative(), arrowX: z.number().finite().nullable() })
-const placement = ref<z.infer<typeof placementSchema>>({ revision: 0, arrowX: null })
+const placementSchema = z.object({ revision: z.number().int().nonnegative(), arrowX: z.number().finite().nullable(), framed: z.boolean().default(false), shortcuts: z.boolean().default(true) })
+const placement = ref<z.infer<typeof placementSchema>>({ revision: 0, arrowX: null, framed: demo && query.get('framed') === '1', shortcuts: !(demo && query.get('wayland') === '1') })
 const viewportWidth = ref(window.innerWidth)
 const media = window.matchMedia('(prefers-color-scheme: dark)')
 const systemDark = ref(media.matches)
@@ -45,7 +45,7 @@ const ringFraction = computed(() => fraction(state.value.session, now.value))
 const active = computed(() => activePreset(state.value.session))
 const arrowStyle = computed(() => {
   const x = placement.value.arrowX
-  if (!desktop || demo || isWindows || x === null || x < 26 || x > viewportWidth.value - 26) return undefined
+  if (!desktop || demo || !isMac || x === null || x < 26 || x > viewportWidth.value - 26) return undefined
   return { left: `${x - 6}px` }
 })
 const shell = ref<HTMLElement | null>(null)
@@ -62,7 +62,8 @@ let destroyed = false
 watchEffect(() => {
   document.documentElement.dataset.theme = dark.value ? 'dark' : 'light'
   document.documentElement.style.colorScheme = dark.value ? 'dark' : 'light'
-  document.documentElement.dataset.platform = isWindows ? 'windows' : 'mac'
+  document.documentElement.dataset.platform = platform
+  document.documentElement.dataset.framed = placement.value.framed ? 'true' : 'false'
 })
 
 function measureFit(): void {
@@ -172,7 +173,7 @@ onUnmounted(() => {
             <AppTooltip v-else :text="startHint"><button class="button button-primary hero-action" :disabled="busy" @click="startSession(startRequest)">Start</button></AppTooltip>
           </section>
           <div v-if="state.recovery" class="error-note" role="alert"><AppIcon name="alert" :size="16"/><div><p><strong>Settings could not be read.</strong> Wick is using defaults.</p><button class="text-button" @click="page = 'settings'">Review in Settings</button></div></div>
-          <div v-if="state.error" class="error-note" role="alert"><AppIcon name="alert" :size="16"/><p><strong>Could not keep your Mac awake.</strong> {{ state.error }}</p></div>
+          <div v-if="state.error" class="error-note" role="alert"><AppIcon name="alert" :size="16"/><p><strong>Could not keep your {{ device }} awake.</strong> {{ state.error }}</p></div>
           <section class="card" aria-labelledby="duration-label">
             <h2 id="duration-label" class="card-label">Keep awake for</h2>
             <DurationPicker :active="active" :busy="busy" @start="startSession"/>
@@ -194,11 +195,11 @@ onUnmounted(() => {
           <span class="footer-note"><template v-if="footer"><AppIcon :name="footer.icon" :size="15"/><span class="footer-text">{{ footer.text }}</span></template></span>
           <div class="footer-actions">
             <AppTooltip :text="updater.available.value ? 'Settings · update available' : 'Settings'"><button class="icon-button settings-button" :aria-label="updater.available.value ? 'Settings, update available' : 'Open settings'" @click="page = 'settings'"><AppIcon name="settings" :size="16"/><span v-if="updater.available.value" class="update-dot" aria-hidden="true"/></button></AppTooltip>
-            <AppTooltip text="Quit Wick"><button class="icon-button" aria-label="Quit Wick" :title="isWindows ? 'Ctrl+Q' : '⌘Q'" @click="quit"><AppIcon name="power" :size="16"/></button></AppTooltip>
+            <AppTooltip text="Quit Wick"><button class="icon-button" aria-label="Quit Wick" :title="isMac ? '⌘Q' : 'Ctrl+Q'" @click="quit"><AppIcon name="power" :size="16"/></button></AppTooltip>
           </div>
         </footer>
         </template>
-        <SettingsPanel v-else :update-state="updater.state.value" :update-busy="updater.busy.value" :demo="demo" :settings="state.settings" :power="state.power" :recovered="state.recovered" :recovery="state.recovery" :busy="busy" :save="saveSettings" :reset="resetStore" :clear-history="clearHistory" :history="state.history" @back="page = 'overview'" @check-update="updater.check" @install-update="updater.install"/>
+        <SettingsPanel v-else :update-state="updater.state.value" :update-busy="updater.busy.value" :demo="demo" :settings="state.settings" :power="state.power" :recovered="state.recovered" :recovery="state.recovery" :busy="busy" :save="saveSettings" :reset="resetStore" :shortcuts="placement.shortcuts" :clear-history="clearHistory" :history="state.history" @back="page = 'overview'" @check-update="updater.check" @install-update="updater.install"/>
         <div v-if="demo" class="preview-ribbon"><span class="preview-dot"/>Interface preview<span>Sample data</span></div>
         <Transition name="toast"><div v-if="message" class="toast-message" :class="{ 'toast-error': message.kind === 'error' }" :role="message.kind === 'error' ? 'alert' : 'status'"><AppIcon :name="message.kind === 'error' ? 'alert' : 'check'" :size="15"/><span>{{ message.text }}</span><button class="icon-button" aria-label="Dismiss message" @click="message = null"><AppIcon name="close" :size="13"/></button></div></Transition>
       </div>
