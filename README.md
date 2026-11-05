@@ -2,12 +2,12 @@
 
 # Wick
 
-**Keeps your Mac awake.** On demand, for a set time, or while an app or command is running. A quiet menu bar app for macOS, and a tray app for Windows.
+**Keeps your computer awake.** On demand, for a set time, or while an app or command is running. A quiet menu bar app for macOS, and a tray app for Windows and Linux.
 
 [![CI](https://github.com/Abulkosim/wick/actions/workflows/ci.yml/badge.svg)](https://github.com/Abulkosim/wick/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Abulkosim/wick)](https://github.com/Abulkosim/wick/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Abulkosim/wick/total)](https://github.com/Abulkosim/wick/releases)
-[![Platforms](https://img.shields.io/badge/platform-macOS%2012%2B%20%C2%B7%20Windows%2010%2F11-747a87)](docs/install.md)
+[![Platforms](https://img.shields.io/badge/platform-macOS%2012%2B%20%C2%B7%20Windows%2010%2F11%20%C2%B7%20Linux-747a87)](docs/install.md)
 [![MIT license](https://img.shields.io/badge/license-MIT-747a87)](LICENSE)
 
 [Download](https://github.com/Abulkosim/wick/releases/latest) · [Install](#install) · [What it does](#what-it-does) · [Privacy](#privacy) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
@@ -15,6 +15,7 @@
 <p>
   <img src="docs/images/popover-light.png" alt="Wick awake while the network is busy, with network and CPU triggers and 3h 12m awake today" width="300" />
   <img src="docs/images/others-dark.png" alt="Wick in dark mode listing caffeinate, Google Chrome and zoom.us as also keeping the Mac awake" width="300" />
+  <img src="docs/images/linux-xfce.png" alt="Wick on Linux: the popover under the candle in an Xfce panel, awake for two hours" width="240" />
 </p>
 
 - **One click.** Start until you stop it, or for 15 minutes, an hour, two hours, until a time, or any length. The menu bar candle burns down as the time runs out.
@@ -23,12 +24,13 @@
 
 ## Install
 
-Download **v0.6.0** from [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
+Download **v0.7.0** from [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
 
 | Platform | Download |
 | --- | --- |
-| macOS 12+ · Apple Silicon and Intel | [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.6.0/Wick_0.6.0_universal.dmg) |
-| Windows 10/11 x64 | [Setup EXE](https://github.com/Abulkosim/wick/releases/download/v0.6.0/Wick_0.6.0_x64-setup.exe) · [MSI](https://github.com/Abulkosim/wick/releases/download/v0.6.0/Wick_0.6.0_x64_en-US.msi) |
+| macOS 12+ · Apple Silicon and Intel | [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.7.0/Wick_0.7.0_universal.dmg) |
+| Windows 10/11 x64 | [Setup EXE](https://github.com/Abulkosim/wick/releases/download/v0.7.0/Wick_0.7.0_x64-setup.exe) · [MSI](https://github.com/Abulkosim/wick/releases/download/v0.7.0/Wick_0.7.0_x64_en-US.msi) |
+| Linux x86_64 · Ubuntu 22.04, Debian 12, Fedora 36 and newer | [AppImage](https://github.com/Abulkosim/wick/releases/download/v0.7.0/Wick_0.7.0_amd64.AppImage) · [deb](https://github.com/Abulkosim/wick/releases/download/v0.7.0/Wick_0.7.0_amd64.deb) · [rpm](https://github.com/Abulkosim/wick/releases/download/v0.7.0/Wick-0.7.0-1.x86_64.rpm) |
 
 **Homebrew** (macOS):
 
@@ -41,6 +43,8 @@ Builds are not signed with an Apple Developer ID or a Windows publisher certific
 **macOS.** Drag Wick to Applications and open it. When **“Wick” Not Opened** appears, click **Done**, then **System Settings → Privacy & Security → Open Anyway**. Wick lives in the menu bar, with no Dock icon.
 
 **Windows.** Run the `-setup.exe`. On **Windows protected your PC**, click **More info → Run anyway**. Smart App Control blocks unsigned apps.
+
+**Linux.** `chmod +x` the AppImage and run it, or `sudo apt install ./Wick_*.deb` / `sudo dnf install ./Wick-*.rpm`. The candle sits in the panel's tray; on GNOME without the [AppIndicator extension](https://extensions.gnome.org/extension/615/appindicator-support/), Wick opens as a window.
 
 Step by step, updates and uninstall: [docs/install.md](docs/install.md).
 
@@ -74,6 +78,7 @@ Updates are signed and verified in the app. Wick checks once a day and installs 
 | --- | :-: | :-: | :-: | :-: |
 | macOS | ✓ | ✓ | ✓ | ✓ |
 | Windows | ✓ | – | – | – |
+| Linux | ✓ | – | – | – |
 | One-click start and timed sessions | ✓ | ✓ | ✓ | – |
 | Until a set time | ✓ | ✓ | – | – |
 | While an app runs | ✓ | ✓ | – | – |
@@ -89,7 +94,7 @@ Wick has no closed-lid mode on purpose. Keeping a closed Mac awake without an ex
 
 ## Shortcuts, Raycast and scripts
 
-The app's binary doubles as a command line tool. Homebrew links it as `wick`; otherwise:
+The app's binary doubles as a command line tool. Homebrew, the `.deb` and the `.rpm` put `wick` on your `PATH`; otherwise:
 
 ```sh
 alias wick=/Applications/Wick.app/Contents/MacOS/wick
@@ -106,6 +111,8 @@ In Shortcuts, use **Open URLs** with `wick://start?minutes=60`, `wick://start?un
 ## How it works
 
 Wick holds a standard power assertion, `PreventUserIdleSystemSleep`, or `PreventUserIdleDisplaySleep` with **Keep display on**. You can see it in `pmset -g assertions` as `Wick: awake until 16:30`. macOS ties the assertion to Wick's process, so quitting or a crash releases it. Wick never changes system settings.
+
+On Windows it's a power request (`powercfg /requests`). On Linux it's your desktop's inhibitor plus a systemd-logind lock (`systemd-inhibit --list`), each tied to Wick's process the same way.
 
 ## Privacy
 
