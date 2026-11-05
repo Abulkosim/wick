@@ -34,6 +34,9 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # 0.21.2 added public fields to ParseOption, which tauri-plugin-deep-link 2.6 builds on Linux.
+      - dependency-name: rust-ini
+        versions: [">=0.21.2"]
     groups:
       rust:
         patterns: ["*"]
