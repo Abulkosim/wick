@@ -6,6 +6,7 @@ export async function collectArtifacts(target, { updater = false, root = '.' } =
   const formats = {
     'universal-apple-darwin': [['dmg', '.dmg', false], ...(updater ? [['macos', '.app.tar.gz', true]] : [])],
     'x86_64-pc-windows-msvc': [['nsis', '-setup.exe', updater], ['msi', '.msi', updater]],
+    'x86_64-unknown-linux-gnu': [['appimage', '.AppImage', updater], ['deb', '.deb', updater], ['rpm', '.rpm', updater]],
   }[target]
   if (!formats) throw new Error('Expected a supported native build target.')
 
