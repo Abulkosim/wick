@@ -92,6 +92,9 @@ fn trusted_download(url: &tauri::Url, version: &str) -> bool {
     file == "Wick.app.tar.gz"
         || file == format!("Wick_{version}_x64-setup.exe")
         || file == format!("Wick_{version}_x64_en-US.msi")
+        || file == format!("Wick_{version}_amd64.AppImage")
+        || file == format!("Wick_{version}_amd64.deb")
+        || file == format!("Wick-{version}-1.x86_64.rpm")
 }
 
 #[tauri::command]
@@ -257,11 +260,19 @@ mod tests {
     fn downloads_are_limited_to_the_versioned_wick_archive() {
         let good = "https://github.com/Abulkosim/wick/releases/download/v0.2.0/Wick.app.tar.gz";
         assert!(trusted_download(&good.parse().unwrap(), "0.2.0"));
-        for file in ["Wick_0.2.0_x64-setup.exe", "Wick_0.2.0_x64_en-US.msi"] {
+        for file in [
+            "Wick_0.2.0_x64-setup.exe",
+            "Wick_0.2.0_x64_en-US.msi",
+            "Wick_0.2.0_amd64.AppImage",
+            "Wick_0.2.0_amd64.deb",
+            "Wick-0.2.0-1.x86_64.rpm",
+        ] {
             let url = good.replace("Wick.app.tar.gz", file);
             assert!(trusted_download(&url.parse().unwrap(), "0.2.0"), "{url}");
         }
         let stale = good.replace("Wick.app.tar.gz", "Wick_0.1.0_x64-setup.exe");
+        assert!(!trusted_download(&stale.parse().unwrap(), "0.2.0"));
+        let stale = good.replace("Wick.app.tar.gz", "Wick_0.1.0_amd64.AppImage");
         assert!(!trusted_download(&stale.parse().unwrap(), "0.2.0"));
         for url in [
             good.replace("v0.2.0", "v0.1.1"),

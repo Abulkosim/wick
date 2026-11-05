@@ -30,7 +30,9 @@ status | grep -q '"awake":false' || { echo "still awake after stop"; exit 1; }
 "$bin" start
 sleep 2
 [[ "$(inhibitors)" -ge 1 ]] || { echo "no inhibitor for an open-ended session"; exit 1; }
-kill -9 "$pid"
+# The pid Wick reports itself: an AppImage's launcher is a different process.
+app_pid=$(status | sed -n 's/.*"pid":\([0-9]*\).*/\1/p')
+kill -9 "${app_pid:-$pid}"
 sleep 2
 [[ "$(inhibitors)" -eq 0 ]] || { echo "inhibitor left after kill -9"; exit 1; }
 status | grep -q '"running":false' || { echo "status still says running"; exit 1; }

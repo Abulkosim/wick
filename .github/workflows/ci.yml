@@ -183,6 +183,11 @@ jobs:
             exit 1
           fi
           pnpm tauri build --target "$BUILD_TARGET" --bundles "$BUILD_BUNDLES" --ci -- --locked
+      - name: Verify the signed AppImage installs through the updater
+        if: runner.os == 'Linux' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.repository == 'Abulkosim/wick'
+        env:
+          WICK_UPDATE_ARTIFACT_DIR: ${{ github.workspace }}/src-tauri/target/${{ matrix.target }}/release/bundle/appimage
+        run: cargo test --manifest-path src-tauri/Cargo.toml --test updater_install_linux --locked -- --ignored --nocapture
       - name: Smoke-test the Linux app
         if: runner.os == 'Linux'
         env:
@@ -274,6 +279,9 @@ jobs:
             release-artifacts/Wick.app.tar.gz
             release-artifacts/Wick_${{ steps.assets.outputs.version }}_x64-setup.exe
             release-artifacts/Wick_${{ steps.assets.outputs.version }}_x64_en-US.msi
+            release-artifacts/Wick_${{ steps.assets.outputs.version }}_amd64.AppImage
+            release-artifacts/Wick_${{ steps.assets.outputs.version }}_amd64.deb
+            release-artifacts/Wick-${{ steps.assets.outputs.version }}-1.x86_64.rpm
             release-artifacts/latest.json
             release-artifacts/SHA256SUMS.txt
       - name: Attest SBOM
@@ -285,6 +293,9 @@ jobs:
             release-artifacts/Wick.app.tar.gz
             release-artifacts/Wick_${{ steps.assets.outputs.version }}_x64-setup.exe
             release-artifacts/Wick_${{ steps.assets.outputs.version }}_x64_en-US.msi
+            release-artifacts/Wick_${{ steps.assets.outputs.version }}_amd64.AppImage
+            release-artifacts/Wick_${{ steps.assets.outputs.version }}_amd64.deb
+            release-artifacts/Wick-${{ steps.assets.outputs.version }}-1.x86_64.rpm
       - name: Create or update draft
         env:
           GH_TOKEN: ${{ github.token }}
