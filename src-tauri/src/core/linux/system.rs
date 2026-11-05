@@ -15,24 +15,26 @@ fn number<T: std::str::FromStr>(path: impl AsRef<Path>) -> Option<T> {
 }
 
 fn supply(directory: &Path) -> Supply {
-    let (now, full) = match (
+    let (now, full, energy) = match (
         number(directory.join("energy_now")),
         number(directory.join("energy_full")),
     ) {
-        (Some(now), Some(full)) => (Some(now), Some(full)),
+        (Some(now), Some(full)) => (Some(now), Some(full), true),
         _ => (
             number(directory.join("charge_now")),
             number(directory.join("charge_full")),
+            false,
         ),
     };
     Supply {
         kind: text(directory.join("type")).unwrap_or_default(),
         scope: text(directory.join("scope")),
-        online: number::<u8>(directory.join("online")).map(|value| value == 1),
+        online: text(directory.join("online")).and_then(|value| parse::online(&value)),
         status: text(directory.join("status")),
         capacity: number(directory.join("capacity")),
         now,
         full,
+        energy,
     }
 }
 

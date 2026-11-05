@@ -581,6 +581,8 @@ impl Runtime {
             notify(app, &message);
         }
         let state = result.unwrap_or(snapshot);
+        #[cfg(target_os = "linux")]
+        tray::panel::refresh();
         tray::update(app, &state, now);
         let watching = state.triggers.iter().any(|trigger| trigger.enabled)
             || (state.settings.pause_when_locked && holding)

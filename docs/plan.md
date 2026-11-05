@@ -170,7 +170,8 @@ Decisions (research in [research.md](research.md#linux)):
   Done 2026-11-05 (PR #14): signed bundle build with a throwaway key gave all three packages and signatures; `updater_install_linux` passed on that AppImage; the AppImage passed the smoke test; the deb's desktop entry now passes `%u`, and `xdg-open wick://…` works after installing it. Inter ships for Linux (Debian's DejaVu cut the title).
 - [x] **8.4 Release v0.7.0.**
   Done 2026-11-05: published on the owner's go-ahead; tap bumped itself; owner's Mac updated. Evidence in docs/verification.md.
-- [ ] **8.5 Cross-review with Codex** after the release; fixes go out as a patch.
+- [x] **8.5 Cross-review with Codex** after the release; fixes go out as a patch.
+  Done 2026-11-05: `codex exec` (read-only) over v0.6.0..v0.7.0 found one high and five medium issues, all confirmed and fixed for v0.7.1: Xfce's portal accepted a request it then refused, which hid the ScreenSaver fallback; the no-tray window could be hidden with a session running; a portal read on the main thread at every icon redraw; no timeout on the D-Bus handshake; USB PD PPS chargers (`online=2`) read as unplugged; µWh and µAh batteries summed together.
 
 ## Later / maybe
 

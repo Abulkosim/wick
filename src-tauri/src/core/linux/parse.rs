@@ -16,6 +16,14 @@ pub struct Supply {
     /// `energy_*` (µWh) or `charge_*` (µAh), whichever the battery reports.
     pub now: Option<u64>,
     pub full: Option<u64>,
+    /// Whether `now` and `full` are energy (µWh) rather than charge (µAh).
+    pub energy: bool,
+}
+
+/// A power supply's `online`: 0 offline, 1 online, 2 online through a programmable supply
+/// (USB PD PPS).
+pub fn online(text: &str) -> Option<bool> {
+    text.trim().parse::<u8>().ok().map(|value| value >= 1)
 }
 
 /// On battery when the computer has a battery and no adapter is online. Several batteries (some
@@ -31,8 +39,14 @@ pub fn power(supplies: &[Supply], low_power_mode: bool) -> Power {
     let discharging = batteries
         .iter()
         .any(|battery| battery.status.as_deref() == Some("Discharging"));
+    // Batteries are combined by charge only when they report the same unit; µWh and µAh
+    // don't add up.
+    let same_unit = batteries
+        .windows(2)
+        .all(|pair| pair[0].energy == pair[1].energy);
     let (now, full) = batteries
         .iter()
+        .filter(|_| same_unit)
         .try_fold((0u64, 0u64), |(now, full), battery| {
             Some((now + battery.now?, full + battery.full?))
         })
@@ -359,6 +373,27 @@ mod tests {
             false,
         );
         assert_eq!(thinkpad.percent, Some(50));
+        let mixed = power(
+            &[
+                Supply {
+                    now: Some(10_000_000),
+                    full: Some(50_000_000),
+                    energy: true,
+                    ..battery("Discharging", 20)
+                },
+                Supply {
+                    now: Some(4_000),
+                    full: Some(5_000),
+                    ..battery("Discharging", 80)
+                },
+            ],
+            false,
+        );
+        assert_eq!(mixed.percent, Some(50));
+        assert_eq!(online("1"), Some(true));
+        assert_eq!(online("2"), Some(true));
+        assert_eq!(online("0"), Some(false));
+        assert_eq!(online("?"), None);
         let usb_c = Supply {
             kind: "USB".into(),
             online: Some(true),

@@ -170,6 +170,12 @@ pub fn run() {
                 let _ = window.hide();
             }
             WindowEvent::CloseRequested { api, .. } => {
+                // Without a tray the window is Wick's only presence: closing it quits, like any
+                // windowed app, instead of leaving a session running out of sight.
+                if popover::framed(window.app_handle()) {
+                    window.app_handle().exit(0);
+                    return;
+                }
                 api.prevent_close();
                 let _ = window.hide();
             }

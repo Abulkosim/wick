@@ -74,9 +74,9 @@ Pick one:
 
 Open **Wick** from your applications. The candle sits in the panel's tray: left-click opens Wick, right-click shows the menu.
 
-**The tray.** KDE Plasma, Xfce, Cinnamon and Ubuntu's GNOME show it out of the box. Plain GNOME (Fedora, Debian) has no tray: install the [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/) extension, or use Wick without a tray: it then opens as a normal window, and opening Wick again from your applications brings it back.
+**The tray.** KDE Plasma, Xfce, Cinnamon and Ubuntu's GNOME show it out of the box. Plain GNOME (Fedora, Debian) has no tray: install the [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/) extension, or use Wick without a tray: it then opens as a normal window, and closing that window quits Wick and ends its session.
 
-**How Wick keeps it awake.** Through your desktop's own inhibitor (the XDG portal on GNOME and KDE, PowerManagement on Xfce) and a systemd-logind lock, so `systemd-inhibit --list` shows `Wick` while it's on. Without a desktop that answers, logind also blocks suspend; `systemctl suspend -i` still suspends. Closing the lid still suspends unless your desktop is set to ignore it.
+**How Wick keeps it awake.** Through your desktop's own inhibitors (the XDG portal on GNOME and KDE; PowerManagement and the screensaver on Xfce) and a systemd-logind lock, so `systemd-inhibit --list` shows `Wick` while it's on. Without a desktop that answers, logind also blocks suspend; `systemctl suspend -i` still suspends. Closing the lid still suspends unless your desktop is set to ignore it.
 
 **What differs on Linux.**
 
