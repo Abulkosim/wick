@@ -44,7 +44,12 @@ pub fn boot_time() -> Option<i64> {
     Some(chrono::Utc::now().timestamp() - uptime)
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+#[cfg(target_os = "linux")]
+pub fn boot_time() -> Option<i64> {
+    super::linux::system::boot_time()
+}
+
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 pub fn boot_time() -> Option<i64> {
     None
 }

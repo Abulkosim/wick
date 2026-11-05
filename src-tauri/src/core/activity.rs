@@ -252,7 +252,18 @@ mod platform {
     }
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+#[cfg(target_os = "linux")]
+mod platform {
+    pub fn network() -> Vec<(u32, u64)> {
+        super::super::linux::system::network_bytes()
+    }
+
+    pub fn cpu() -> Option<(u64, u64)> {
+        super::super::linux::system::cpu_times()
+    }
+}
+
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 mod platform {
     pub fn network() -> Vec<(u32, u64)> {
         Vec::new()

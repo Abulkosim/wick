@@ -55,7 +55,18 @@ pub fn closing_sleeps() -> Option<bool> {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+/// logind's lid action for the current power and dock state, unless the desktop has taken
+/// the lid over. `None` without a lid.
+#[cfg(target_os = "linux")]
+pub fn closing_sleeps() -> Option<bool> {
+    use super::linux::{bus, parse, system};
+    if !system::has_lid() {
+        return None;
+    }
+    bus::lid_policy().map(|policy| parse::closing_sleeps(&policy))
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 pub fn closing_sleeps() -> Option<bool> {
     None
 }

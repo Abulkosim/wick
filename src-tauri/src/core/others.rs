@@ -125,15 +125,42 @@ pub fn is_system(pid: i32) -> bool {
         .is_some_and(|path| path.starts_with("/System/") || path.starts_with("/usr/"))
 }
 
-/// The parent's name, unless it is launchd or a shell.
+/// The parent's name, unless it is launchd, systemd or a shell.
 pub fn parent_of(pid: i32) -> Option<String> {
     let (ppid, _) = super::processes::info(pid)?;
     if ppid <= 1 {
         return None;
     }
     let name = name_of(ppid)?;
-    let shells = ["zsh", "bash", "sh", "fish", "login", "launchd"];
+    let shells = [
+        "zsh", "bash", "sh", "dash", "fish", "login", "launchd", "systemd",
+    ];
     (!shells.contains(&name.as_str())).then_some(name)
+}
+
+/// Others keeping the computer awake now. `None` when the list can't be read.
+#[cfg(target_os = "macos")]
+pub fn read() -> Option<Vec<Other>> {
+    super::assertion::list().ok().map(|held| current(&held))
+}
+
+/// logind's inhibitors plus those GNOME or KDE hold for apps.
+#[cfg(target_os = "linux")]
+pub fn read() -> Option<Vec<Other>> {
+    use super::linux::{bus, parse};
+    let parent_of = |pid: u32| parent_of(pid as i32);
+    Some(parse::others(
+        &bus::logind_inhibitors(),
+        &bus::session_inhibitors(),
+        std::process::id(),
+        &parent_of,
+    ))
+}
+
+/// Windows needs administrator rights to list other power requests.
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+pub fn read() -> Option<Vec<Other>> {
+    Some(Vec::new())
 }
 
 pub fn current(held: &[Held]) -> Vec<Other> {
