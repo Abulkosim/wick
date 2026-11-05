@@ -20,12 +20,32 @@ static SYSTEM: Mutex<Option<Connection>> = Mutex::new(None);
 static SESSION: Mutex<Option<Connection>> = Mutex::new(None);
 
 fn connect(session: bool) -> zbus::Result<Connection> {
-    let builder = if session {
-        Builder::session()?
-    } else {
-        Builder::system()?
-    };
-    builder.method_timeout(TIMEOUT).build()
+    handshake(move || {
+        if session {
+            Builder::session()
+        } else {
+            Builder::system()
+        }
+    })
+}
+
+/// Connects, giving up after `TIMEOUT`: `method_timeout` bounds replies, not the handshake, and
+/// a bus that accepts the socket but never authenticates would otherwise hang the ticker or an
+/// intent. A handshake that never finishes leaves only its own thread waiting.
+fn handshake(
+    builder: impl FnOnce() -> zbus::Result<Builder<'static>> + Send + 'static,
+) -> zbus::Result<Connection> {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::Builder::new()
+        .name("wick-dbus-connect".into())
+        .spawn(move || {
+            let _ =
+                sender.send(builder().and_then(|builder| builder.method_timeout(TIMEOUT).build()));
+        })
+        .map_err(|_| zbus::Error::Failure("Could not start a D-Bus connection.".into()))?;
+    receiver
+        .recv_timeout(TIMEOUT)
+        .unwrap_or_else(|_| Err(zbus::Error::Failure("D-Bus didn't answer in time.".into())))
 }
 
 /// Runs `call` on the shared connection, dropping it on failure so the next call reconnects.
@@ -116,12 +136,16 @@ fn interface_suffix(path: &str) -> &'static str {
 
 /// `display` also keeps the screen from blanking and locking.
 pub fn inhibit(reason: &str, display: bool) -> Result<Inhibition, String> {
+    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
+    let trusted = portal_honours_suspend(&desktop);
+    // Suspend = 4, Idle = 8. The portal returns a handle before its backend has run, so its
+    // answer only counts where the backend is known to work; elsewhere (Xfce's GTK backend
+    // refuses any request that includes suspend) ask it for idle alone.
+    let flags = portal_flags(trusted, display);
     // Its own connection: the portal and the session services tie Wick's requests to it, so it
     // must live as long as they do.
     let session = connect(true).ok();
-    let portal = session.as_ref().and_then(|connection| {
-        // Suspend = 4, Idle = 8.
-        let flags: u32 = if display { 4 | 8 } else { 4 };
+    let portal = session.as_ref().zip(flags).and_then(|(connection, flags)| {
         let mut options: HashMap<&str, Value> = HashMap::new();
         options.insert("reason", Value::from(reason));
         connection
@@ -145,9 +169,10 @@ pub fn inhibit(reason: &str, display: bool) -> Result<Inhibition, String> {
             reason,
         )
     });
+    // Where the portal's answer can't be trusted, ask the screensaver directly as well.
     let screensaver = session
         .as_ref()
-        .filter(|_| display && portal.is_none())
+        .filter(|_| display && !(trusted && portal.is_some()))
         .and_then(|connection| {
             cookie(
                 connection,
@@ -156,7 +181,6 @@ pub fn inhibit(reason: &str, display: bool) -> Result<Inhibition, String> {
                 reason,
             )
         });
-    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
     let sleep_lock = needs_sleep_lock(&desktop, portal.is_some(), power_management.is_some());
     // polkit may refuse the sleep lock outside an active seat (SSH, a CI runner); the idle
     // lock alone still stops logind's own idle action.
@@ -209,9 +233,23 @@ const PORTAL_SUSPENDS: [&str; 6] = ["gnome", "kde", "unity", "pantheon", "cinnam
 /// suspend answered. A sleep lock also refuses a manual suspend (unless `-i`), so it is the
 /// last resort, for window managers and desktops without a working inhibitor.
 pub fn needs_sleep_lock(desktop: &str, portal: bool, power_management: bool) -> bool {
+    !(portal && portal_honours_suspend(desktop)) && !power_management
+}
+
+/// What to ask the portal for: Suspend = 4, Idle = 8. Where its backend can't block suspend,
+/// only idle, and nothing at all when the display may sleep anyway.
+fn portal_flags(trusted: bool, display: bool) -> Option<u32> {
+    match (trusted, display) {
+        (true, true) => Some(4 | 8),
+        (true, false) => Some(4),
+        (false, true) => Some(8),
+        (false, false) => None,
+    }
+}
+
+fn portal_honours_suspend(desktop: &str) -> bool {
     let desktop = desktop.to_lowercase();
-    let trusted_portal = portal && PORTAL_SUSPENDS.iter().any(|name| desktop.contains(name));
-    !trusted_portal && !power_management
+    PORTAL_SUSPENDS.iter().any(|name| desktop.contains(name))
 }
 
 impl Inhibition {
@@ -462,6 +500,28 @@ pub fn power_saver() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn connections_give_up_on_a_bus_that_never_answers() {
+        let directory = tempfile::tempdir().unwrap();
+        let socket = directory.path().join("bus");
+        // Accepts the connection, then never speaks.
+        let _listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
+        let address = format!("unix:path={}", socket.display());
+        let started = std::time::Instant::now();
+        assert!(handshake(move || Builder::address(address.as_str())).is_err());
+        assert!(started.elapsed() < TIMEOUT + Duration::from_secs(2));
+    }
+
+    #[test]
+    fn untrusted_portals_are_only_asked_for_idle() {
+        assert_eq!(portal_flags(true, true), Some(12));
+        assert_eq!(portal_flags(true, false), Some(4));
+        assert_eq!(portal_flags(false, true), Some(8));
+        assert_eq!(portal_flags(false, false), None);
+        assert!(portal_honours_suspend("ubuntu:GNOME"));
+        assert!(!portal_honours_suspend("XFCE"));
+    }
 
     #[test]
     fn sleep_lock_only_without_a_working_desktop_inhibitor() {
