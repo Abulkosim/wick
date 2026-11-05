@@ -1,4 +1,5 @@
 import type { Power, Settings } from './model.ts'
+import { device, isLinux } from './platform.ts'
 
 export function stopReason(power: Power, settings: Pick<Settings, 'batteryGuard' | 'batteryThreshold' | 'stopInLowPowerMode'>): string | null {
   if (!power.onBattery) return null
@@ -17,9 +18,9 @@ export const hasBattery = (power: Power): boolean => power.percent !== null
 
 export type FooterNote = { icon: 'lid' | 'bolt' | 'battery'; text: string }
 
-/** While awake, warn that the lid still sleeps the Mac; otherwise show battery state. */
+/** While awake, warn that the lid still sleeps the computer; otherwise show battery state. */
 export function footerNote(power: Power, lidSleeps: boolean | null, awake: boolean): FooterNote | null {
-  if (awake && lidSleeps) return { icon: 'lid', text: 'Closing the lid will sleep your Mac' }
+  if (awake && lidSleeps) return { icon: 'lid', text: isLinux ? 'Closing the lid will suspend' : `Closing the lid will sleep your ${device}` }
   const text = powerNote(power)
   if (!text) return null
   return { icon: power.lowPowerMode ? 'bolt' : 'battery', text }

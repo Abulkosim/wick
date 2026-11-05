@@ -1,5 +1,5 @@
 :root {
-  font-family: Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-family: Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Adwaita Sans",Cantarell,Ubuntu,"Noto Sans",sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: auto;
@@ -198,8 +198,17 @@ button:disabled:hover {
 :root[data-platform=windows] .popover {
   border-radius: 8px;
 }
-:root[data-platform=windows] .popover-arrow {
+:root[data-platform=windows] .popover-arrow,:root[data-platform=linux] .popover-arrow {
   display: none;
+}
+/* Linux windows are opaque (WebKitGTK leaves stale pixels in transparent ones), so the popover
+   fills the window edge to edge with a hairline instead of floating on a shadow. */
+:root[data-platform=linux] .desktop-stage .app-shell {
+  padding: 0;
+}
+:root[data-platform=linux] .popover {
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 .app-header {
   display: flex;
@@ -1188,13 +1197,15 @@ button:disabled:hover {
   flex: 1;
   min-width: 0;
 }
-:root[data-platform=windows] .desktop-stage .app-shell {
-  padding: 6px;
+/* Without a tray Wick is an ordinary window: the title bar frames it. */
+:root[data-framed=true] .desktop-stage .app-shell {
+  padding: 0;
 }
-:root[data-platform=windows] .popover {
-  border-radius: 8px;
+:root[data-framed=true] .popover {
+  border-radius: 0;
+  box-shadow: none;
 }
-:root[data-platform=windows] .popover-arrow {
+:root[data-framed=true] .popover-arrow {
   display: none;
 }
 .history-card {

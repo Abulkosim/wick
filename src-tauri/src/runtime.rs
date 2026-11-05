@@ -208,7 +208,7 @@ impl Inner {
             .triggers
             .iter()
             .find(|trigger| trigger.id == before)?;
-        Some(format!("{}. Your Mac can sleep again.", trigger.ended()))
+        Some(format!("{}. {}", trigger.ended(), can_sleep()))
     }
 
     fn changed(&mut self) {
@@ -625,17 +625,22 @@ enum Due {
     },
 }
 
+/// "Your Mac can sleep again." with this platform's word for the computer.
+fn can_sleep() -> String {
+    format!("Your {} can sleep again.", crate::core::DEVICE)
+}
+
 fn due(state: &AppState, power: Power, now: i64) -> Due {
     if state.session.expired(now) {
         return Due::End {
             notice: None,
-            message: "Session ended. Your Mac can sleep again.".into(),
+            message: format!("Session ended. {}", can_sleep()),
         };
     }
     if state.session.is_on() {
         if let Some(reason) = power::stop_reason(&power, &state.settings.guard()) {
             return Due::End {
-                message: format!("{reason}. Your Mac can sleep again."),
+                message: format!("{reason}. {}", can_sleep()),
                 notice: Some(reason),
             };
         }
@@ -726,14 +731,14 @@ mod tests {
             due(&timed, Power::default(), 1000),
             Due::End {
                 notice: None,
-                message: "Session ended. Your Mac can sleep again.".into()
+                message: format!("Session ended. {}", can_sleep())
             }
         );
         assert_eq!(
             due(&timed, battery, 10),
             Due::End {
                 notice: Some("Stopped: battery below 20%".into()),
-                message: "Stopped: battery below 20%. Your Mac can sleep again.".into()
+                message: format!("Stopped: battery below 20%. {}", can_sleep())
             }
         );
         let off = AppState::default();
@@ -806,7 +811,7 @@ mod tests {
         inner.evaluate_triggers(&triggers::Context::default(), &Power::default());
         assert_eq!(
             inner.trigger_ended(before.as_deref()).as_deref(),
-            Some("Unplugged. Your Mac can sleep again.")
+            Some(format!("Unplugged. {}", can_sleep()).as_str())
         );
         inner.evaluate_triggers(&plugged, &Power::default());
         inner.view.session = Session::Indefinite { started_at: 0 };

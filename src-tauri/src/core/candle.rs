@@ -110,6 +110,50 @@ pub fn tinted_rgba(size: u32, glyph: Glyph, rgb: [u8; 3]) -> Vec<u8> {
         .collect()
 }
 
+/// Coloured pixels with a thin halo in a contrasting colour, for Linux panels: they don't tint
+/// icons and don't say what colour they are, so the candle has to read on light and dark.
+pub fn outlined_rgba(size: u32, glyph: Glyph, ink: [u8; 3], halo: [u8; 3]) -> Vec<u8> {
+    let pixels = raster(size, glyph);
+    let side = size as i64;
+    let radius = (f64::from(size) / 22.0).max(1.0);
+    let reach = radius.ceil() as i64;
+    let alpha = |x: i64, y: i64| {
+        if x < 0 || y < 0 || x >= side || y >= side {
+            0.0
+        } else {
+            pixels[(y * side + x) as usize].coverage
+        }
+    };
+    let mut rgba = Vec::with_capacity(pixels.len() * 4);
+    for y in 0..side {
+        for x in 0..side {
+            let own = alpha(x, y);
+            let mut spread: f64 = 0.0;
+            for dy in -reach..=reach {
+                for dx in -reach..=reach {
+                    let distance = ((dx * dx + dy * dy) as f64).sqrt();
+                    if distance <= radius + 0.5 {
+                        let falloff = (radius + 0.5 - distance).min(1.0);
+                        spread = spread.max(alpha(x + dx, y + dy) * falloff);
+                    }
+                }
+            }
+            let under = spread * 0.9 * (1.0 - own);
+            let total = own + under;
+            let mix = |channel: usize| {
+                if total <= 0.0 {
+                    0
+                } else {
+                    ((f64::from(ink[channel]) * own + f64::from(halo[channel]) * under) / total)
+                        .round() as u8
+                }
+            };
+            rgba.extend([mix(0), mix(1), mix(2), (total * 255.0).round() as u8]);
+        }
+    }
+    rgba
+}
+
 /// Black template pixels; macOS tints them for the menu bar.
 pub fn template_rgba(size: u32, glyph: Glyph) -> Vec<u8> {
     raster(size, glyph)
@@ -121,6 +165,28 @@ pub fn template_rgba(size: u32, glyph: Glyph) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn outlined_glyphs_show_both_inks() {
+        let light = [0xf2, 0xf5, 0xf0];
+        let dark = [0x1f, 0x2a, 0x24];
+        for (_, glyph) in GLYPHS {
+            let rgba = outlined_rgba(32, glyph, light, dark);
+            let opaque: Vec<&[u8]> = rgba.chunks(4).filter(|pixel| pixel[3] > 200).collect();
+            assert!(
+                opaque.iter().any(|pixel| pixel[0] > 0xc0),
+                "{glyph:?} has no ink"
+            );
+            assert!(
+                opaque.iter().any(|pixel| pixel[0] < 0x50),
+                "{glyph:?} has no halo"
+            );
+            assert!(
+                rgba.chunks(4).any(|pixel| pixel[3] == 0),
+                "{glyph:?} fills the icon"
+            );
+        }
+    }
 
     const SIZES: [u32; 3] = [16, 22, 32];
     const GLYPHS: [(&str, Glyph); 6] = [

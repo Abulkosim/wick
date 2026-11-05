@@ -23,3 +23,12 @@ test('formats with Mac symbols', () => {
   assert.equal(formatShortcut('Super+Shift+Space'), '⇧⌘Space')
   assert.equal(formatShortcut('Alt+ArrowUp'), '⌥↑')
 })
+
+test('Windows and Linux spell modifiers out', () => {
+  assert.equal(formatShortcut('Control+Alt+KeyW', 'linux'), 'Ctrl+Alt+W')
+  assert.equal(formatShortcut('Alt+Super+Digit1', 'windows'), 'Alt+Win+1')
+  assert.equal(formatShortcut('Control+Shift+Enter', 'linux'), 'Ctrl+Shift+Enter')
+  assert.equal(formatShortcut('Alt+Super+KeyW', 'mac'), '⌥⌘W')
+  const plain = { code: 'KeyA', ctrlKey: false, altKey: false, shiftKey: true, metaKey: false }
+  assert.deepEqual(recordShortcut(plain, 'linux'), { kind: 'error', message: 'Include Ctrl, Alt or Super.' })
+})

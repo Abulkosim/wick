@@ -1,3 +1,12 @@
+/// What the copy calls this computer.
+pub const DEVICE: &str = if cfg!(target_os = "macos") {
+    "Mac"
+} else if cfg!(windows) {
+    "PC"
+} else {
+    "computer"
+};
+
 pub mod activity;
 pub mod assertion;
 pub mod boot;

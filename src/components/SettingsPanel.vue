@@ -4,7 +4,7 @@ import { version } from '../../package.json'
 import type { Day, Power, Settings } from '../lib/model'
 import { hasHistory, minutesText, totalMinutes } from '../lib/history'
 import { hasBattery } from '../lib/power'
-import { isWindows } from '../lib/platform'
+import { device, isMac, isWindows } from '../lib/platform'
 import { shortDuration } from '../lib/session'
 import AppIcon from './AppIcon.vue'
 import AppSelect from './ui/AppSelect.vue'
@@ -13,7 +13,7 @@ import ShortcutField from './ShortcutField.vue'
 import UpdateSettings from './settings/UpdateSettings.vue'
 import type { UpdateState } from '../lib/updater'
 
-const props = defineProps<{ updateState: UpdateState; updateBusy: boolean; demo: boolean; settings: Settings; power: Power; recovered: string[]; recovery: string | null; busy: boolean; save: (settings: Settings) => Promise<boolean>; reset: () => Promise<boolean>; clearHistory: () => Promise<boolean>; history: Day[] }>()
+const props = defineProps<{ updateState: UpdateState; updateBusy: boolean; demo: boolean; settings: Settings; power: Power; recovered: string[]; recovery: string | null; busy: boolean; save: (settings: Settings) => Promise<boolean>; reset: () => Promise<boolean>; clearHistory: () => Promise<boolean>; history: Day[]; shortcuts?: boolean }>()
 defineEmits<{ back: []; checkUpdate: []; installUpdate: [] }>()
 
 const themes: { id: Settings['theme']; label: string; icon: 'system' | 'sun' | 'moon' }[] = [
@@ -64,11 +64,11 @@ function setClick(value: string): void {
           <AppSelect id="icon-click" :model-value="settings.iconClick" :options="clickOptions" :disabled="busy" @update:model-value="setClick"/>
         </div>
         <div class="setting-row">
-          <div><span id="shortcut-label" class="setting-label">Shortcut</span><p>Starts or stops anywhere.</p></div>
-          <ShortcutField :model-value="settings.shortcut" labelledby="shortcut-label" :disabled="busy" @update:model-value="patch({ shortcut: $event })"/>
+          <div><span id="shortcut-label" class="setting-label">Shortcut</span><p v-if="shortcuts === false">Wayland doesn’t allow global shortcuts. Add one for <code>wick toggle</code> in your desktop’s keyboard settings.</p><p v-else>Starts or stops anywhere.</p></div>
+          <ShortcutField v-if="shortcuts !== false" :model-value="settings.shortcut" labelledby="shortcut-label" :disabled="busy" @update:model-value="patch({ shortcut: $event })"/>
         </div>
-        <div v-if="!isWindows" class="setting-row"><div><span id="time-left-label" class="setting-label">Show time left in the menu bar</span><p>Beside the candle, for timed sessions.</p></div><AppSwitch :model-value="settings.showTimeLeft" aria-labelledby="time-left-label" :disabled="busy" @update:model-value="patch({ showTimeLeft: $event })"/></div>
-        <div v-if="!isWindows" class="setting-row"><div><span id="lock-label" class="setting-label">Pause while the screen is locked</span><p>Lets the Mac sleep until you unlock it.</p></div><AppSwitch :model-value="settings.pauseWhenLocked" aria-labelledby="lock-label" :disabled="busy" @update:model-value="patch({ pauseWhenLocked: $event })"/></div>
+        <div v-if="isMac" class="setting-row"><div><span id="time-left-label" class="setting-label">Show time left in the menu bar</span><p>Beside the candle, for timed sessions.</p></div><AppSwitch :model-value="settings.showTimeLeft" aria-labelledby="time-left-label" :disabled="busy" @update:model-value="patch({ showTimeLeft: $event })"/></div>
+        <div v-if="!isWindows" class="setting-row"><div><span id="lock-label" class="setting-label">Pause while the screen is locked</span><p>Lets the {{ device }} sleep until you unlock it.</p></div><AppSwitch :model-value="settings.pauseWhenLocked" aria-labelledby="lock-label" :disabled="busy" @update:model-value="patch({ pauseWhenLocked: $event })"/></div>
         <div class="setting-row"><span id="login-label" class="setting-label">Launch at login</span><AppSwitch :model-value="settings.launchAtLogin" aria-labelledby="login-label" :disabled="busy" @update:model-value="patch({ launchAtLogin: $event })"/></div>
       </section>
       <section v-if="hasBattery(power)" class="settings-section">
@@ -80,7 +80,7 @@ function setClick(value: string): void {
       <section class="settings-section">
         <h2>Notifications</h2>
         <div class="setting-row"><div><span id="notify-end-label" class="setting-label">When a session ends</span><p>Also when the battery stops it.</p></div><AppSwitch :model-value="settings.notifyOnEnd" aria-labelledby="notify-end-label" :disabled="busy" @update:model-value="patch({ notifyOnEnd: $event })"/></div>
-        <div class="setting-row"><div><span id="notify-trigger-label" class="setting-label">When a trigger ends</span><p>For example “Xcode quit. Your Mac can sleep again.”</p></div><AppSwitch :model-value="settings.notifyOnTrigger" aria-labelledby="notify-trigger-label" :disabled="busy" @update:model-value="patch({ notifyOnTrigger: $event })"/></div>
+        <div class="setting-row"><div><span id="notify-trigger-label" class="setting-label">When a trigger ends</span><p>For example “{{ isMac ? 'Xcode' : 'ffmpeg' }} quit. Your {{ device }} can sleep again.”</p></div><AppSwitch :model-value="settings.notifyOnTrigger" aria-labelledby="notify-trigger-label" :disabled="busy" @update:model-value="patch({ notifyOnTrigger: $event })"/></div>
       </section>
       <section class="settings-section">
         <h2>History</h2>

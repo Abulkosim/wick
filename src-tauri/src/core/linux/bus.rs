@@ -64,14 +64,16 @@ where
     T::try_from(value).map_err(Into::into)
 }
 
-/// What keeps the computer awake while it is held: a portal request on its own session
-/// connection, a ScreenSaver cookie on the same connection, and a logind file descriptor.
+/// What keeps the computer awake while it is held: a portal request, PowerManagement and
+/// ScreenSaver cookies on Wick's own session connection, and a logind file descriptor.
 /// Closing the connection or the descriptor releases each, so a crash releases all of them.
 pub struct Inhibition {
     session: Option<Connection>,
     portal: Option<OwnedObjectPath>,
+    power_management: Option<u32>,
     screensaver: Option<u32>,
     _logind: Option<OwnedFd>,
+    sleep_lock: bool,
 }
 
 impl std::fmt::Debug for Inhibition {
@@ -79,15 +81,43 @@ impl std::fmt::Debug for Inhibition {
         formatter
             .debug_struct("Inhibition")
             .field("portal", &self.portal.is_some())
+            .field("power_management", &self.power_management.is_some())
             .field("screensaver", &self.screensaver.is_some())
             .field("logind", &self._logind.is_some())
+            .field("sleep_lock", &self.sleep_lock)
             .finish()
+    }
+}
+
+/// `Inhibit(app, reason)` on a session service that answers with a cookie.
+fn cookie(connection: &Connection, service: &str, path: &str, reason: &str) -> Option<u32> {
+    let interface = format!("{service}{}", interface_suffix(path));
+    connection
+        .call_method(
+            Some(service),
+            path,
+            Some(interface.as_str()),
+            "Inhibit",
+            &("Wick", reason),
+        )
+        .and_then(|reply| reply.body().deserialize::<u32>())
+        .ok()
+}
+
+/// PowerManagement serves `org.freedesktop.PowerManagement.Inhibit` at `…/Inhibit`;
+/// ScreenSaver's interface has the service's own name.
+fn interface_suffix(path: &str) -> &'static str {
+    if path.ends_with("/Inhibit") {
+        ".Inhibit"
+    } else {
+        ""
     }
 }
 
 /// `display` also keeps the screen from blanking and locking.
 pub fn inhibit(reason: &str, display: bool) -> Result<Inhibition, String> {
-    // Its own connection: the portal ties the request to it, so it must outlive the request.
+    // Its own connection: the portal and the session services tie Wick's requests to it, so it
+    // must live as long as they do.
     let session = connect(true).ok();
     let portal = session.as_ref().and_then(|connection| {
         // Suspend = 4, Idle = 8.
@@ -105,50 +135,83 @@ pub fn inhibit(reason: &str, display: bool) -> Result<Inhibition, String> {
             .and_then(|reply| reply.body().deserialize::<OwnedObjectPath>())
             .ok()
     });
-    let screensaver = match (&session, portal.is_none() && display) {
-        (Some(connection), true) => connection
-            .call_method(
-                Some("org.freedesktop.ScreenSaver"),
-                "/org/freedesktop/ScreenSaver",
-                Some("org.freedesktop.ScreenSaver"),
-                "Inhibit",
-                &("Wick", reason),
-            )
-            .and_then(|reply| reply.body().deserialize::<u32>())
-            .ok(),
-        _ => None,
-    };
-    // Without a desktop portal nothing else stops a window manager's idle suspend, so take
-    // logind's sleep lock too; `systemctl suspend -i` still works.
-    let what = if portal.is_some() || screensaver.is_some() {
-        "idle"
-    } else {
-        "idle:sleep"
-    };
-    let logind = connect(false).ok().and_then(|connection| {
-        connection
-            .call_method(
-                Some(LOGIN1),
-                MANAGER_PATH,
-                Some(MANAGER),
-                "Inhibit",
-                &(what, "Wick", reason, "block"),
-            )
-            .and_then(|reply| reply.body().deserialize::<OwnedFd>())
-            .ok()
+    // xfce4-power-manager and KDE's PowerDevil take this one; on Xfce the portal's GTK backend
+    // can only block idle, not suspend.
+    let power_management = session.as_ref().and_then(|connection| {
+        cookie(
+            connection,
+            "org.freedesktop.PowerManagement",
+            "/org/freedesktop/PowerManagement/Inhibit",
+            reason,
+        )
     });
-    if portal.is_none() && screensaver.is_none() && logind.is_none() {
+    let screensaver = session
+        .as_ref()
+        .filter(|_| display && portal.is_none())
+        .and_then(|connection| {
+            cookie(
+                connection,
+                "org.freedesktop.ScreenSaver",
+                "/org/freedesktop/ScreenSaver",
+                reason,
+            )
+        });
+    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
+    let sleep_lock = needs_sleep_lock(&desktop, portal.is_some(), power_management.is_some());
+    // polkit may refuse the sleep lock outside an active seat (SSH, a CI runner); the idle
+    // lock alone still stops logind's own idle action.
+    let logind = connect(false).ok().and_then(|connection| {
+        let lock = |what: &str| {
+            connection
+                .call_method(
+                    Some(LOGIN1),
+                    MANAGER_PATH,
+                    Some(MANAGER),
+                    "Inhibit",
+                    &(what, "Wick", reason, "block"),
+                )
+                .and_then(|reply| reply.body().deserialize::<OwnedFd>())
+                .ok()
+                .map(|fd| (fd, what == "idle:sleep"))
+        };
+        if sleep_lock {
+            lock("idle:sleep").or_else(|| lock("idle"))
+        } else {
+            lock("idle")
+        }
+    });
+    let held_on_session = portal.is_some() || power_management.is_some() || screensaver.is_some();
+    if !held_on_session && logind.is_none() {
         return Err(
-            "Neither the desktop portal nor systemd-logind accepted Wick's request. Is a desktop session running?"
+            "Neither the desktop nor systemd-logind accepted Wick's request. Is a desktop session running?"
                 .into(),
         );
     }
+    let (logind, sleep_lock) = match logind {
+        Some((fd, sleep)) => (Some(fd), sleep),
+        None => (None, false),
+    };
     Ok(Inhibition {
-        session: session.filter(|_| portal.is_some() || screensaver.is_some()),
+        session: session.filter(|_| held_on_session),
         portal,
+        power_management,
         screensaver,
         _logind: logind,
+        sleep_lock,
     })
+}
+
+/// Desktops whose portal backend really blocks suspend; elsewhere (Xfce's GTK backend, wlroots)
+/// the portal accepts the request and only blocks idle.
+const PORTAL_SUSPENDS: [&str; 6] = ["gnome", "kde", "unity", "pantheon", "cinnamon", "budgie"];
+
+/// Whether logind must also hold a sleep lock: only when nothing the desktop honours for
+/// suspend answered. A sleep lock also refuses a manual suspend (unless `-i`), so it is the
+/// last resort, for window managers and desktops without a working inhibitor.
+pub fn needs_sleep_lock(desktop: &str, portal: bool, power_management: bool) -> bool {
+    let desktop = desktop.to_lowercase();
+    let trusted_portal = portal && PORTAL_SUSPENDS.iter().any(|name| desktop.contains(name));
+    !trusted_portal && !power_management
 }
 
 impl Inhibition {
@@ -158,6 +221,10 @@ impl Inhibition {
 
     pub fn uses_logind(&self) -> bool {
         self._logind.is_some()
+    }
+
+    pub fn holds_sleep_lock(&self) -> bool {
+        self.sleep_lock
     }
 }
 
@@ -173,6 +240,15 @@ impl Drop for Inhibition {
                 Some("org.freedesktop.portal.Request"),
                 "Close",
                 &(),
+            );
+        }
+        if let Some(cookie) = self.power_management {
+            let _ = connection.call_method(
+                Some("org.freedesktop.PowerManagement"),
+                "/org/freedesktop/PowerManagement/Inhibit",
+                Some("org.freedesktop.PowerManagement.Inhibit"),
+                "UnInhibit",
+                &(cookie,),
             );
         }
         if let Some(cookie) = self.screensaver {
@@ -339,6 +415,27 @@ pub fn lid_policy() -> Option<LidPolicy> {
     Some(policy)
 }
 
+/// The desktop's colour preference from the portal: 1 = dark, 2 = light, 0 = none.
+pub fn color_scheme() -> Option<u32> {
+    with(true, |connection| {
+        let reply = connection.call_method(
+            Some(PORTAL),
+            PORTAL_PATH,
+            Some("org.freedesktop.portal.Settings"),
+            "Read",
+            &("org.freedesktop.appearance", "color-scheme"),
+        )?;
+        // `Read` wraps the value in one variant more than `ReadOne`.
+        let value: OwnedValue = reply.body().deserialize()?;
+        let value = match &*value {
+            Value::Value(inner) => inner.try_clone()?,
+            _ => value.try_clone()?.into(),
+        };
+        Ok(u32::try_from(&value).ok())
+    })
+    .flatten()
+}
+
 /// power-profiles-daemon's "power-saver" profile is Linux's Low Power Mode.
 pub fn power_saver() -> bool {
     with(false, |connection| {
@@ -367,6 +464,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn sleep_lock_only_without_a_working_desktop_inhibitor() {
+        assert!(!needs_sleep_lock("ubuntu:GNOME", true, false));
+        assert!(!needs_sleep_lock("KDE", true, true));
+        assert!(!needs_sleep_lock("XFCE", true, true));
+        assert!(needs_sleep_lock("XFCE", true, false));
+        assert!(needs_sleep_lock("sway", true, false));
+        assert!(needs_sleep_lock("", false, false));
+        assert!(needs_sleep_lock("GNOME", false, false));
+    }
+
+    #[test]
     fn session_ids_are_escaped_like_logind() {
         assert_eq!(escape("2"), "2");
         assert_eq!(escape("c1"), "c1");
@@ -391,11 +499,7 @@ mod tests {
             eprintln!("logind refused the inhibitor here; skipping");
             return;
         };
-        eprintln!(
-            "portal: {}, logind: {}",
-            inhibition.uses_portal(),
-            inhibition.uses_logind()
-        );
+        eprintln!("{inhibition:?}");
         if inhibition.uses_logind() {
             assert_eq!(ours(), 1);
         }
