@@ -23,6 +23,8 @@ const ICON_SIZE: u32 = if cfg!(target_os = "macos") { 36 } else { 32 };
 struct Shown {
     revision: u64,
     glyph: Option<Glyph>,
+    /// The panel colour the icon was drawn for (Linux).
+    dark: Option<bool>,
     tooltip: String,
     title: Option<String>,
     stoppable: Option<bool>,
@@ -121,12 +123,14 @@ pub fn update(app: &AppHandle, state: &AppState, now: i64) {
             return;
         }
         shown.revision = revision;
-        if shown.glyph != Some(glyph)
+        let dark = panel_dark();
+        if (shown.glyph != Some(glyph) || shown.dark != Some(dark))
             && tray
                 .set_icon_with_as_template(Some(icon(glyph)), cfg!(target_os = "macos"))
                 .is_ok()
         {
             shown.glyph = Some(glyph);
+            shown.dark = Some(dark);
         }
         if shown.tooltip != tooltip && tray.set_tooltip(Some(&tooltip)).is_ok() {
             shown.tooltip = tooltip;
@@ -142,6 +146,17 @@ pub fn update(app: &AppHandle, state: &AppState, now: i64) {
             }
         }
     });
+}
+
+#[cfg(target_os = "linux")]
+fn panel_dark() -> bool {
+    panel::dark()
+}
+
+/// Only Linux redraws for the panel colour.
+#[cfg(not(target_os = "linux"))]
+fn panel_dark() -> bool {
+    false
 }
 
 #[cfg(target_os = "macos")]
@@ -172,25 +187,64 @@ pub fn icon(glyph: Glyph) -> Image<'static> {
 /// also gets a halo in the opposite colour and reads on either.
 #[cfg(target_os = "linux")]
 pub fn icon(glyph: Glyph) -> Image<'static> {
-    let desktop = std::env::var("XDG_CURRENT_DESKTOP")
-        .unwrap_or_default()
-        .to_lowercase();
-    let scheme = crate::core::linux::bus::color_scheme();
-    let dark_panel = if ["gnome", "ubuntu", "unity", "pantheon"]
-        .iter()
-        .any(|name| desktop.contains(name))
-    {
-        true
-    } else if desktop.contains("kde") {
-        scheme == Some(1)
-    } else {
-        scheme != Some(2)
-    };
+    let dark = panel::dark();
     Image::new_owned(
-        crate::core::candle::outlined_rgba(ICON_SIZE, glyph, ink(dark_panel), ink(!dark_panel)),
+        crate::core::candle::outlined_rgba(ICON_SIZE, glyph, ink(dark), ink(!dark)),
         ICON_SIZE,
         ICON_SIZE,
     )
+}
+
+/// The panel colour, read over D-Bus off the main thread and cached: icons are drawn on the main
+/// thread, where a stalled portal would freeze the menu and the popover.
+#[cfg(target_os = "linux")]
+pub mod panel {
+    use std::sync::{
+        atomic::{AtomicU8, Ordering},
+        Mutex,
+    };
+    use std::time::{Duration, Instant};
+
+    /// 0 until read, then 1 for dark, 2 for light.
+    static DARK: AtomicU8 = AtomicU8::new(0);
+    static READ_AT: Mutex<Option<Instant>> = Mutex::new(None);
+    const REFRESH: Duration = Duration::from_secs(60);
+
+    /// The last reading; dark until the first one, like most default panels.
+    pub fn dark() -> bool {
+        DARK.load(Ordering::Relaxed) != 2
+    }
+
+    /// Re-reads the colour scheme at most once a minute. Returns whether it changed.
+    pub fn refresh() -> bool {
+        {
+            let Ok(mut read_at) = READ_AT.lock() else {
+                return false;
+            };
+            if read_at.is_some_and(|at| at.elapsed() < REFRESH) {
+                return false;
+            }
+            *read_at = Some(Instant::now());
+        }
+        let desktop = std::env::var("XDG_CURRENT_DESKTOP")
+            .unwrap_or_default()
+            .to_lowercase();
+        let dark = if ["gnome", "ubuntu", "unity", "pantheon"]
+            .iter()
+            .any(|name| desktop.contains(name))
+        {
+            true
+        } else {
+            let scheme = crate::core::linux::bus::color_scheme();
+            if desktop.contains("kde") {
+                scheme == Some(1)
+            } else {
+                scheme != Some(2)
+            }
+        };
+        let value = if dark { 1 } else { 2 };
+        DARK.swap(value, Ordering::Relaxed) != value
+    }
 }
 
 /// Ink for a tray that doesn't tint its icons.
