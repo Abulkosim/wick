@@ -168,7 +168,8 @@ Decisions (research in [research.md](research.md#linux)):
 - [x] **8.3 Linux packages and release pipeline.** AppImage, deb, rpm; signed updater artifacts; `latest.json` linux entries; checksums, attestations; install docs.
   Verify: script tests; CI release dry run builds all three; AppImage update installs in Docker.
   Done 2026-11-05 (PR #14): signed bundle build with a throwaway key gave all three packages and signatures; `updater_install_linux` passed on that AppImage; the AppImage passed the smoke test; the deb's desktop entry now passes `%u`, and `xdg-open wick://…` works after installing it. Inter ships for Linux (Debian's DejaVu cut the title).
-- [ ] **8.4 Release v0.7.0.**
+- [x] **8.4 Release v0.7.0.**
+  Done 2026-11-05: published on the owner's go-ahead; tap bumped itself; owner's Mac updated. Evidence in docs/verification.md.
 - [ ] **8.5 Cross-review with Codex** after the release; fixes go out as a patch.
 
 ## Later / maybe
