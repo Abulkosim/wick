@@ -72,3 +72,19 @@ test('announcements name the state, never the countdown', async () => {
   assert.equal(announcement(timed, { ...quiet, lockPaused: true }), 'Paused while the screen is locked')
   assert.equal(announcement({ mode: 'off' }, quiet), 'Off')
 })
+
+test('clock times are 24-hour and name the day when it differs', async () => {
+  const { clockTime } = await import('../../src/lib/session.ts')
+  const now = new Date(2026, 9, 26, 9, 0).getTime()
+  assert.match(clockTime(new Date(2026, 9, 26, 18, 5).getTime(), now), /^18:05$/)
+  assert.match(clockTime(new Date(2026, 9, 27, 7, 30).getTime(), now), /07:30$/)
+  assert.doesNotMatch(clockTime(new Date(2026, 9, 26, 18, 5).getTime(), now), /PM|AM/)
+})
+
+test('no duration button stays lit after a session is extended', () => {
+  const startedAt = 0
+  assert.equal(activePreset({ mode: 'for', startedAt, endsAt: 60 * 60_000 }), '1h')
+  assert.equal(activePreset({ mode: 'for', startedAt, endsAt: 75 * 60_000 }, true), null)
+  assert.equal(activePreset({ mode: 'until', startedAt, endsAt: 75 * 60_000 }, true), null)
+  assert.equal(activePreset({ mode: 'indefinite', startedAt }, true), 'indefinite')
+})

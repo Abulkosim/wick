@@ -5,6 +5,7 @@
   -webkit-font-smoothing: auto;
   -moz-osx-font-smoothing: auto;
   font-optical-sizing: auto;
+  font-variant-numeric: tabular-nums;
   color-scheme: light;
   --surface: #f5f6f1;
   --surface-translucent: rgba(247,248,243,.94);
@@ -395,7 +396,7 @@ button:disabled:hover {
   background: #8883;
 }
 .toast-error>svg {
-  color: var(--warning);
+  color: var(--warning-soft);
 }
 .toast-enter-active,.toast-leave-active {
   transition: opacity .18s,transform .18s;

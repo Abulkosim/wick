@@ -21,7 +21,9 @@ export function clockTime(time: number, now: number): string {
   const date = new Date(time)
   const today = new Date(now)
   const sameDay = date.toDateString() === today.toDateString()
-  const options: Intl.DateTimeFormatOptions = sameDay ? { hour: 'numeric', minute: '2-digit' } : { weekday: 'short', hour: 'numeric', minute: '2-digit' }
+  // 24-hour like the schedule rows and Wick's notifications and tray, so one screen never mixes both.
+  const clock: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
+  const options: Intl.DateTimeFormatOptions = sameDay ? clock : { weekday: 'short', ...clock }
   return date.toLocaleString(undefined, options)
 }
 
@@ -71,10 +73,12 @@ export function detail(session: Session, now: number, display: boolean, heldBy: 
   }
 }
 
-export function activePreset(session: Session): string | null {
+/** The duration button that started this session; none once it was extended. */
+export function activePreset(session: Session, extended = false): string | null {
   if (session.mode === 'indefinite') return 'indefinite'
-  if (session.mode === 'until') return 'until'
+  if (session.mode === 'until') return extended ? null : 'until'
   if (session.mode === 'for') {
+    if (extended) return null
     const minutes = Math.round((session.endsAt - session.startedAt) / 60_000)
     return presets.find(preset => preset.request.mode === 'for' && preset.request.minutes === minutes)?.id ?? 'custom'
   }

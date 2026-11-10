@@ -208,7 +208,7 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
   Done: DST cases use `chrono-tz` (dev only): Berlin's spring gap and repeated autumn hour, Santiago's skipped midnight. Limiting app commands with an `AppManifest` was left out: it can only be proven in the real app, the window is the only webview, and the CSP allows no outside scripts.
 - [x] **10.9 Keyboard and screen readers.** Typing in a picker never fires shortcuts; the live region skips the countdown; radio groups use arrows; focus ring on every focusable, 3 px offset; Escape closes the time editor; one Quit tooltip.
   Verify: e2e for each; screenshots light + dark.
-- [ ] **10.10 Popover details.** Active conditions styled as running; one 24-hour time format everywhere; fresh "Until" default and add-trigger form on each open; no preset highlighted after +15; loading state; readable error-toast icon; tabular numbers everywhere.
+- [x] **10.10 Popover details.** Active conditions styled as running; one 24-hour time format everywhere; fresh "Until" default and add-trigger form on each open; no preset highlighted after +15; loading state; readable error-toast icon; tabular numbers everywhere.
   Verify: unit tests for time formatting and presets; e2e; screenshots.
 - [ ] **10.11 Frontend tidy and demo coverage.** Dead CSS and code removed; outgoing IPC payloads validated with Zod; demo states for Low Power Mode, updater phases, schedule-held and an error toast.
   Verify: typecheck, unit, e2e over every demo state.

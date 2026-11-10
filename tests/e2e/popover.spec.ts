@@ -121,3 +121,12 @@ test('Escape closes the time editor and keeps the popover open', async ({ page }
   await expect(page.getByRole('button', { name: 'Until…' })).toBeFocused()
   await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Off')
 })
+
+test('after Add 15 min no duration button stays selected', async ({ page }) => {
+  await page.goto('/?demo=1&state=off')
+  await page.getByRole('button', { name: '1 hour' }).click()
+  await expect(page.getByRole('button', { name: '1 hour' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Add 15 min' }).click()
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Awake · 1h 15m left')
+  await expect(page.locator('.duration-option[aria-pressed="true"]')).toHaveCount(0)
+})
