@@ -7,7 +7,7 @@ Releases are not signed by a verified publisher. macOS builds use ad-hoc signing
 1. Run the full check suite (below) and the native checks in [verification.md](verification.md).
 2. Commit both `pnpm-lock.yaml` and `src-tauri/Cargo.lock`. Frontend installs use `--frozen-lockfile`; Rust checks and builds use `--locked`.
 3. Set the same version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`.
-4. Write `changelogs/vX.Y.Z.md` and add a row to `CHANGELOG.md`: the release date and a few short, user-facing bullets that say where a setting lives. The release workflow uses this file for the GitHub release notes and the update manifest.
+4. Write `changelogs/vX.Y.Z.md` and add a row to `CHANGELOG.md`: the day you plan to publish (UTC) and a few short, user-facing bullets that say where a setting lives. The release workflow copies this file into the GitHub release notes and `latest.json` when it builds the draft, and `latest.json` can't change after publishing, so get the date right before tagging.
 5. Run `node --test scripts/*.test.mjs` and `node scripts/check-release.mjs vX.Y.Z`. It requires matching versions, both lockfiles, the changelog, the public updater key, the GitHub manifest URL and signed-version enforcement.
 6. Push the release commit and confirm all checks on `main` pass. Create and push the matching annotated tag: `git tag -a vX.Y.Z -m "Wick vX.Y.Z" && git push origin vX.Y.Z`.
 
@@ -48,7 +48,7 @@ Actions are pinned to commit SHAs (the repository requires it), runner images an
 3. Run the updater install test against that exact archive (below). Both Linux jobs already ran its AppImage counterpart (`tests/updater_install_linux.rs`) on their signed AppImages; check their logs.
 4. Install the DMG's app, launch it, start and stop a session, and check `pmset -g assertions`. For Linux, run the draft AppImage in a desktop session (or the dev container in CONTRIBUTING.md) and check `systemd-inhibit --list`.
 5. Record what passed in [verification.md](verification.md), newest release first.
-6. Publish the draft and mark it latest: `gh release edit vX.Y.Z --draft=false --latest`. Fix the changelog date to the publish date (UTC) if it differs.
+6. Publish the draft and mark it latest: `gh release edit vX.Y.Z --draft=false --latest`. If publishing slipped to another day, fix the date in the changelog files and the release notes; `latest.json` keeps the planned date.
 
 The workflow refuses to replace assets on a published release. Never edit a published release's files or reuse a version; ship a new patch.
 
@@ -58,7 +58,7 @@ The workflow refuses to replace assets on a published release. Never edit a publ
 
 The workflow pushes with a write deploy key on the tap only (secret `HOMEBREW_TAP_DEPLOY_KEY`), gated by the variable `HOMEBREW_TAP_ENABLED=true`. To rotate it, delete the deploy key in the tap's settings, add a new one with write access, and replace the secret. Re-run for a tag with `gh workflow run homebrew.yml -f tag=vX.Y.Z`.
 
-After it runs, check with `brew update && brew livecheck --cask abulkosim/tap/wick` and `brew audit --cask --online abulkosim/tap/wick`. Change stanzas in `packaging/` first, then copy the cask to the tap; `brew style --cask` must be clean.
+After it runs, check with `brew update && brew livecheck --cask abulkosim/tap/wick` and `brew audit --cask --online abulkosim/tap/wick`. Change stanzas in `packaging/` first, then copy the cask to the tap; `brew style --cask` must be clean. The workflow updates only the tap, so set the copy here to the latest published version and checksum when you release, or copying it rolls the tap back.
 
 ## Updates
 

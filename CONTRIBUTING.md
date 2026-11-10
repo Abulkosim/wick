@@ -1,10 +1,10 @@
 # Contributing
 
-Wick keeps a Mac awake from the menu bar. Questions go to [Discussions](https://github.com/Abulkosim/wick/discussions); bugs and requests go to [issues](https://github.com/Abulkosim/wick/issues/new/choose); vulnerabilities go to [SECURITY.md](SECURITY.md).
+Wick keeps a computer awake from the menu bar or tray: macOS, Windows and Linux. Questions go to [Discussions](https://github.com/Abulkosim/wick/discussions); bugs and requests go to [issues](https://github.com/Abulkosim/wick/issues/new/choose); vulnerabilities go to [SECURITY.md](SECURITY.md).
 
 ## Scope and rules
 
-- Keep the Mac awake with standard power assertions only. Never change `pmset` or other system settings, and never ask for an administrator password.
+- Keep the computer awake with the platform's standard mechanism only: IOKit power assertions, Windows power requests, desktop and logind inhibitors. Never change `pmset` or other system settings, and never ask for an administrator password to keep it awake.
 - No mouse movement, fake activity, or "stay online" features.
 - Rust owns every system call. The interface sees state snapshots and sends intents, validated with Zod.
 - No telemetry, analytics, or crash reporting. The only network host is GitHub Releases for updates; see [PRIVACY.md](PRIVACY.md).
@@ -14,7 +14,7 @@ Wick keeps a Mac awake from the menu bar. Questions go to [Discussions](https://
 ## Prerequisites
 
 - Node.js 24 and pnpm 11.25.0 (pinned in `package.json`).
-- Stable Rust via [rustup](https://rustup.rs), 1.90 or newer, with `clippy` and `rustfmt`.
+- Rust via [rustup](https://rustup.rs) with `clippy` and `rustfmt`. CI pins 1.99.1; any stable since then works.
 - macOS with Xcode Command Line Tools, Windows with WebView2, or Linux with the WebKitGTK toolchain: on Ubuntu/Debian `sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf` ([Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)). The AppIndicator package is only needed to bundle; the tray speaks StatusNotifierItem itself.
 - Playwright browsers for e2e tests: `pnpm exec playwright install chromium webkit`.
 
@@ -31,7 +31,7 @@ To work on the interface without the app, use the browser preview:
 pnpm dev
 ```
 
-Open the printed URL with `?demo=1`. Add `&theme=light` or `&theme=dark`, `&page=settings`, `&platform=windows` or `&platform=linux` (with `&wayland=1` or `&framed=1` for the Linux variants), and `&state=` one of the scenarios in [`src/lib/demo.ts`](src/lib/demo.ts): `off`, `timed`, `until`, `indefinite`, `display`, `battery`, `desktop`, `clamshell`, `held`, `paused`, `triggers`, `others`, `others-off`, `error`, `recovery`, `recovered`, `update-available`.
+Open the printed URL with `?demo=1`. Add `&theme=light` or `&theme=dark`, `&page=settings`, `&platform=windows` or `&platform=linux` (with `&wayland=1` or `&framed=1` for the Linux variants), and `&state=` one of the scenarios in [`src/lib/demo.ts`](src/lib/demo.ts): `off`, `timed`, `until`, `indefinite`, `display`, `battery`, `low-power`, `desktop`, `clamshell`, `locked`, `held`, `paused`, `triggers`, `conditions`, `schedule`, `activity`, `others`, `others-off`, `history`, `error`, `toast`, `recovery`, `recovered`, and the update phases `update-checking`, `update-available`, `update-downloading`, `update-installing`, `update-current`.
 
 `scripts/native-preview.mjs` renders the desktop popover at the height the app asks macOS for, over a light, dark or transparent backdrop, which is closer to the real window than the preview stage.
 
@@ -53,13 +53,14 @@ docker exec -w /tmp wick-linux xvfb-run -a dbus-run-session -- bash /src/scripts
 
 ## Test
 
-`scripts/check-all.sh` runs everything below and stops at the first failure.
+`scripts/check-all.sh` is the list: it runs every check CI runs and stops at the first failure.
 
 ```sh
 pnpm build        # type check and frontend assets; native checks need these
 pnpm test
 pnpm test:e2e
-node --test scripts/*.test.mjs
+node --test scripts/*.test.mjs packaging/homebrew/*.test.mjs
+(cd raycast && npm test && npm run lint && npx ray build -e dist)
 cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml --locked
@@ -71,19 +72,28 @@ CI runs the same commands ([`ci.yml`](.github/workflows/ci.yml)). Some Rust test
 
 ```
 src-tauri/src/
-  commands.rs, cli.rs    command surface and `wick start|stop`
+  commands.rs, cli.rs    command surface, `wick start|stop|toggle|status` and wick:// links
   runtime.rs             state, ticker, persistence, reconciling the assertion
-  tray.rs, popover.rs    menu bar icon and popover placement
+  status.rs              status.json for `wick status` and resuming after an update
+  tray.rs, popover.rs    tray icon and popover placement
+  shortcut.rs            global shortcut
   updates.rs             update check and install
   core/
-    assertion.rs         IOKit power assertions
+    assertion.rs         IOKit assertions, Windows power requests, Linux inhibitors
     session.rs           sessions and time left
+    schedule.rs          weekly schedules
     candle.rs            tray icon rendering
-    triggers.rs          app and command triggers
+    triggers.rs          trigger evaluation and phrases
+    activity.rs          network and CPU activity
     processes.rs         process scan
-    others.rs            other apps keeping the Mac awake
-    power.rs, lid.rs     battery guard, lid state
+    others.rs            other apps keeping the computer awake
+    power.rs, lid.rs     battery guard, Low Power Mode, lid state
+    display.rs, lock.rs  external displays, screen lock
+    history.rs           time awake per day
+    boot.rs              boot time, so a session only resumes in the same boot
     settings.rs, store.rs
+    win32.rs             Windows API bindings
+    linux/               D-Bus (portal, logind, ScreenSaver), /sys and /proc readers
 src/
   App.vue, components/   popover and settings
   design/, styles.css    tokens and controls
