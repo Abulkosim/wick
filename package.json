@@ -1,6 +1,6 @@
 {
   "name": "wick",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "description": "Keeps your Mac awake: on demand, for a time, or while an app or process runs.",
