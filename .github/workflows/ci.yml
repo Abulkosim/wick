@@ -57,7 +57,8 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm test
-          npm run lint
+          # ray lint also looks the author up on raycast.com, which needs a store account.
+          npm run check
           npx ray build -e dist
       - name: Install browser engines
         # Ubuntu's package mirror sometimes stalls; retry instead of waiting out the job timeout.

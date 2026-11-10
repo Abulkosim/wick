@@ -62,6 +62,7 @@
     "dev": "ray develop",
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
+    "check": "eslint src && prettier --check src",
     "test": "node --test src/*.test.ts",
     "publish": "npx @raycast/api@latest publish"
   },
