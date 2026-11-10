@@ -31,6 +31,10 @@ updates:
     directory: /scripts/linux
     schedule:
       interval: weekly
+    ignore:
+      # The container matches the release build base, Ubuntu 22.04 (glibc 2.35).
+      - dependency-name: ubuntu
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: cargo
     directory: /src-tauri
     schedule:
