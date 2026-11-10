@@ -2,7 +2,7 @@
 
 | Version | Date (UTC) | Changes |
 | --- | --- | --- |
-| [v0.7.2](changelogs/v0.7.2.md) | 2026-11-10 | Linux arm64: AppImage, deb and rpm. |
+| [v0.8.0](changelogs/v0.8.0.md) | 2026-11-10 | Linux arm64, 24-hour times, links that run once, keyboard and screen reader fixes. |
 | [v0.7.1](changelogs/v0.7.1.md) | 2026-11-05 | Linux fixes: display on Xfce, the no-tray window, chargers, battery level. |
 | [v0.7.0](changelogs/v0.7.0.md) | 2026-11-05 | Linux: AppImage, deb and rpm, with tray, inhibitors and updates. |
 | [v0.6.0](changelogs/v0.6.0.md) | 2026-10-31 | Notifications when a trigger ends. |
