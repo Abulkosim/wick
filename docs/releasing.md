@@ -29,7 +29,7 @@ cd src-tauri && cargo fmt --check && cargo clippy --all-targets --locked -- -D w
   - records GitHub build provenance for every installer and package, the archive, `latest.json` and checksums, and attests the SBOM;
   - creates or updates a **draft** release.
 
-Actions are pinned to commit SHAs. Builds have read-only repository access; only the release job can write, plus the OIDC and attestation permissions provenance needs. Pull requests, `main` builds and manual runs build without updater artifacts and receive no signing secrets.
+Actions are pinned to commit SHAs (the repository requires it), runner images and the Rust toolchain to versions, and tag builds use no caches. Rulesets keep `main` to pull requests with the build and security checks passing, and let only admins create or move `v*` tags; the release job also refuses a tag that isn't on `main`. Builds have read-only repository access; only the release job can write, plus the OIDC and attestation permissions provenance needs. Pull requests, `main` builds and manual runs build without updater artifacts and receive no signing secrets.
 
 ## Publish
 
@@ -64,7 +64,7 @@ After it runs, check with `brew update && brew livecheck --cask abulkosim/tap/wi
 
 Tauri updater signatures are free. They authenticate downloads against the public key embedded in Wick; they do not replace Apple notarization.
 
-The key lives outside the repository in `~/.tauri/wick/` (`wick.key`, `wick.key.pub`, `wick.key.password`, all 0600), with a backup kept by the owner. Its contents are in the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` Actions secrets. Losing it means installed copies can never trust another update.
+The key lives outside the repository in `~/.tauri/wick/` (`wick.key`, `wick.key.pub`, `wick.key.password`, all 0600), with a backup kept by the owner. Its contents are the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secrets of the `release` environment (Settings → Environments), which only `v*` tags can use; keep no repository-level copies. Losing it means installed copies can never trust another update.
 
 Run the install test against a release archive before publishing:
 
