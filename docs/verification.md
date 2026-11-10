@@ -2,7 +2,7 @@
 
 What was checked for each release, newest first.
 
-## v0.8.0 — draft, 2026-11-10
+## v0.8.0 — 2026-11-10
 
 Linux arm64 and the Phase 10 sweep: PRs [#24](https://github.com/Abulkosim/wick/pull/24) (arm64 pipeline) and [#27](https://github.com/Abulkosim/wick/pull/27)–[#44](https://github.com/Abulkosim/wick/pull/44), each green before merging. `main` run [42891935312](https://github.com/Abulkosim/wick/actions/runs/42891935312) passed before tagging. Tag `v0.8.0`, CI run [42894982317](https://github.com/Abulkosim/wick/actions/runs/42894982317): frontend, Windows x64, Linux x64 and Linux arm64 passed first time; macOS failed in `hdiutil create` ("Resource busy", a runner flake, the same build passed on every PR) and passed on re-running the failed jobs, then the draft release passed.
 
@@ -11,7 +11,8 @@ Linux arm64 and the Phase 10 sweep: PRs [#24](https://github.com/Abulkosim/wick/
 - Draft: 20/20 checksums OK; provenance verified for all 12 files and the SBOM attestation on the DMG; `latest.json` 0.8.0 with 13 platform entries (`linux-aarch64*` new), every URL on the v0.8.0 tag.
 - Mac archive, checked without a Mac: its signature verifies for 0.8.0 with the app's public key; flipped bytes and version 0.8.1 are rejected; `Info.plist` says 0.8.0. The `updater_install` test against it needs macOS.
 - The tag build used the repository-level signing secrets: the `release` environment exists and gates the jobs, but the secrets haven't moved there yet.
-- Pending 👤: publish; `updater_install` on a Mac against `Wick.app.tar.gz`; update the installed app in-app; move the signing secrets into the `release` environment; Linux on real hardware (#22) and on a real ARM board; Windows VM.
+- Published 2026-11-10 21:09 UTC on the owner's go-ahead, marked latest; `latest.json` (0.8.0, 13 platforms), the DMG, both AppImages, the arm64 deb and rpm and the Windows installer resolve publicly. Homebrew workflow run [42902291210](https://github.com/Abulkosim/wick/actions/runs/42902291210) pushed `wick 0.8.0` with the DMG checksum.
+- Pending 👤: `updater_install` on a Mac against `Wick.app.tar.gz`; update the installed app in-app; move the signing secrets into the `release` environment; Linux on real hardware (#22) and on a real ARM board; Windows VM.
 
 Checksums:
 

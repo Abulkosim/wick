@@ -225,9 +225,9 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
 - [x] **10.15 Site and social image for every platform.** Meta tags and `og.png` say computer, not Mac.
   Verify: screenshot of the new image; site renders.
   👤 Upload `docs/images/social-preview.png` in the repo's settings.
-- [ ] **10.16 Release v0.8.0.** Version, changelog (arm64 + sweep), README with arm64 row, full release flow.
+- [x] **10.16 Release v0.8.0.** Version, changelog (arm64 + sweep), README with arm64 row, full release flow.
   Verify: full release flow; both Linux updater install tests pass on their signed AppImages in the tag build.
-  Draft verified 2026-11-10 (docs/verification.md). 👤 Say "publish"; then it is published, marked latest, and the installed app updates in-app.
+  Done 2026-11-10: draft verified (docs/verification.md), published on the owner's go-ahead, tap bumped itself. 👤 Update the installed app in-app.
 
 ## Later / maybe
 
