@@ -1,7 +1,7 @@
 import type { UpdateState } from './updater.ts'
 import { initialState, type AppState, type Day, type RunningApp, type Trigger } from './model.ts'
 
-export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off', 'clamshell', 'update-available', 'locked', 'conditions', 'history', 'activity'] as const
+export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off', 'clamshell', 'update-available', 'locked', 'conditions', 'history', 'activity', 'low-power', 'schedule', 'toast', 'update-checking', 'update-downloading', 'update-installing', 'update-current'] as const
 
 export const demoApps: RunningApp[] = [
   { name: 'Final Cut Pro', path: '/Applications/Final Cut Pro.app' },
@@ -110,6 +110,16 @@ export function createDemoState(scenario: string | null, now = Date.now()): AppS
       state.running = ['demo-network']
       state.heldBy = 'the network is busy'
       break
+    case 'low-power':
+      state.power = { onBattery: true, percent: 64, lowPowerMode: true }
+      state.settings.stopInLowPowerMode = true
+      state.notice = 'Stopped: Low Power Mode is on'
+      break
+    case 'schedule':
+      state.triggers = [{ id: 'demo-schedule', kind: 'schedule', name: 'Weekdays 09:00–18:00', schedule: { days: [0, 1, 2, 3, 4], start: '09:00', end: '18:00' }, enabled: true }]
+      state.running = ['demo-schedule']
+      state.heldBy = 'on schedule until 18:00'
+      break
     case 'history':
       state.session = { mode: 'for', startedAt: now - minutes(25), endsAt: now + minutes(95) }
       break
@@ -127,5 +137,12 @@ export function createDemoState(scenario: string | null, now = Date.now()): AppS
 }
 
 export function createDemoUpdateState(scenario: string | null): UpdateState {
-  return scenario === 'update-available' ? { kind: 'available', version: '0.2.0' } : { kind: 'idle' }
+  switch (scenario) {
+    case 'update-available': return { kind: 'available', version: '0.2.0' }
+    case 'update-checking': return { kind: 'checking' }
+    case 'update-downloading': return { kind: 'downloading', version: '0.2.0', downloaded: 3_400_000, total: 8_200_000 }
+    case 'update-installing': return { kind: 'installing', version: '0.2.0' }
+    case 'update-current': return { kind: 'current' }
+    default: return { kind: 'idle' }
+  }
 }

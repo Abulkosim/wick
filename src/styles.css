@@ -124,13 +124,6 @@ button:disabled:hover {
   white-space: nowrap;
   border: 0;
 }
-.muted {
-  color: var(--tertiary);
-}
-.middot {
-  margin: 0 6px;
-  color: var(--tertiary);
-}
 .preview-stage {
   min-height: 100dvh;
   display: grid;
@@ -216,32 +209,6 @@ button:disabled:hover {
   border-radius: 0;
   box-shadow: inset 0 0 0 1px var(--line);
 }
-.app-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 16px 10px 22px;
-  flex-shrink: 0;
-}
-.wordmark {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: -.2px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.wordmark svg {
-  color: var(--accent);
-}
-.header-actions {
-  display: flex;
-  margin-left: auto;
-  gap: 5px;
-  align-items: center;
-}
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -266,27 +233,12 @@ button:disabled:hover {
   flex-shrink: 0;
   min-height: 50px;
 }
-.sync-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--tertiary);
-  font-size: 13px;
-  white-space: nowrap;
-  min-width: 0;
-}
 .status-dot {
   height: 4px;
   width: 4px;
   background: var(--accent);
   border-radius: 50%;
   flex-shrink: 0;
-}
-.sync-status.warning {
-  color: var(--warning);
-}
-.sync-status.warning .status-dot {
-  background: var(--warning);
 }
 .text-button {
   display: inline-flex;
@@ -299,10 +251,6 @@ button:disabled:hover {
 }
 .text-button:hover {
   color: var(--ink);
-}
-.footer-add {
-  font-size: 13px;
-  gap: 4px;
 }
 .preview-ribbon {
   display: flex;
@@ -324,9 +272,6 @@ button:disabled:hover {
   height: 3px;
   border-radius: 50%;
   background: var(--secondary);
-}
-.pulsing {
-  animation: pulse 1.2s ease-in-out infinite;
 }
 .button {
   display: inline-flex;
@@ -354,13 +299,6 @@ button:disabled:hover {
 .button-small {
   padding: 7px 10px;
   font-size: 13px;
-}
-.button-danger {
-  background: var(--danger);
-  color: var(--surface);
-}
-.button-danger:hover {
-  background: color-mix(in srgb,var(--danger),#000 8%);
 }
 .toast-message {
   position: absolute;
@@ -432,35 +370,6 @@ button:disabled:hover {
   color: var(--tertiary);
   white-space: nowrap;
 }
-.settings-tabs {
-  display: flex;
-  background: var(--hover);
-  margin: 0 23px 22px;
-  border-radius: 7px;
-  padding: 3px;
-  gap: 3px;
-  flex-shrink: 0;
-}
-.settings-tabs button {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 7px;
-  padding: 7px;
-  width: 50%;
-  font-size: 14px;
-  color: var(--secondary);
-  border-radius: 5px;
-}
-.settings-tabs button[data-state="active"] {
-  background: var(--card);
-  color: var(--ink);
-  box-shadow: 0 1px 3px #00000008;
-}
-.settings-tabs button span {
-  font-size: 13px;
-  color: var(--tertiary);
-}
 .settings-content {
   min-height: 0;
   overflow: auto;
@@ -473,7 +382,7 @@ button:disabled:hover {
 .settings-section {
   padding-bottom: 23px;
 }
-.settings-section h2,.section-heading h2 {
+.settings-section h2 {
   font-size: 15px;
   font-weight: 600;
   letter-spacing: .05px;
@@ -512,31 +421,6 @@ button:disabled:hover {
 .settings-footnote>span {
   margin-left: auto;
   font-size: 13px;
-}
-.section-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 19px;
-}
-.section-heading h2 {
-  margin-bottom: 5px;
-  color: var(--ink);
-  font-size: 13px;
-}
-.section-heading p {
-  font-size: 13px;
-  color: var(--tertiary);
-  line-height: 1.5;
-}
-@keyframes pulse {
-  0%,100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: .45;
-  }
 }
 .app-shell.fit-content {
   display: flex;
