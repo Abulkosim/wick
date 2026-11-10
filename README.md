@@ -61,7 +61,7 @@ Updates are signed and verified in the app. Wick checks once a day and installs 
 | **Triggers** | Stay awake while an app or command runs, while the network or CPU is busy (until it's quiet for 2 minutes), on power, with an external display, or on a weekly schedule. Stop pauses a trigger until it ends. |
 | **Also awake** | Lists other apps holding the Mac awake, with their reason, including audio playing through macOS and `caffeinate` started by a tool. |
 | **Battery** | Stops below a level you choose (20% by default), and optionally in Low Power Mode. |
-| **Screen lock** | Optionally pauses while the screen is locked and resumes on unlock (Mac). |
+| **Screen lock** | Optionally pauses while the screen is locked and resumes on unlock (Mac and Linux). |
 | **Lid** | Warns "Closing the lid will sleep your Mac" when that is true, and stays quiet in clamshell mode. |
 | **Shortcut** | A global shortcut you record in Settings starts or stops from any app. |
 | **History** | "Awake today 3h 12m" with a bar per day for the last week. Kept on this computer for 30 days; turn it off or clear it in Settings → History. |
@@ -116,7 +116,7 @@ On Windows it's a power request (`powercfg /requests`). On Linux it's your deskt
 
 ## Privacy
 
-No account, no telemetry, no analytics. The only network request is the daily update check against GitHub Releases, which sends nothing about you. Settings and history stay in `~/Library/Application Support/com.abulkosim.wick/`. Details: [PRIVACY.md](PRIVACY.md). Vulnerabilities: [SECURITY.md](SECURITY.md).
+No account, no telemetry, no analytics. The only network request is the daily update check against GitHub Releases, which sends nothing about you. Settings and history stay on your computer (`~/Library/Application Support/com.abulkosim.wick/` on macOS, `%APPDATA%\com.abulkosim.wick` on Windows, `~/.local/share/com.abulkosim.wick/` on Linux). Details: [PRIVACY.md](PRIVACY.md). Vulnerabilities: [SECURITY.md](SECURITY.md).
 
 ## Develop
 

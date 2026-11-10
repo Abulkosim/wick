@@ -12,7 +12,7 @@ If that is disabled, open an [issue](https://github.com/Abulkosim/wick/issues/ne
 
 Include:
 
-- Wick version and macOS version.
+- Wick version, platform and OS version.
 - What an attacker can do, and what they need first.
 - Steps to reproduce.
 

@@ -32,4 +32,4 @@ On Windows, a power request named after the session while Wick keeps the PC awak
 
 On Linux, files live in `~/.local/share/com.abulkosim.wick/` (`$XDG_DATA_HOME` if set), and Launch at login writes `~/.config/autostart/Wick.desktop`. While awake, Wick holds desktop and systemd-logind inhibitors named `Wick: …`; they end when Wick exits. Wick reads power and lid state from `/sys`, `/proc` and logind, process names from `/proc`, and other inhibitors from logind, GNOME or KDE, all locally.
 
-Wick never changes `pmset` or any other system setting, needs no administrator password, and asks for no permissions.
+Wick never changes `pmset` or any other system setting and asks for no permissions. It needs no administrator password, except that on Linux the `.deb` and `.rpm` install updates through `pkexec`, which asks for yours.
