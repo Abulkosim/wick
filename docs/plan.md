@@ -193,7 +193,7 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
   Verify: Rust tests for the caps; unit test that an over-long name still parses.
 - [x] **10.3 A session ends even when the handover fails.** If the new assertion can't be made at the end of a session, the old one is still released, the error is shown, and the ticker never spins.
   Verify: runtime test with a failing assertion; error state in the demo.
-- [ ] **10.4 Clock changes.** The macOS assertion timeout and activity triggers follow the monotonic clock, so a clock set back doesn't end a session early or keep a trigger busy.
+- [x] **10.4 Clock changes.** The macOS assertion timeout and activity triggers follow the monotonic clock, so a clock set back doesn't end a session early or keep a trigger busy.
   Verify: pure tests with a moved wall clock.
 - [ ] **10.5 No freezes on a slow bus.** Intent commands and tray actions run off the main thread; the Linux inhibitor is built outside the runtime lock.
   Verify: CI; Linux smoke test.

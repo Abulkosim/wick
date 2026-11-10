@@ -74,6 +74,8 @@ struct Inner {
     tracker: Tracker,
     history_saved_at: i64,
     history_dirty: bool,
+    /// When the held assertion's own timeout fires, on the monotonic clock.
+    held_until: Option<u64>,
     #[cfg(test)]
     refuse_assertions: bool,
 }
@@ -120,6 +122,19 @@ fn assertion_name(session: &Session, held_by: Option<&str>) -> String {
     }
 }
 
+const TIMEOUT_MARGIN: Duration = Duration::from_secs(2);
+
+/// macOS times an assertion out on its own clock, while sessions end by the wall clock. When the
+/// two disagree by more than half a minute (the clock was set, or the Mac slept), the assertion
+/// is made again with the right timeout.
+fn timeout_drifted(remaining_ms: Option<i64>, held_until: Option<u64>, monotonic: u64) -> bool {
+    let (Some(remaining), Some(until)) = (remaining_ms, held_until) else {
+        return false;
+    };
+    let expected = until as i64 - monotonic as i64 - TIMEOUT_MARGIN.as_millis() as i64;
+    (remaining.max(0) - expected).abs() > 30_000
+}
+
 impl Inner {
     /// Hold exactly the assertion the session needs. A replacement is created before the
     /// old one drops, so the Mac is never briefly allowed to sleep.
@@ -131,6 +146,7 @@ impl Inner {
         if self.view.paused_by_lock || (!session.is_on() && held_by.is_none()) {
             self.assertion = None;
             self.held_for = None;
+            self.held_until = None;
             return Ok(());
         }
         let kind = if self.view.settings.keep_display_on {
@@ -139,12 +155,14 @@ impl Inner {
             Kind::System
         };
         let key = (kind, session, held_by);
-        if self.assertion.is_some() && self.held_for.as_ref() == Some(&key) {
+        let remaining = session.remaining_ms(now);
+        let monotonic = history::monotonic_ms();
+        let drifted =
+            cfg!(target_os = "macos") && timeout_drifted(remaining, self.held_until, monotonic);
+        if self.assertion.is_some() && self.held_for.as_ref() == Some(&key) && !drifted {
             return Ok(());
         }
-        let timeout = session
-            .remaining_ms(now)
-            .map(|ms| Duration::from_millis(ms as u64) + Duration::from_secs(2));
+        let timeout = remaining.map(|ms| Duration::from_millis(ms.max(0) as u64) + TIMEOUT_MARGIN);
         #[cfg(test)]
         if self.refuse_assertions {
             return Err("The assertion was refused.".into());
@@ -152,6 +170,7 @@ impl Inner {
         let next = assertion::create(kind, &assertion_name(&session, key.2.as_deref()), timeout)?;
         self.assertion = Some(next);
         self.held_for = Some(key);
+        self.held_until = timeout.map(|timeout| monotonic + timeout.as_millis() as u64);
         Ok(())
     }
 
@@ -543,7 +562,7 @@ impl Runtime {
         } else {
             Vec::new()
         };
-        let counters = activity::read(&snapshot.triggers, now);
+        let counters = activity::read(&snapshot.triggers, history::monotonic_ms() as i64);
         let busy = self
             .activity
             .lock()
@@ -794,6 +813,17 @@ mod tests {
         let (view, changed) = runtime.commit(|_, _| Ok(()), false).unwrap();
         assert!(!changed);
         assert_eq!(view.revision, before.revision);
+    }
+
+    #[test]
+    fn the_assertion_is_remade_when_the_clock_moves() {
+        let until = 10_000 + 3_600_000 + TIMEOUT_MARGIN.as_millis() as u64;
+        assert!(!timeout_drifted(Some(3_600_000), Some(until), 10_000));
+        assert!(!timeout_drifted(Some(3_590_000), Some(until), 20_000));
+        assert!(timeout_drifted(Some(7_190_000), Some(until), 20_000));
+        assert!(timeout_drifted(Some(0), Some(until), 20_000));
+        assert!(!timeout_drifted(None, Some(until), 20_000));
+        assert!(!timeout_drifted(Some(60_000), None, 20_000));
     }
 
     #[test]
