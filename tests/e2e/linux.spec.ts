@@ -4,7 +4,7 @@ test('Linux says computer, offers commands and keeps lock and display options', 
   await page.goto('/?demo=1&state=off&platform=linux')
   await expect(page.locator('html')).toHaveAttribute('data-platform', 'linux')
   await expect(page.locator('.popover-arrow')).toBeHidden()
-  await expect(page.getByRole('status')).toContainText('Your computer sleeps as usual.')
+  await expect(page.locator('.hero-copy')).toContainText('Your computer sleeps as usual.')
   await expect(page.getByText('A program is running, like ffmpeg or claude.')).toBeVisible()
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await expect(page.getByRole('radio', { name: 'App' })).toHaveCount(0)

@@ -31,19 +31,19 @@ test('rejects a path as a command', async ({ page }) => {
 
 test('a running trigger holds the Mac awake; Stop pauses until it quits', async ({ page }) => {
   await page.goto('/?demo=1&state=held')
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Awake')
-  await expect(page.getByRole('status')).toContainText('While Xcode is running')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Awake')
+  await expect(page.locator('.hero-copy')).toContainText('While Xcode is running')
   await expect(page.locator('.trigger-row').first()).toContainText('Running')
   await page.getByRole('button', { name: 'Stop' }).click()
-  await expect(page.getByRole('status')).toContainText('Paused until Xcode quits')
+  await expect(page.locator('.hero-copy')).toContainText('Paused until Xcode quits')
   await page.getByRole('button', { name: 'Resume' }).click()
-  await expect(page.getByRole('status')).toContainText('While Xcode is running')
+  await expect(page.locator('.hero-copy')).toContainText('While Xcode is running')
 })
 
 test('turning a trigger off or removing it', async ({ page }) => {
   await page.goto('/?demo=1&state=held')
   await page.getByRole('switch', { name: 'Stay awake while Xcode is running' }).click()
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Off')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Off')
   await page.locator('.trigger-row').first().hover()
   await page.getByRole('button', { name: 'Remove Xcode' }).click()
   await expect(page.locator('.trigger-row')).toHaveCount(2)
@@ -75,10 +75,10 @@ test('adds power and display conditions once each', async ({ page }) => {
 
 test('a condition holds the Mac awake and pauses until it ends', async ({ page }) => {
   await page.goto('/?demo=1&state=conditions')
-  await expect(page.getByRole('status')).toContainText('While on power')
+  await expect(page.locator('.hero-copy')).toContainText('While on power')
   await expect(page.locator('.trigger-row').first()).toContainText('Plugged in')
   await page.getByRole('button', { name: 'Stop' }).click()
-  await expect(page.getByRole('status')).toContainText('Paused until you unplug')
+  await expect(page.locator('.hero-copy')).toContainText('Paused until you unplug')
 })
 
 test('adds network and CPU activity with a threshold', async ({ page }) => {
@@ -102,12 +102,12 @@ test('adds network and CPU activity with a threshold', async ({ page }) => {
 
 test('busy activity holds the Mac awake and pauses until it is quiet', async ({ page }) => {
   await page.goto('/?demo=1&state=activity')
-  await expect(page.getByRole('status')).toContainText('While the network is busy')
+  await expect(page.locator('.hero-copy')).toContainText('While the network is busy')
   await expect(page.locator('.trigger-row').first()).toContainText('Busy')
   await page.getByRole('button', { name: 'Stop' }).click()
-  await expect(page.getByRole('status')).toContainText('Paused until the network is quiet')
+  await expect(page.locator('.hero-copy')).toContainText('Paused until the network is quiet')
   await page.getByRole('button', { name: 'Resume' }).click()
-  await expect(page.getByRole('status')).toContainText('While the network is busy')
+  await expect(page.locator('.hero-copy')).toContainText('While the network is busy')
 })
 
 for (const theme of ['light', 'dark'] as const) {
@@ -150,4 +150,28 @@ test('a schedule with no days cannot be added', async ({ page }) => {
   for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']) await page.getByRole('button', { name: day }).click()
   await expect(page.getByRole('alert')).toHaveText('Choose at least one day.')
   await expect(page.locator('.trigger-form').getByRole('button', { name: 'Add' })).toBeDisabled()
+})
+
+test('typing in the app picker never fires single-key shortcuts', async ({ page }) => {
+  await page.goto('/?demo=1&state=off')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('combobox', { name: 'Running app' }).focus()
+  await page.keyboard.press('s')
+  await page.keyboard.press('2')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Off')
+})
+
+test('arrow keys move through a radio group with one tab stop', async ({ page }) => {
+  await page.goto('/?demo=1&state=off')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  const group = page.getByRole('radiogroup', { name: 'Trigger type' })
+  await expect(group.locator('[role="radio"][tabindex="0"]')).toHaveCount(1)
+  await group.getByRole('radio', { name: 'App' }).focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(group.getByRole('radio', { name: 'Command' })).toBeFocused()
+  await expect(group.getByRole('radio', { name: 'Command' })).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('radio', { name: 'Condition' }).click()
+  await page.getByRole('radio', { name: 'On power' }).focus()
+  await page.keyboard.press('ArrowDown')
+  await expect(page.getByRole('radio', { name: 'External display connected' })).toHaveAttribute('aria-checked', 'true')
 })

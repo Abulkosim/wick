@@ -15,19 +15,17 @@ use tauri::{Manager, WindowEvent};
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_notification::NotificationExt;
 
-/// Runs a command-line intent. Returns false when there was none.
+/// Runs a command-line or link intent. Returns false when the arguments hold none.
 fn perform(app: &tauri::AppHandle, args: &[String]) -> bool {
-    let runtime = app.state::<Arc<Runtime>>();
-    let result = match cli::parse(args) {
+    match cli::parse(args) {
         Ok(None) => return false,
-        Ok(Some(cli::Intent::Start(request))) => runtime.start(app, request).map(|_| ()),
-        Ok(Some(cli::Intent::Stop)) => runtime.stop(app).map(|_| ()),
-        Ok(Some(cli::Intent::Toggle)) => runtime.toggle(app).map(|_| ()),
-        Ok(Some(cli::Intent::Status)) => Ok(()),
-        Err(error) => Err(error),
-    };
-    if let Err(error) = result {
-        eprintln!("wick: {error}");
+        Ok(Some(cli::Intent::Start(request))) => {
+            runtime::act(app, move |app, runtime| runtime.start(app, request))
+        }
+        Ok(Some(cli::Intent::Stop)) => runtime::act(app, |app, runtime| runtime.stop(app)),
+        Ok(Some(cli::Intent::Toggle)) => runtime::act(app, |app, runtime| runtime.toggle(app)),
+        Ok(Some(cli::Intent::Status)) => {}
+        Err(error) => eprintln!("wick: {error}"),
     }
     true
 }

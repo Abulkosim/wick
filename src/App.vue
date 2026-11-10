@@ -16,7 +16,7 @@ import StatusCandle from './components/StatusCandle.vue'
 import { useWick } from './lib/wick'
 import { useUpdater } from './lib/updater'
 import { createDemoUpdateState } from './lib/demo'
-import { activePreset, detail, fraction, shortDuration, title } from './lib/session'
+import { activePreset, announcement, detail, fraction, shortDuration, title } from './lib/session'
 import type { StartRequest } from './lib/model'
 import { footerNote } from './lib/power'
 import { device, isMac, platform } from './lib/platform'
@@ -40,6 +40,7 @@ const held = computed(() => !on.value && state.value.heldBy !== null)
 const timed = computed(() => state.value.session.mode === 'for' || state.value.session.mode === 'until')
 const statusTitle = computed(() => title(state.value.session, now.value, state.value.heldBy))
 const statusDetail = computed(() => state.value.pausedByLock && (on.value || held.value) ? 'Paused while the screen is locked' : state.value.session.mode === 'off' && !held.value && state.value.notice ? state.value.notice : !on.value && !held.value && !state.value.pausedBy && state.value.others.length ? othersSummary(state.value.others) ?? '' : detail(state.value.session, now.value, state.value.settings.keepDisplayOn, state.value.heldBy, state.value.pausedBy))
+const spoken = computed(() => announcement(state.value.session, { heldBy: state.value.heldBy, pausedBy: state.value.pausedBy, notice: state.value.notice, lockPaused: state.value.pausedByLock }))
 const footer = computed(() => footerNote(state.value.power, state.value.lidSleeps, on.value || held.value))
 const ringFraction = computed(() => fraction(state.value.session, now.value))
 const active = computed(() => activePreset(state.value.session))
@@ -164,7 +165,8 @@ onUnmounted(() => {
         <main ref="scroller" class="popover-body">
           <section class="hero" :class="{ active: on }">
             <StatusCandle :fraction="ringFraction" :on="on" :held="held"/>
-            <div class="hero-copy" role="status" aria-live="polite">
+            <p class="sr-only" role="status" aria-live="polite">{{ spoken }}</p>
+            <div class="hero-copy">
               <h1 class="hero-title">{{ statusTitle }}</h1>
               <p class="hero-detail" :class="{ 'is-notice': !on && !held && state.notice }">{{ statusDetail }}<template v-if="!on && !held && state.pausedBy"> · <button class="text-button inline-action" :disabled="busy" @click="resumeTriggers">Resume</button></template><template v-if="timed && !state.pausedByLock"> · <button class="text-button inline-action" :disabled="busy" @click="extendSession(15)">Add 15 min</button></template></p>
             </div>
@@ -195,7 +197,7 @@ onUnmounted(() => {
           <span class="footer-note"><template v-if="footer"><AppIcon :name="footer.icon" :size="15"/><span class="footer-text">{{ footer.text }}</span></template></span>
           <div class="footer-actions">
             <AppTooltip :text="updater.available.value ? 'Settings · update available' : 'Settings'"><button class="icon-button settings-button" :aria-label="updater.available.value ? 'Settings, update available' : 'Open settings'" @click="page = 'settings'"><AppIcon name="settings" :size="16"/><span v-if="updater.available.value" class="update-dot" aria-hidden="true"/></button></AppTooltip>
-            <AppTooltip text="Quit Wick"><button class="icon-button" aria-label="Quit Wick" :title="isMac ? '⌘Q' : 'Ctrl+Q'" @click="quit"><AppIcon name="power" :size="16"/></button></AppTooltip>
+            <AppTooltip :text="`Quit Wick · ${isMac ? '⌘Q' : 'Ctrl+Q'}`"><button class="icon-button" aria-label="Quit Wick" aria-keyshortcuts="Control+Q Meta+Q" @click="quit"><AppIcon name="power" :size="16"/></button></AppTooltip>
           </div>
         </footer>
         </template>

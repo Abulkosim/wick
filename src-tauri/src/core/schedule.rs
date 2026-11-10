@@ -13,7 +13,13 @@ pub struct Schedule {
 /// Minutes since midnight for "HH:MM".
 pub fn minutes(value: &str) -> Option<u32> {
     let (hours, minutes) = value.split_once(':')?;
-    if hours.is_empty() || hours.len() > 2 || minutes.len() != 2 {
+    let digits = |part: &str| part.bytes().all(|byte| byte.is_ascii_digit());
+    if hours.is_empty()
+        || hours.len() > 2
+        || minutes.len() != 2
+        || !digits(hours)
+        || !digits(minutes)
+    {
         return None;
     }
     let (hours, minutes): (u32, u32) = (hours.parse().ok()?, minutes.parse().ok()?);
@@ -51,22 +57,6 @@ impl Schedule {
         }
         let yesterday = self.days.contains(&((weekday + 6) % 7));
         (today && minute >= start) || (yesterday && minute < end)
-    }
-
-    /// "Weekdays", "Every day", "Mon, Wed, Fri".
-    pub fn days_label(&self) -> String {
-        let mut days = self.days.clone();
-        days.sort_unstable();
-        match days.as_slice() {
-            [0, 1, 2, 3, 4, 5, 6] => "Every day".into(),
-            [0, 1, 2, 3, 4] => "Weekdays".into(),
-            [5, 6] => "Weekends".into(),
-            _ => days
-                .iter()
-                .map(|day| ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][*day as usize])
-                .collect::<Vec<_>>()
-                .join(", "),
-        }
     }
 }
 
@@ -114,22 +104,16 @@ mod tests {
     }
 
     #[test]
-    fn validation_and_labels() {
+    fn validation() {
         assert!(schedule(&[0], "09:00", "18:00").validate().is_ok());
         assert!(schedule(&[], "09:00", "18:00").validate().is_err());
         assert!(schedule(&[7], "09:00", "18:00").validate().is_err());
         assert!(schedule(&[1, 1], "09:00", "18:00").validate().is_err());
         assert!(schedule(&[1], "09:00", "09:00").validate().is_err());
         assert!(schedule(&[1], "9am", "18:00").validate().is_err());
-        assert_eq!(
-            schedule(&[4, 0, 1, 2, 3], "09:00", "18:00").days_label(),
-            "Weekdays"
-        );
-        assert_eq!(
-            schedule(&[0, 1, 2, 3, 4, 5, 6], "09:00", "18:00").days_label(),
-            "Every day"
-        );
-        assert_eq!(schedule(&[5, 6], "09:00", "18:00").days_label(), "Weekends");
-        assert_eq!(schedule(&[0, 2], "09:00", "18:00").days_label(), "Mon, Wed");
+        for odd in ["+9:05", "09:+5", " 9:05", "-1:00", "9:5"] {
+            assert_eq!(minutes(odd), None, "{odd}");
+        }
+        assert_eq!(minutes("9:05"), Some(545));
     }
 }

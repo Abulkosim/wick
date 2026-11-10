@@ -199,6 +199,18 @@ mod tests {
     use super::*;
     use chrono::FixedOffset;
 
+    #[test]
+    fn a_day_whose_midnight_is_skipped_starts_at_one() {
+        let santiago = chrono_tz::America::Santiago;
+        let day = date("2026-09-06");
+        assert!(santiago
+            .from_local_datetime(&day.and_hms_opt(0, 0, 0).unwrap())
+            .earliest()
+            .is_none());
+        let start = DateTime::parse_from_rfc3339("2026-09-06T04:00:00Z").unwrap();
+        assert_eq!(day_start(day, &santiago), Some(start.timestamp_millis()));
+    }
+
     fn date(value: &str) -> NaiveDate {
         NaiveDate::parse_from_str(value, "%Y-%m-%d").unwrap()
     }

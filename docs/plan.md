@@ -195,15 +195,18 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
   Verify: runtime test with a failing assertion; error state in the demo.
 - [x] **10.4 Clock changes.** The macOS assertion timeout and activity triggers follow the monotonic clock, so a clock set back doesn't end a session early or keep a trigger busy.
   Verify: pure tests with a moved wall clock.
-- [ ] **10.5 No freezes on a slow bus.** Intent commands and tray actions run off the main thread; the Linux inhibitor is built outside the runtime lock.
+- [x] **10.5 No freezes on a slow bus.** Intent commands, tray actions, the shortcut and links run on a worker thread instead of the main thread.
   Verify: CI; Linux smoke test.
-- [ ] **10.6 Nothing fails silently.** Windows updates keep the running session and history; shortcut and icon-click errors show like menu errors.
+  Done: building the inhibitor outside the runtime lock was left out; with intents off the main thread a slow bus only delays the ticker, and the lock keeps assertion swaps ordered.
+- [x] **10.6 Nothing fails silently.** Windows updates keep the running session and history; shortcut, icon-click and link errors show as notifications like menu errors.
   Verify: Rust tests where pure; review of the updater hook.
-- [ ] **10.7 Store edges.** Reset keeps triggers and the update-check time and re-registers the shortcut; one backup per recovery; recovery notes stay until the user saves.
+  Done: the updater's `on_before_exit` (Windows only) flushes history and marks the session to resume, then does the plugin's own cleanup.
+- [x] **10.7 Store edges.** Reset keeps triggers and the update-check time and re-registers the shortcut; one backup per recovery; recovery notes stay until the user saves.
   Verify: store and runtime tests.
-- [ ] **10.8 Rust tidy.** Digits-only schedule times, dead code removed, comments fixed, one app id, pin notes in Cargo.toml, DST tests, app commands limited to the main window's capability.
+- [x] **10.8 Rust tidy.** Digits-only schedule times, dead code removed, comments fixed, one app id, pin notes in Cargo.toml, DST tests.
   Verify: tests; CI.
-- [ ] **10.9 Keyboard and screen readers.** Typing in a picker never fires shortcuts; the live region skips the countdown; radio groups use arrows; focus ring on every focusable, 3 px offset; Escape closes the time editor; one Quit tooltip.
+  Done: DST cases use `chrono-tz` (dev only): Berlin's spring gap and repeated autumn hour, Santiago's skipped midnight. Limiting app commands with an `AppManifest` was left out: it can only be proven in the real app, the window is the only webview, and the CSP allows no outside scripts.
+- [x] **10.9 Keyboard and screen readers.** Typing in a picker never fires shortcuts; the live region skips the countdown; radio groups use arrows; focus ring on every focusable, 3 px offset; Escape closes the time editor; one Quit tooltip.
   Verify: e2e for each; screenshots light + dark.
 - [ ] **10.10 Popover details.** Active conditions styled as running; one 24-hour time format everywhere; fresh "Until" default and add-trigger form on each open; no preset highlighted after +15; loading state; readable error-toast icon; tabular numbers everywhere.
   Verify: unit tests for time formatting and presets; e2e; screenshots.

@@ -6,7 +6,7 @@ test('settings open from the footer and close with Back or Escape', async ({ pag
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
   await expect(page.getByText('Saves automatically')).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Off')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Off')
   await page.keyboard.press('ControlOrMeta+,')
   await page.getByRole('button', { name: 'Back to overview' }).click()
   await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible()
@@ -19,7 +19,7 @@ test('Start uses the chosen start duration', async ({ page }) => {
   await expect(page.getByRole('combobox', { name: 'Start keeps awake' })).toHaveText(/1 hour/)
   await page.getByRole('button', { name: 'Back to overview' }).click()
   await page.getByRole('button', { name: 'Start', exact: true }).click()
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Awake · 1h 00m left')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Awake · 1h 00m left')
 })
 
 test('theme follows the choice', async ({ page }) => {

@@ -172,6 +172,33 @@ mod tests {
     use super::*;
     use chrono::FixedOffset;
 
+    fn utc(value: &str) -> i64 {
+        DateTime::parse_from_rfc3339(value)
+            .unwrap()
+            .timestamp_millis()
+    }
+
+    #[test]
+    fn until_a_time_lost_to_spring_forward_uses_the_hour_after() {
+        let berlin = chrono_tz::Europe::Berlin;
+        let now = berlin.with_ymd_and_hms(2026, 3, 29, 1, 0, 0).unwrap();
+        let time = NaiveTime::from_hms_opt(2, 30, 0).unwrap();
+        let next = next_time(&now, time).unwrap();
+        assert_eq!(next.timestamp_millis(), utc("2026-03-29T01:30:00Z"));
+    }
+
+    #[test]
+    fn until_a_repeated_autumn_time_takes_the_one_still_ahead() {
+        let berlin = chrono_tz::Europe::Berlin;
+        let first_pass = utc("2026-10-25T00:50:00Z");
+        let now = DateTime::from_timestamp_millis(first_pass)
+            .unwrap()
+            .with_timezone(&berlin);
+        let time = NaiveTime::from_hms_opt(2, 45, 0).unwrap();
+        let next = next_time(&now, time).unwrap();
+        assert_eq!(next.timestamp_millis(), utc("2026-10-25T01:45:00Z"));
+    }
+
     fn at(hour: u32, minute: u32) -> DateTime<FixedOffset> {
         FixedOffset::east_opt(5 * 3600)
             .unwrap()

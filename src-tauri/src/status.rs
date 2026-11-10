@@ -66,9 +66,12 @@ pub fn write(directory: &Path, state: &AppState, resume: bool) {
     }
 }
 
+/// The bundle identifier in tauri.conf.json, which names Tauri's app data directory.
+const APP_ID: &str = "com.abulkosim.wick";
+
 #[cfg(windows)]
 pub fn default_directory() -> Option<PathBuf> {
-    std::env::var_os("APPDATA").map(|data| PathBuf::from(data).join("com.abulkosim.wick"))
+    std::env::var_os("APPDATA").map(|data| PathBuf::from(data).join(APP_ID))
 }
 
 /// Tauri's app data directory on Linux: `$XDG_DATA_HOME`, else `~/.local/share`.
@@ -78,13 +81,16 @@ pub fn default_directory() -> Option<PathBuf> {
         .map(PathBuf::from)
         .filter(|path| path.is_absolute())
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")))
-        .map(|data| data.join("com.abulkosim.wick"))
+        .map(|data| data.join(APP_ID))
 }
 
 #[cfg(not(any(windows, target_os = "linux")))]
 pub fn default_directory() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .map(|home| PathBuf::from(home).join("Library/Application Support/com.abulkosim.wick"))
+    std::env::var_os("HOME").map(|home| {
+        PathBuf::from(home)
+            .join("Library/Application Support")
+            .join(APP_ID)
+    })
 }
 
 #[cfg(windows)]
@@ -133,6 +139,12 @@ pub fn read(directory: &Path) -> Value {
 mod tests {
     use super::*;
     use crate::core::session::Session;
+
+    #[test]
+    fn the_status_directory_follows_the_bundle_identifier() {
+        let config: Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        assert_eq!(config["identifier"], APP_ID);
+    }
 
     #[test]
     fn status_reports_the_live_app_and_a_stale_file_as_stopped() {

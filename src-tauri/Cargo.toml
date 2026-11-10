@@ -27,10 +27,15 @@ tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros"
 tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-notification = "2"
+# Exact: the release scripts and install tests check this version's signature format and
+# requireSignedVersion; bump it together with them.
 tauri-plugin-updater = { version = "=2.14.1", default-features = false, features = ["rustls-tls", "system-proxy"] }
+# Cargo.lock keeps its rust-ini at 0.21.1: deep-link 2.6 doesn't build with 0.21.2 and newer
+# (Dependabot ignores those), so update rust-ini only with a deep-link that does.
 tauri-plugin-deep-link = "2"
 
 [dev-dependencies]
+chrono-tz = "0.10"
 png = "0.18"
 tauri = { version = "2.12.4", features = ["test"] }
 

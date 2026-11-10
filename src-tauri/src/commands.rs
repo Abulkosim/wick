@@ -12,46 +12,48 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_autostart::ManagerExt;
 
+/// Runs an intent on a worker thread: sync commands run on the main thread, and an assertion,
+/// inhibitor or power read can wait on a slow system service.
+async fn off_main(
+    app: AppHandle,
+    intent: impl FnOnce(&AppHandle, &Runtime) -> Result<AppState, String> + Send + 'static,
+) -> Result<AppState, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let runtime = app.state::<Arc<Runtime>>().inner().clone();
+        intent(&app, &runtime)
+    })
+    .await
+    .map_err(|_| "Wick couldn't finish that. Try again.".to_string())?
+}
+
 #[tauri::command]
 pub fn get_state(runtime: State<'_, Arc<Runtime>>) -> AppState {
     runtime.state()
 }
 
 #[tauri::command]
-pub fn start_session(
-    app: AppHandle,
-    runtime: State<'_, Arc<Runtime>>,
-    request: Request,
-) -> Result<AppState, String> {
-    runtime.start(&app, request)
+pub async fn start_session(app: AppHandle, request: Request) -> Result<AppState, String> {
+    off_main(app, move |app, runtime| runtime.start(app, request)).await
 }
 
 #[tauri::command]
-pub fn extend_session(
-    app: AppHandle,
-    runtime: State<'_, Arc<Runtime>>,
-    minutes: u32,
-) -> Result<AppState, String> {
-    runtime.extend(&app, minutes)
+pub async fn extend_session(app: AppHandle, minutes: u32) -> Result<AppState, String> {
+    off_main(app, move |app, runtime| runtime.extend(app, minutes)).await
 }
 
 #[tauri::command]
-pub fn stop_session(app: AppHandle, runtime: State<'_, Arc<Runtime>>) -> Result<AppState, String> {
-    runtime.stop(&app)
+pub async fn stop_session(app: AppHandle) -> Result<AppState, String> {
+    off_main(app, |app, runtime| runtime.stop(app)).await
 }
 
 #[tauri::command]
-pub fn clear_history(app: AppHandle, runtime: State<'_, Arc<Runtime>>) -> Result<AppState, String> {
-    runtime.clear_history(&app)
+pub async fn clear_history(app: AppHandle) -> Result<AppState, String> {
+    off_main(app, |app, runtime| runtime.clear_history(app)).await
 }
 
 #[tauri::command]
-pub fn set_display(
-    app: AppHandle,
-    runtime: State<'_, Arc<Runtime>>,
-    display: bool,
-) -> Result<AppState, String> {
-    runtime.set_display(&app, display)
+pub async fn set_display(app: AppHandle, display: bool) -> Result<AppState, String> {
+    off_main(app, move |app, runtime| runtime.set_display(app, display)).await
 }
 
 #[tauri::command]
@@ -99,24 +101,27 @@ fn set_launch_at_login(app: &AppHandle, from: bool, to: bool) -> Result<(), Stri
 
 #[tauri::command]
 pub fn reset_store(app: AppHandle, runtime: State<'_, Arc<Runtime>>) -> Result<AppState, String> {
-    runtime.reset_store(&app)
+    let previous = runtime.state().settings.shortcut;
+    let view = runtime.reset_store(&app)?;
+    if let Err(error) =
+        crate::shortcut::replace(&app, previous.as_deref(), view.settings.shortcut.as_deref())
+    {
+        eprintln!("wick: {error}");
+    }
+    Ok(view)
 }
 
 #[tauri::command]
-pub fn save_triggers(
-    app: AppHandle,
-    runtime: State<'_, Arc<Runtime>>,
-    triggers: Vec<Trigger>,
-) -> Result<AppState, String> {
-    runtime.save_triggers(&app, triggers)
+pub async fn save_triggers(app: AppHandle, triggers: Vec<Trigger>) -> Result<AppState, String> {
+    off_main(app, move |app, runtime| {
+        runtime.save_triggers(app, triggers)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn resume_triggers(
-    app: AppHandle,
-    runtime: State<'_, Arc<Runtime>>,
-) -> Result<AppState, String> {
-    runtime.resume_triggers(&app)
+pub async fn resume_triggers(app: AppHandle) -> Result<AppState, String> {
+    off_main(app, |app, runtime| runtime.resume_triggers(app)).await
 }
 
 #[tauri::command]

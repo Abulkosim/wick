@@ -120,9 +120,18 @@ async fn check(app: &AppHandle, updates: &Updates, quiet: bool) -> Result<Update
     let previous = updates.status()?.state;
     *pending = None;
     updates.publish(app, UpdatePhase::Checking)?;
+    let hook = app.clone();
     let result = match app
         .updater_builder()
         .timeout(Duration::from_secs(20))
+        // Windows exits inside install(), before the restart path and RunEvent::Exit run.
+        .on_before_exit(move || {
+            if let Some(runtime) = hook.try_state::<Arc<Runtime>>() {
+                runtime.flush_history();
+                runtime.keep_session_on_exit(&hook);
+            }
+            hook.cleanup_before_exit();
+        })
         .build()
     {
         Ok(updater) => updater.check().await,

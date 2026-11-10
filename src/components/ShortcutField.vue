@@ -22,6 +22,7 @@ function stop(): void {
 
 function onKeydown(event: KeyboardEvent): void {
   if (!recording.value) return
+  if (event.key === 'Tab') return stop()
   event.preventDefault()
   event.stopPropagation()
   if (event.code === 'Escape' && !event.metaKey && !event.ctrlKey && !event.altKey) return stop()
