@@ -556,6 +556,11 @@ mod tests {
             assert_eq!(ours(), 1);
         }
         drop(inhibition);
+        // logind drops the inhibitor when it sees the descriptor close, a moment later.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        while ours() > 0 && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
         assert_eq!(ours(), 0);
     }
 }
