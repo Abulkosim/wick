@@ -30,7 +30,7 @@ jobs:
           persist-credentials: false
       - uses: taiki-e/install-action@b80e2bb2635f28eb98b9fce1e2f0887e1535c6b2 # v2.90.0
         with:
-          tool: cargo-audit,cargo-deny
+          tool: cargo-audit@0.23.0,cargo-deny@0.20.2
       - name: Audit Rust dependencies
         run: cargo audit
       - name: Check advisories, licenses, bans and sources
@@ -49,9 +49,9 @@ jobs:
           node-version: "24"
           package-manager-cache: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-      - name: Audit production dependencies
-        continue-on-error: false
-        run: pnpm audit --prod --audit-level high
+      - name: Audit dependencies
+        # Dev tools run during the release build too, so they are audited as well.
+        run: pnpm audit --audit-level high
       - name: Audit the Raycast extension
         working-directory: raycast
         run: npm audit --omit=dev --audit-level high

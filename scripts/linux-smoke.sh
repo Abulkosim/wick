@@ -9,6 +9,8 @@ status() { "$bin" status; }
 
 "$bin" --background >wick-smoke.log 2>&1 &
 pid=$!
+# Leave nothing running if a check fails.
+trap 'kill -9 "$pid" 2>/dev/null || true; rm -f wick-status.json' EXIT
 for _ in $(seq 1 30); do
   if status | grep -q '"running":true'; then break; fi
   sleep 1
