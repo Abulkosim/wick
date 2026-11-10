@@ -253,16 +253,8 @@ fn portal_honours_suspend(desktop: &str) -> bool {
 }
 
 impl Inhibition {
-    pub fn uses_portal(&self) -> bool {
-        self.portal.is_some()
-    }
-
     pub fn uses_logind(&self) -> bool {
         self._logind.is_some()
-    }
-
-    pub fn holds_sleep_lock(&self) -> bool {
-        self.sleep_lock
     }
 }
 

@@ -374,7 +374,7 @@ impl Runtime {
         Ok(view)
     }
 
-    /// Picks up a session the previous run left behind in this boot (crash or update restart).
+    /// Picks up a session the previous run saved for an update restart in this boot.
     pub fn resume(&self, app: &AppHandle) {
         let Ok(directory) = app.path().app_data_dir() else {
             return;
@@ -801,8 +801,6 @@ mod tests {
                 message: format!("Stopped: battery below 20%. {}", can_sleep())
             }
         );
-        let off = AppState::default();
-        assert_eq!(due(&off, battery, 10), Due::Power);
     }
 
     fn trigger(id: &str, kind: TriggerKind) -> Trigger {

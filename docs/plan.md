@@ -203,8 +203,9 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
   Done: the updater's `on_before_exit` (Windows only) flushes history and marks the session to resume, then does the plugin's own cleanup.
 - [x] **10.7 Store edges.** Reset keeps triggers and the update-check time and re-registers the shortcut; one backup per recovery; recovery notes stay until the user saves.
   Verify: store and runtime tests.
-- [ ] **10.8 Rust tidy.** Digits-only schedule times, dead code removed, comments fixed, one app id, pin notes in Cargo.toml, DST tests, app commands limited to the main window's capability.
+- [x] **10.8 Rust tidy.** Digits-only schedule times, dead code removed, comments fixed, one app id, pin notes in Cargo.toml, DST tests.
   Verify: tests; CI.
+  Done: DST cases use `chrono-tz` (dev only): Berlin's spring gap and repeated autumn hour, Santiago's skipped midnight. Limiting app commands with an `AppManifest` was left out: it can only be proven in the real app, the window is the only webview, and the CSP allows no outside scripts.
 - [ ] **10.9 Keyboard and screen readers.** Typing in a picker never fires shortcuts; the live region skips the countdown; radio groups use arrows; focus ring on every focusable, 3 px offset; Escape closes the time editor; one Quit tooltip.
   Verify: e2e for each; screenshots light + dark.
 - [ ] **10.10 Popover details.** Active conditions styled as running; one 24-hour time format everywhere; fresh "Until" default and add-trigger form on each open; no preset highlighted after +15; loading state; readable error-toast icon; tabular numbers everywhere.
