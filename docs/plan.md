@@ -191,7 +191,7 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
   Verify: unit test of the forwarded-link check; CI on all platforms.
 - [x] **10.2 One odd value can't blank the state.** Rust caps other apps' names and per-day minutes to what the page accepts; Zod clamps instead of rejecting.
   Verify: Rust tests for the caps; unit test that an over-long name still parses.
-- [ ] **10.3 A session ends even when the handover fails.** If the new assertion can't be made at the end of a session, the old one is still released, the error is shown, and the ticker never spins.
+- [x] **10.3 A session ends even when the handover fails.** If the new assertion can't be made at the end of a session, the old one is still released, the error is shown, and the ticker never spins.
   Verify: runtime test with a failing assertion; error state in the demo.
 - [ ] **10.4 Clock changes.** The macOS assertion timeout and activity triggers follow the monotonic clock, so a clock set back doesn't end a session early or keep a trigger busy.
   Verify: pure tests with a moved wall clock.
