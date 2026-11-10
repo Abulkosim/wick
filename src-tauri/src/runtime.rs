@@ -689,6 +689,23 @@ fn due(state: &AppState, power: Power, now: i64) -> Due {
     }
 }
 
+/// Runs an intent from the tray, a shortcut or a link off the main thread, so a slow system
+/// call never freezes the menu bar, and shows its error as a notification.
+pub fn act(
+    app: &AppHandle,
+    intent: impl FnOnce(&AppHandle, &Runtime) -> Result<AppState, String> + Send + 'static,
+) {
+    let app = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(runtime) = app.try_state::<Arc<Runtime>>() else {
+            return;
+        };
+        if let Err(error) = intent(&app, &runtime) {
+            notify(&app, &error);
+        }
+    });
+}
+
 fn notify(app: &AppHandle, title: &str) {
     use tauri_plugin_notification::NotificationExt;
     let _ = app.notification().builder().title(title).show();

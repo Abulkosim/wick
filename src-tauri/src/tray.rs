@@ -5,7 +5,7 @@ use crate::{
         session::{short_duration, Request, Session},
     },
     popover::{self, TRAY_ID},
-    runtime::{AppState, Runtime},
+    runtime::{self, AppState, Runtime},
 };
 use std::sync::{Arc, Mutex};
 use tauri::{
@@ -289,34 +289,23 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         .tooltip("Wick · Off")
         .menu(&menu)
         .show_menu_on_left_click(false)
-        .on_menu_event(|app, event| {
-            let runtime = app.state::<Arc<Runtime>>();
-            let result = match event.id.as_ref() {
-                "show" => {
-                    popover::show(app, false);
-                    Ok(())
-                }
-                "settings" => {
-                    popover::show(app, true);
-                    Ok(())
-                }
-                "quit" => {
-                    app.exit(0);
-                    Ok(())
-                }
-                "stop" => runtime.stop(app).map(|_| ()),
-                "indefinite" => runtime.start(app, Request::Indefinite).map(|_| ()),
-                id => match id
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "show" => popover::show(app, false),
+            "settings" => popover::show(app, true),
+            "quit" => app.exit(0),
+            "stop" => runtime::act(app, |app, runtime| runtime.stop(app)),
+            "indefinite" => {
+                runtime::act(app, |app, runtime| runtime.start(app, Request::Indefinite))
+            }
+            id => {
+                if let Some(minutes) = id
                     .strip_prefix("for-")
                     .and_then(|minutes| minutes.parse().ok())
                 {
-                    Some(minutes) => runtime.start(app, Request::For { minutes }).map(|_| ()),
-                    None => Ok(()),
-                },
-            };
-            if let Err(error) = result {
-                use tauri_plugin_notification::NotificationExt;
-                let _ = app.notification().builder().title(error).show();
+                    runtime::act(app, move |app, runtime| {
+                        runtime.start(app, Request::For { minutes })
+                    });
+                }
             }
         })
         .on_tray_icon_event(|tray, event| {
@@ -332,7 +321,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                 popover::remember_click(app, position.x, position.y);
                 let runtime = app.state::<Arc<Runtime>>();
                 if runtime.state().settings.icon_click == IconClick::Toggle {
-                    let _ = runtime.toggle(app);
+                    runtime::act(app, |app, runtime| runtime.toggle(app));
                 } else {
                     popover::toggle(app);
                 }

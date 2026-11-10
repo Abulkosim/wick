@@ -1,15 +1,12 @@
-use crate::{core::settings::parse_shortcut, runtime::Runtime};
-use std::sync::Arc;
-use tauri::{AppHandle, Manager};
+use crate::core::settings::parse_shortcut;
+use tauri::AppHandle;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     tauri_plugin_global_shortcut::Builder::new()
         .with_handler(|app, _, event| {
             if event.state() == ShortcutState::Pressed {
-                if let Some(runtime) = app.try_state::<Arc<Runtime>>() {
-                    let _ = runtime.toggle(app);
-                }
+                crate::runtime::act(app, |app, runtime| runtime.toggle(app));
             }
         })
         .build()
