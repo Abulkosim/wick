@@ -1,11 +1,20 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { createDemoState, demoApps } from './demo.ts'
 import { z } from 'zod'
-import { appStateSchema, defaultSettings, initialState, runningAppSchema, type AppState, type RunningApp, type Settings, type StartRequest, type Trigger } from './model.ts'
+import { appStateSchema, defaultSettings, initialState, runningAppSchema, settingsSchema, startRequestSchema, triggerSchema, type AppState, type RunningApp, type Settings, type StartRequest, type Trigger } from './model.ts'
 import { start } from './session.ts'
 import { stopReason } from './power.ts'
 
 type Command = 'start_session' | 'stop_session' | 'extend_session' | 'set_display' | 'save_settings' | 'reset_store' | 'save_triggers' | 'resume_triggers' | 'clear_history'
+
+/** What each command may send; Rust checks again, this catches a page bug before the call. */
+export const outgoing: Partial<Record<Command, z.ZodType>> = {
+  start_session: z.object({ request: startRequestSchema }),
+  extend_session: z.object({ minutes: z.number().int().min(1).max(7 * 24 * 60) }),
+  set_display: z.object({ display: z.boolean() }),
+  save_settings: z.object({ settings: settingsSchema }),
+  save_triggers: z.object({ triggers: z.array(triggerSchema).max(100) }),
+}
 
 export function useWick() {
   const query = new URLSearchParams(window.location.search)
@@ -46,6 +55,8 @@ export function useWick() {
     if (pending.value) return false
     pending.value = command
     try {
+      const schema = outgoing[command]
+      if (schema && !schema.safeParse(args).success) throw new Error('Wick couldn’t send that change. Reopen the popover and try again.')
       if (demo || !desktop) {
         preview()
         state.value = { ...state.value, revision: state.value.revision + 1, error: null }
@@ -127,6 +138,7 @@ export function useWick() {
   }
 
   onMounted(async () => {
+    if (demo && query.get('state') === 'toast') notify('Not started: battery below 20%. Plug in, or change it in Settings → Battery.', 'error')
     if (!desktop || demo) return
     const tauri = window.__TAURI__!
     try {

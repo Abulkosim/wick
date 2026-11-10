@@ -210,8 +210,9 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
   Verify: e2e for each; screenshots light + dark.
 - [x] **10.10 Popover details.** Active conditions styled as running; one 24-hour time format everywhere; fresh "Until" default and add-trigger form on each open; no preset highlighted after +15; loading state; readable error-toast icon; tabular numbers everywhere.
   Verify: unit tests for time formatting and presets; e2e; screenshots.
-- [ ] **10.11 Frontend tidy and demo coverage.** Dead CSS and code removed; outgoing IPC payloads validated with Zod; demo states for Low Power Mode, updater phases, schedule-held and an error toast.
+- [x] **10.11 Frontend tidy and demo coverage.** Dead CSS and code removed; outgoing IPC payloads validated with Zod; demo states for Low Power Mode, updater phases, schedule-held and an error toast.
   Verify: typecheck, unit, e2e over every demo state.
+  Done: 160 e2e in Chromium, 28 demo states in both themes. The demo's Stop/Resume wording still mirrors Rust's phrases by pattern; it only affects the browser preview.
 - [ ] **10.12 CI hardening.** No caches on tag builds; pinned Rust toolchain, runner images and audit tools; tags must be on `main`; dev dependencies audited; `check-release` rejects prerelease tags and has tests; smoke test cleans up; Dockerfile pinned and watched by Dependabot; `ray lint`; SBOM limited to shipped code.
   Verify: CI green; script tests.
 - [ ] **10.13 Repo settings.** Rulesets for `main` (required checks, no force-push) and `v*` tags; CodeQL default setup; Dependabot security updates; SHA pinning required; a `release` environment for the signing secrets.

@@ -27,10 +27,6 @@ export function clockTime(time: number, now: number): string {
   return date.toLocaleString(undefined, options)
 }
 
-export function remaining(session: Session, now: number): number | null {
-  return 'endsAt' in session ? Math.max(0, session.endsAt - now) : null
-}
-
 export function fraction(session: Session, now: number): number {
   if (session.mode === 'off') return 0
   if (session.mode === 'indefinite') return 1
