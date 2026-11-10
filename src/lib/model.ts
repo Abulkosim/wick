@@ -51,17 +51,21 @@ export const triggerSchema = z.object({
   enabled: z.boolean(),
 })
 
+// Text from other processes and day totals are only shown, so an odd value is clipped rather
+// than rejecting the whole state.
+const shownText = z.string().transform((text) => text.slice(0, 256))
+
 export const otherSchema = z.object({
   pid: z.number().int(),
-  name: z.string().max(256),
+  name: shownText,
   display: z.boolean(),
-  reason: z.string().max(256).nullable(),
-  parent: z.string().max(256).nullable(),
+  reason: shownText.nullable(),
+  parent: shownText.nullable(),
 })
 
 export const daySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  minutes: z.number().int().min(0).max(25 * 60),
+  minutes: z.number().int().min(0).transform((minutes) => Math.min(minutes, 25 * 60)),
 })
 
 export const runningAppSchema = z.object({ name: z.string(), path: z.string() })

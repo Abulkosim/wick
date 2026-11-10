@@ -16,3 +16,11 @@ test('summary names one holder or counts several', () => {
   assert.equal(othersSummary([other('caffeinate', { parent: 'claude' })]), 'claude is keeping your Mac awake.')
   assert.equal(othersSummary([other('zoom.us'), other('Music')]), '2 apps are keeping your Mac awake.')
 })
+
+test('an over-long name or day total is clipped, not rejected', async () => {
+  const { daySchema, otherSchema } = await import('../../src/lib/model.ts')
+  const parsed = otherSchema.parse({ pid: 1, name: 'x'.repeat(300), display: false, reason: 'y'.repeat(300), parent: null })
+  assert.equal(parsed.name.length, 256)
+  assert.equal(parsed.reason?.length, 256)
+  assert.equal(daySchema.parse({ date: '2026-10-26', minutes: 1600 }).minutes, 1500)
+})
