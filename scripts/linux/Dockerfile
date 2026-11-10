@@ -1,7 +1,7 @@
 # A Linux desktop in a container for working on Wick from macOS or Windows: Ubuntu 22.04 (the
 # release build's base), the Tauri toolchain, systemd with logind and polkit, D-Bus, Xvfb and an
 # Xfce panel that hosts StatusNotifier tray icons. See CONTRIBUTING.md → Linux.
-FROM ubuntu:22.04@sha256:076e7bf82319619f28dd0aa9c02ab34b055ad37100395b4f49a2ffba04fb5e11
+FROM ubuntu:26.04@sha256:6a06111c3b0a8600feadb270aec771dc239bf407b25625f93f44ab00e11f4d3c
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential curl wget file ca-certificates pkg-config libssl-dev git \
