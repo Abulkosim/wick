@@ -6,7 +6,7 @@ pnpm build
 pnpm test
 pnpm test:e2e --reporter=dot
 node --test scripts/*.test.mjs packaging/homebrew/*.test.mjs
-(cd raycast && npm test && npm run lint && npx ray build -e dist)
+(cd raycast && npm test && npm run check && npx ray build -e dist)
 cd src-tauri
 cargo fmt --check
 cargo clippy --all-targets --locked -- -D warnings
