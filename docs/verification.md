@@ -2,6 +2,40 @@
 
 What was checked for each release, newest first.
 
+## v0.8.0 — draft, 2026-11-10
+
+Linux arm64 and the Phase 10 sweep: PRs [#24](https://github.com/Abulkosim/wick/pull/24) (arm64 pipeline) and [#27](https://github.com/Abulkosim/wick/pull/27)–[#44](https://github.com/Abulkosim/wick/pull/44), each green before merging. `main` run [42891935312](https://github.com/Abulkosim/wick/actions/runs/42891935312) passed before tagging. Tag `v0.8.0`, CI run [42894982317](https://github.com/Abulkosim/wick/actions/runs/42894982317): frontend, Windows x64, Linux x64 and Linux arm64 passed first time; macOS failed in `hdiutil create` ("Resource busy", a runner flake, the same build passed on every PR) and passed on re-running the failed jobs, then the draft release passed.
+
+- Locally (x86_64 Linux): Rust lib tests 106/106, unit 40/40, release-script tests 23/23, e2e 160/160 in Chromium and the changed specs in WebKit, Clippy clean.
+- Tag build, both Linux runners (x86_64 and arm64): `updater_install_linux` on the signed AppImage passed (tampered bytes and an altered archive rejected, then installed); the smoke test passed on the binary and the AppImage.
+- Draft: 20/20 checksums OK; provenance verified for all 12 files and the SBOM attestation on the DMG; `latest.json` 0.8.0 with 13 platform entries (`linux-aarch64*` new), every URL on the v0.8.0 tag.
+- Mac archive, checked without a Mac: its signature verifies for 0.8.0 with the app's public key; flipped bytes and version 0.8.1 are rejected; `Info.plist` says 0.8.0. The `updater_install` test against it needs macOS.
+- The tag build used the repository-level signing secrets: the `release` environment exists and gates the jobs, but the secrets haven't moved there yet.
+- Pending 👤: publish; `updater_install` on a Mac against `Wick.app.tar.gz`; update the installed app in-app; move the signing secrets into the `release` environment; Linux on real hardware (#22) and on a real ARM board; Windows VM.
+
+Checksums:
+
+    0a1affdba5d3b110f26fa1362e97450605b75ffb1970e796d9a87909caf08efe  latest.json
+    a0cfbeabdbdd61bf71f1b54dcaa24c0911348e8f2956ac5758ca594f55e955a7  Wick_0.8.0_aarch64.AppImage
+    28a55e2279eb1b16722c77155b9b5c30fd8e80aaa789f9fc397690efdb66a168  Wick_0.8.0_aarch64.AppImage.sig
+    9116fe19fc5fd21986217485415082036539205ebff8e630a08998d1313f7105  Wick_0.8.0_amd64.AppImage
+    6fd7853af0e1df786be7f8795e6ffa634838a401c3ce66650069932afb658f95  Wick_0.8.0_amd64.AppImage.sig
+    d117c0b0ca7936dccf650ce5a3f365f96bb4c2f7f2eb9b108e2cf592d8cb3f78  Wick_0.8.0_amd64.deb
+    d6c05dbe52d3c4d5a01694d438a459222aae73df95d774fe29b037a349aa9e1f  Wick_0.8.0_amd64.deb.sig
+    b4a3e2b64cf4cad962fd2ca57c4e902598d0ace99f5374e3c07575ead6658305  Wick_0.8.0_arm64.deb
+    fa105fa42fa687831520170e5e636b70b287cd9fe85153f0291742532fa015af  Wick_0.8.0_arm64.deb.sig
+    4d9bba36561f7fc983524463a5170cc24a0f2d8e497f48ab2116f48ded55341a  Wick_0.8.0_universal.dmg
+    3d31da296428c3a4b25285cd06513814d910353a770292efd65603985ba3eaa2  Wick_0.8.0_x64_en-US.msi
+    65b41010608e41a67c12b54e8b9eb78f71391fef4fd6d076f523ca16a66bb8ac  Wick_0.8.0_x64_en-US.msi.sig
+    0edc02c3442f041b824952dbccda7219123c89e985409f28b9b3c44d02839157  Wick_0.8.0_x64-setup.exe
+    9810adc671e4cf1ea8c7db52a0bbeaa82cc2b52d2090407036fd112f9dc3e54b  Wick_0.8.0_x64-setup.exe.sig
+    e2de5f0e7881526069f64ea110106040b41c675dd563ab4f6f6da1d573e92235  Wick-0.8.0-1.aarch64.rpm
+    cbdd111c02a1f417fbf9654d04afa9670300c804b5f3b08b8a2d640161f9ccc4  Wick-0.8.0-1.aarch64.rpm.sig
+    4a6b114012e2121e33feef99f77c1f73c062b675e5bd4271b75ae7d75aadffd0  Wick-0.8.0-1.x86_64.rpm
+    c4dc4d09923dfaddd03a285f36aa9973c2dff57784b0a179838e1e46bc15a752  Wick-0.8.0-1.x86_64.rpm.sig
+    836291759b8473b14ab54630b21f6a91342fb89038bac4dfb97157cc06012a72  Wick.app.tar.gz
+    57366a69282933720e4d83ca6b814e336b7036d08dffe48f95ebc44a48efee7a  Wick.app.tar.gz.sig
+
 ## v0.7.1 — 2026-11-05
 
 Fixes from the Codex cross-review of v0.7.0 (PR [#17](https://github.com/Abulkosim/wick/pull/17), release prep [#18](https://github.com/Abulkosim/wick/pull/18)). Tag `v0.7.1`, CI run [41987450083](https://github.com/Abulkosim/wick/actions/runs/41987450083): frontend, macOS universal, Windows x64, Linux x64 and the draft release passed; `main` run [41986297074](https://github.com/Abulkosim/wick/actions/runs/41986297074) passed before tagging.
