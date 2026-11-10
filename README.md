@@ -24,13 +24,14 @@
 
 ## Install
 
-Download **v0.7.1** from [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
+Download **v0.7.2** from [GitHub Releases](https://github.com/Abulkosim/wick/releases/latest).
 
 | Platform | Download |
 | --- | --- |
-| macOS 12+ · Apple Silicon and Intel | [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.7.1/Wick_0.7.1_universal.dmg) |
-| Windows 10/11 x64 | [Setup EXE](https://github.com/Abulkosim/wick/releases/download/v0.7.1/Wick_0.7.1_x64-setup.exe) · [MSI](https://github.com/Abulkosim/wick/releases/download/v0.7.1/Wick_0.7.1_x64_en-US.msi) |
-| Linux x86_64 · Ubuntu 22.04, Debian 12, Fedora 36 and newer | [AppImage](https://github.com/Abulkosim/wick/releases/download/v0.7.1/Wick_0.7.1_amd64.AppImage) · [deb](https://github.com/Abulkosim/wick/releases/download/v0.7.1/Wick_0.7.1_amd64.deb) · [rpm](https://github.com/Abulkosim/wick/releases/download/v0.7.1/Wick-0.7.1-1.x86_64.rpm) |
+| macOS 12+ · Apple Silicon and Intel | [Universal DMG](https://github.com/Abulkosim/wick/releases/download/v0.7.2/Wick_0.7.2_universal.dmg) |
+| Windows 10/11 x64 | [Setup EXE](https://github.com/Abulkosim/wick/releases/download/v0.7.2/Wick_0.7.2_x64-setup.exe) · [MSI](https://github.com/Abulkosim/wick/releases/download/v0.7.2/Wick_0.7.2_x64_en-US.msi) |
+| Linux x86_64 · Ubuntu 22.04, Debian 12, Fedora 36 and newer | [AppImage](https://github.com/Abulkosim/wick/releases/download/v0.7.2/Wick_0.7.2_amd64.AppImage) · [deb](https://github.com/Abulkosim/wick/releases/download/v0.7.2/Wick_0.7.2_amd64.deb) · [rpm](https://github.com/Abulkosim/wick/releases/download/v0.7.2/Wick-0.7.2-1.x86_64.rpm) |
+| Linux arm64 · same distributions | [AppImage](https://github.com/Abulkosim/wick/releases/download/v0.7.2/Wick_0.7.2_aarch64.AppImage) · [deb](https://github.com/Abulkosim/wick/releases/download/v0.7.2/Wick_0.7.2_arm64.deb) · [rpm](https://github.com/Abulkosim/wick/releases/download/v0.7.2/Wick-0.7.2-1.aarch64.rpm) |
 
 **Homebrew** (macOS):
 
