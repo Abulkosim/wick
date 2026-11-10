@@ -22,7 +22,7 @@ Written 2026-10-23 from [research.md](research.md) and the owner's answers. This
 - Before every commit: `pnpm typecheck && pnpm test && pnpm test:e2e`, then in `src-tauri`: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`.
 - UI change → Playwright screenshots light + dark into the test output dir, look at them, refresh `docs/images` if visible copy changed.
 - Rust owns all system calls; the frontend sees snapshots (Zod-validated) and sends intents.
-- Push to `main` after each verified task. Release only at ⛳.
+- One PR per verified task, merged once CI is green. Release only at ⛳.
 
 ## Phase 0 — Foundations
 
@@ -187,8 +187,39 @@ Same app on ARM Linux (Raspberry Pi 4/5 with a desktop, Asahi, ARM laptops and V
 
 A full pass over code, tests, CI, docs and UX for technical debt, defects and polish, then one release that includes Linux arm64. Each slice lands as its own PR, merged once CI is green. Findings come from three read-only audits (Rust, frontend, CI/docs/site), each checked against the code before it becomes a task.
 
-- [ ] **10.x** Tasks are added here as audit findings are confirmed.
-- [ ] **10.z Release v0.8.0.** Version, changelog (arm64 + sweep), README with arm64 row, full release flow.
+- [x] **10.1 `wick://` links run once.** On Windows and Linux single-instance passes a second launch's link to the deep-link plugin, which runs it, then to our callback, which ran it again: `wick://toggle` did nothing.
+  Verify: unit test of the forwarded-link check; CI on all platforms.
+- [ ] **10.2 One odd value can't blank the state.** Rust caps other apps' names and per-day minutes to what the page accepts; Zod clamps instead of rejecting.
+  Verify: Rust tests for the caps; unit test that an over-long name still parses.
+- [ ] **10.3 A session ends even when the handover fails.** If the new assertion can't be made at the end of a session, the old one is still released, the error is shown, and the ticker never spins.
+  Verify: runtime test with a failing assertion; error state in the demo.
+- [ ] **10.4 Clock changes.** The macOS assertion timeout and activity triggers follow the monotonic clock, so a clock set back doesn't end a session early or keep a trigger busy.
+  Verify: pure tests with a moved wall clock.
+- [ ] **10.5 No freezes on a slow bus.** Intent commands and tray actions run off the main thread; the Linux inhibitor is built outside the runtime lock.
+  Verify: CI; Linux smoke test.
+- [ ] **10.6 Nothing fails silently.** Windows updates keep the running session and history; shortcut and icon-click errors show like menu errors.
+  Verify: Rust tests where pure; review of the updater hook.
+- [ ] **10.7 Store edges.** Reset keeps triggers and the update-check time and re-registers the shortcut; one backup per recovery; recovery notes stay until the user saves.
+  Verify: store and runtime tests.
+- [ ] **10.8 Rust tidy.** Digits-only schedule times, dead code removed, comments fixed, one app id, pin notes in Cargo.toml, DST tests, app commands limited to the main window's capability.
+  Verify: tests; CI.
+- [ ] **10.9 Keyboard and screen readers.** Typing in a picker never fires shortcuts; the live region skips the countdown; radio groups use arrows; focus ring on every focusable, 3 px offset; Escape closes the time editor; one Quit tooltip.
+  Verify: e2e for each; screenshots light + dark.
+- [ ] **10.10 Popover details.** Active conditions styled as running; one 24-hour time format everywhere; fresh "Until" default and add-trigger form on each open; no preset highlighted after +15; loading state; readable error-toast icon; tabular numbers everywhere.
+  Verify: unit tests for time formatting and presets; e2e; screenshots.
+- [ ] **10.11 Frontend tidy and demo coverage.** Dead CSS and code removed; outgoing IPC payloads validated with Zod; demo states for Low Power Mode, updater phases, schedule-held and an error toast.
+  Verify: typecheck, unit, e2e over every demo state.
+- [ ] **10.12 CI hardening.** No caches on tag builds; pinned Rust toolchain, runner images and audit tools; tags must be on `main`; dev dependencies audited; `check-release` rejects prerelease tags and has tests; smoke test cleans up; Dockerfile pinned and watched by Dependabot; `ray lint`; SBOM limited to shipped code.
+  Verify: CI green; script tests.
+- [ ] **10.13 Repo settings.** Rulesets for `main` (required checks, no force-push) and `v*` tags; CodeQL default setup; Dependabot security updates; SHA pinning required; a `release` environment for the signing secrets.
+  Verify: `gh api` shows each; a PR still merges.
+  👤 Move `TAURI_SIGNING_PRIVATE_KEY` and its password into the `release` environment and delete the repo-level copies.
+- [ ] **10.14 Docs.** Package updates do ask for a password on Linux; issue template, SECURITY and CONTRIBUTING cover every platform; README screen-lock note; CONTRIBUTING layout and demo states; `check-all.sh` runs the production build; the repo's Homebrew cask matches the tap; changelog date set before tagging.
+  Verify: links resolve; `scripts/check-all.sh` passes.
+- [ ] **10.15 Site and social image for every platform.** Meta tags and `og.png` say computer, not Mac.
+  Verify: screenshot of the new image; site renders.
+  👤 Upload `docs/images/social-preview.png` in the repo's settings.
+- [ ] **10.16 Release v0.8.0.** Version, changelog (arm64 + sweep), README with arm64 row, full release flow.
   Verify: full release flow; both Linux updater install tests pass on their signed AppImages in the tag build.
 
 ## Later / maybe

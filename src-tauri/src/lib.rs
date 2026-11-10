@@ -32,6 +32,14 @@ fn perform(app: &tauri::AppHandle, args: &[String]) -> bool {
     true
 }
 
+/// On Windows and Linux a second `wick wick://…` launch is a link: single-instance hands it to
+/// the deep-link plugin, whose `on_open_url` already runs it, before calling us with the same
+/// arguments.
+fn is_forwarded_link(args: &[String], forwards_links: bool) -> bool {
+    forwards_links
+        && matches!(args, [_, url] if url.parse::<tauri::Url>().is_ok_and(|url| url.scheme() == "wick"))
+}
+
 /// Tells the page which platform it runs on before any script loads. WebKitGTK's user agent
 /// can claim to be Safari on macOS, so the page can't work it out reliably itself.
 fn platform_script() -> tauri::plugin::TauriPlugin<tauri::Wry> {
@@ -71,6 +79,9 @@ pub fn run() {
     }
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _| {
+            if is_forwarded_link(&args, cfg!(any(windows, target_os = "linux"))) {
+                return;
+            }
             if !perform(app, &args) {
                 popover::show(app, false)
             }
@@ -195,4 +206,30 @@ pub fn run() {
             }
             _ => {}
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_forwarded_link;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(|arg| arg.to_string()).collect()
+    }
+
+    #[test]
+    fn a_link_from_a_second_launch_runs_once() {
+        assert!(is_forwarded_link(&args(&["wick", "wick://toggle"]), true));
+        assert!(is_forwarded_link(&args(&["wick", "WICK://stop"]), true));
+        assert!(!is_forwarded_link(&args(&["wick", "wick://toggle"]), false));
+        assert!(!is_forwarded_link(&args(&["wick", "toggle"]), true));
+        assert!(!is_forwarded_link(
+            &args(&["wick", "start", "wick://toggle"]),
+            true
+        ));
+        assert!(!is_forwarded_link(&args(&["wick"]), true));
+        assert!(!is_forwarded_link(
+            &args(&["wick", "https://example.com"]),
+            true
+        ));
+    }
 }
