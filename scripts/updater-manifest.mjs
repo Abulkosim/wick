@@ -14,10 +14,13 @@ export function releaseAssetNames(version) {
     appimage: `Wick_${version}_amd64.AppImage`,
     deb: `Wick_${version}_amd64.deb`,
     rpm: `Wick-${version}-1.x86_64.rpm`,
+    appimageArm: `Wick_${version}_aarch64.AppImage`,
+    debArm: `Wick_${version}_arm64.deb`,
+    rpmArm: `Wick-${version}-1.aarch64.rpm`,
   }
 }
 
-export const signedAssets = (assets) => [assets.mac, assets.nsis, assets.msi, assets.appimage, assets.deb, assets.rpm]
+export const signedAssets = (assets) => Object.entries(assets).filter(([key]) => key !== 'dmg').map(([, name]) => name)
 
 export async function createUpdaterManifest({ directory, version, publicKey, repository, notes = '', date = new Date() }) {
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error('Invalid release version.')
@@ -42,6 +45,9 @@ export async function createUpdaterManifest({ directory, version, publicKey, rep
     [assets.appimage, ['linux-x86_64-appimage', 'linux-x86_64']],
     [assets.deb, ['linux-x86_64-deb']],
     [assets.rpm, ['linux-x86_64-rpm']],
+    [assets.appimageArm, ['linux-aarch64-appimage', 'linux-aarch64']],
+    [assets.debArm, ['linux-aarch64-deb']],
+    [assets.rpmArm, ['linux-aarch64-rpm']],
   ]) {
     const signature = (await readFile(join(directory, `${name}.sig`), 'utf8')).trim()
     await verifyUpdaterSignature(join(directory, name), signature, publicKey, version)
@@ -66,5 +72,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     notes: await readFile(`changelogs/${tag}.md`, 'utf8'),
   })
   await writeFile(join(directory, 'latest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
-  console.log(`Verified six signed artifacts and generated the updater manifest for ${tag}.`)
+  console.log(`Verified ${signedAssets(releaseAssetNames(config.version)).length} signed artifacts and generated the updater manifest for ${tag}.`)
 }

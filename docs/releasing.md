@@ -21,8 +21,8 @@ cd src-tauri && cargo fmt --check && cargo clippy --all-targets --locked -- -D w
 - Ubuntu: installs the pinned pnpm, checks types, builds the interface, runs unit, release-script and browser tests. On a tag it validates the release inputs first.
 - macOS: checks Rust formatting, runs Clippy and the Rust tests (including live IOKit assertion tests), and builds the universal Apple Silicon/Intel app and DMG.
 - Windows: checks Rust formatting, runs Clippy and the Rust tests, and builds x64 NSIS and MSI installers.
-- Linux (Ubuntu 22.04, for glibc 2.35+): checks formatting, runs Clippy and the Rust tests under a private session bus against the runner's logind, builds the AppImage, `.deb` and `.rpm`, and smoke-tests the built binary (`scripts/linux-smoke.sh`: start, logind inhibitor, status, stop, `kill -9`).
-- On a release tag in `Abulkosim/wick` only, the native jobs sign the updater artifacts (Mac archive, Windows installers, AppImage, deb, rpm) with `TAURI_SIGNING_PRIVATE_KEY`, and the Linux job runs the AppImage updater install test against its signed AppImage. The release job then:
+- Linux x64 and arm64 (Ubuntu 22.04, for glibc 2.35+): each checks formatting, runs Clippy and the Rust tests under a private session bus against the runner's logind, builds the AppImage, `.deb` and `.rpm`, and smoke-tests the built binary (`scripts/linux-smoke.sh`: start, logind inhibitor, status, stop, `kill -9`).
+- On a release tag in `Abulkosim/wick` only, the native jobs sign the updater artifacts (Mac archive, Windows installers, AppImage, deb, rpm) with `TAURI_SIGNING_PRIVATE_KEY`, and each Linux job runs the AppImage updater install test against its signed AppImage. The release job then:
   - verifies the signature and its signed version, and generates `latest.json`;
   - writes `SHA256SUMS.txt`;
   - generates an SPDX SBOM;
@@ -38,13 +38,14 @@ Actions are pinned to commit SHAs. Builds have read-only repository access; only
 
    ```sh
    for f in Wick_X.Y.Z_universal.dmg Wick.app.tar.gz Wick_X.Y.Z_x64-setup.exe Wick_X.Y.Z_x64_en-US.msi \
-     Wick_X.Y.Z_amd64.AppImage Wick_X.Y.Z_amd64.deb Wick-X.Y.Z-1.x86_64.rpm latest.json SHA256SUMS.txt; do
+     Wick_X.Y.Z_amd64.AppImage Wick_X.Y.Z_amd64.deb Wick-X.Y.Z-1.x86_64.rpm \
+     Wick_X.Y.Z_aarch64.AppImage Wick_X.Y.Z_arm64.deb Wick-X.Y.Z-1.aarch64.rpm latest.json SHA256SUMS.txt; do
      gh attestation verify "$f" --repo Abulkosim/wick
    done
    gh attestation verify Wick_X.Y.Z_universal.dmg --repo Abulkosim/wick --predicate-type https://spdx.dev/Document/v2.3
    ```
 
-3. Run the updater install test against that exact archive (below). The Linux job already ran its AppImage counterpart (`tests/updater_install_linux.rs`) on the signed AppImage; check its log.
+3. Run the updater install test against that exact archive (below). Both Linux jobs already ran its AppImage counterpart (`tests/updater_install_linux.rs`) on their signed AppImages; check their logs.
 4. Install the DMG's app, launch it, start and stop a session, and check `pmset -g assertions`. For Linux, run the draft AppImage in a desktop session (or the dev container in CONTRIBUTING.md) and check `systemd-inhibit --list`.
 5. Record what passed in [verification.md](verification.md), newest release first.
 6. Publish the draft and mark it latest: `gh release edit vX.Y.Z --draft=false --latest`. Fix the changelog date to the publish date (UTC) if it differs.
