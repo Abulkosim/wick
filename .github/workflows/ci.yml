@@ -42,7 +42,8 @@ jobs:
         run: node scripts/check-release.mjs "$RELEASE_TAG"
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
-          cache: true
+          # Release builds start clean, so nothing cached by another run reaches signed files.
+          cache: ${{ !startsWith(github.ref, 'refs/tags/') }}
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
       - name: Check types and production build
@@ -56,6 +57,8 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm test
+          # ray lint also looks the author up on raycast.com, which needs a store account.
+          npm run check
           npx ray build -e dist
       - name: Install browser engines
         # Ubuntu's package mirror sometimes stalls; retry instead of waiting out the job timeout.
@@ -96,12 +99,12 @@ jobs:
       matrix:
         include:
           - name: macOS universal
-            os: macos-latest
+            os: macos-26
             target: universal-apple-darwin
             rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
             bundles: app,dmg
           - name: Windows x64
-            os: windows-latest
+            os: windows-2025
             target: x86_64-pc-windows-msvc
             rust-targets: x86_64-pc-windows-msvc
             bundles: nsis,msi
@@ -126,7 +129,8 @@ jobs:
           package-manager-cache: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
-          cache: true
+          # Release builds start clean, so nothing cached by another run reaches signed files.
+          cache: ${{ !startsWith(github.ref, 'refs/tags/') }}
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
       - name: Install Linux build dependencies
@@ -147,10 +151,12 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
         with:
-          toolchain: stable
+          # Pinned so a new Rust or Clippy can't change a release build; bump it by hand.
+          toolchain: "1.99.1"
           components: clippy,rustfmt
           targets: ${{ matrix.rust-targets }}
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         with:
           workspaces: src-tauri -> target
           key: ${{ matrix.target }}
@@ -237,7 +243,7 @@ jobs:
     name: Prepare draft release
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.repository == 'Abulkosim/wick'
     needs: [frontend, native]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
@@ -251,6 +257,16 @@ jobs:
         with:
           node-version: "24"
           package-manager-cache: false
+      - name: Require the tag to be on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          status=$(gh api "repos/$GH_REPO/compare/main...$GITHUB_SHA" --jq .status)
+          if [[ "$status" != "identical" && "$status" != "behind" ]]; then
+            echo "Release tags must point at a commit on main (compare: $status)."
+            exit 1
+          fi
       - name: Resolve release asset names
         id: assets
         env:

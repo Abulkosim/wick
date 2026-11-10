@@ -1,7 +1,7 @@
 # A Linux desktop in a container for working on Wick from macOS or Windows: Ubuntu 22.04 (the
 # release build's base), the Tauri toolchain, systemd with logind and polkit, D-Bus, Xvfb and an
 # Xfce panel that hosts StatusNotifier tray icons. See CONTRIBUTING.md → Linux.
-FROM ubuntu:22.04
+FROM ubuntu:22.04@sha256:076e7bf82319619f28dd0aa9c02ab34b055ad37100395b4f49a2ffba04fb5e11
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential curl wget file ca-certificates pkg-config libssl-dev git \
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xfce4-panel xfwm4 xfce4-statusnotifier-plugin xfce4-settings xfce4-power-manager xterm \
     fonts-dejavu-core fonts-noto-color-emoji xdg-desktop-portal xdg-desktop-portal-gtk \
     && rm -rf /var/lib/apt/lists/*
-RUN curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy,rustfmt
+RUN curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.99.1 --component clippy,rustfmt
 ENV PATH=/root/.cargo/bin:$PATH
 STOPSIGNAL SIGRTMIN+3
 CMD ["/lib/systemd/systemd"]
