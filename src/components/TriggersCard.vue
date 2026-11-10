@@ -13,6 +13,7 @@ const props = defineProps<{ triggers: Trigger[]; running: string[]; busy: boolea
 const adding = ref(false)
 const kind = ref<'app' | 'process' | 'condition'>(isMac ? 'app' : 'process')
 const apps = ref<RunningApp[]>([])
+const loadingApps = ref(false)
 const appPath = ref('')
 const processName = ref('')
 const processInput = ref<HTMLInputElement | null>(null)
@@ -77,8 +78,15 @@ async function open(): Promise<void> {
   processName.value = ''
   condition.value = null
   if (!isMac) { kind.value = 'process'; await nextTick(); processInput.value?.focus(); return }
-  apps.value = await props.loadApps()
-  if (!apps.value.length) kind.value = 'process'
+  kind.value = 'app'
+  apps.value = []
+  loadingApps.value = true
+  try {
+    apps.value = await props.loadApps()
+  } finally {
+    loadingApps.value = false
+  }
+  if (!apps.value.length && kind.value === 'app') kind.value = 'process'
 }
 
 async function choose(next: 'app' | 'process' | 'condition'): Promise<void> {
@@ -127,7 +135,7 @@ function remove(id: string): void {
     </div>
     <p v-if="!triggers.length && !adding" class="card-empty">{{ isMac ? 'An app or command is running, like Xcode or claude.' : 'A program is running, like ffmpeg or claude.' }}</p>
     <ul v-if="triggers.length" class="trigger-list">
-      <li v-for="trigger in triggers" :key="trigger.id" class="trigger-row" :class="{ running: status(trigger) === 'Running', disabled: !trigger.enabled }">
+      <li v-for="trigger in triggers" :key="trigger.id" class="trigger-row" :class="{ running: trigger.enabled && running.includes(trigger.id), disabled: !trigger.enabled }">
         <span class="trigger-mark"><AppIcon :name="trigger.kind === 'app' ? 'app' : trigger.kind === 'power' ? 'bolt' : trigger.kind === 'display' ? 'display' : trigger.kind === 'schedule' ? 'clock' : trigger.kind === 'network' ? 'network' : trigger.kind === 'cpu' ? 'cpu' : 'terminal'" :size="15"/></span>
         <span class="trigger-copy">
           <span class="trigger-sentence">{{ sentence(trigger).lead }}<strong>{{ sentence(trigger).strong }}</strong>{{ sentence(trigger).rest }}</span>
@@ -144,7 +152,8 @@ function remove(id: string): void {
         <button type="button" role="radio" :aria-checked="kind === 'condition'" :tabindex="kind === 'condition' ? 0 : -1" :class="{ selected: kind === 'condition' }" @click="choose('condition')"><AppIcon name="bolt" :size="14"/>Condition</button>
       </div>
       <template v-if="kind === 'app'">
-        <AppSelect v-if="appOptions.length" v-model="appPath" class="app-picker" label="Running app" placeholder="Choose a running app" :options="appOptions"/>
+        <p v-if="loadingApps" class="card-empty" role="status">Looking for running apps…</p>
+        <AppSelect v-else-if="appOptions.length" v-model="appPath" class="app-picker" label="Running app" placeholder="Choose a running app" :options="appOptions"/>
         <p v-else class="card-empty">No other apps are running. Open the app first, or add its command.</p>
       </template>
       <template v-else-if="kind === 'condition'">

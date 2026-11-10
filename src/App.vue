@@ -22,7 +22,7 @@ import { footerNote } from './lib/power'
 import { device, isMac, platform } from './lib/platform'
 import { isTyping, keyAction } from './lib/keys'
 
-const { state, pending, message, now, demo, desktop, startSession, stopSession, extendSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, clearHistory, hideWindow } = useWick()
+const { state, loading, pending, message, now, demo, desktop, startSession, stopSession, extendSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, clearHistory, hideWindow } = useWick()
 const query = new URLSearchParams(location.search)
 const updater = useUpdater({ demo, desktop, initial: demo ? createDemoUpdateState(query.get('state')) : undefined })
 const placementSchema = z.object({ revision: z.number().int().nonnegative(), arrowX: z.number().finite().nullable(), framed: z.boolean().default(false), shortcuts: z.boolean().default(true) })
@@ -34,7 +34,7 @@ const dark = computed(() => state.value.settings.theme === 'dark' || (state.valu
 const page = ref<'overview' | 'settings'>(query.get('page') === 'settings' ? 'settings' : 'overview')
 const startRequest = computed<StartRequest>(() => state.value.settings.startMinutes === null ? { mode: 'indefinite' } : { mode: 'for', minutes: state.value.settings.startMinutes })
 const startHint = computed(() => state.value.settings.startMinutes === null ? 'Keep awake until you stop it' : `Keep awake for ${shortDuration(state.value.settings.startMinutes * 60_000)}`)
-const busy = computed(() => pending.value !== null)
+const busy = computed(() => pending.value !== null || loading.value)
 const on = computed(() => state.value.session.mode !== 'off')
 const held = computed(() => !on.value && state.value.heldBy !== null)
 const timed = computed(() => state.value.session.mode === 'for' || state.value.session.mode === 'until')
@@ -43,7 +43,13 @@ const statusDetail = computed(() => state.value.pausedByLock && (on.value || hel
 const spoken = computed(() => announcement(state.value.session, { heldBy: state.value.heldBy, pausedBy: state.value.pausedBy, notice: state.value.notice, lockPaused: state.value.pausedByLock }))
 const footer = computed(() => footerNote(state.value.power, state.value.lidSleeps, on.value || held.value))
 const ringFraction = computed(() => fraction(state.value.session, now.value))
-const active = computed(() => activePreset(state.value.session))
+const extendedSession = ref<number | null>(null)
+const active = computed(() => activePreset(state.value.session, 'startedAt' in state.value.session && state.value.session.startedAt === extendedSession.value))
+
+function extend(minutes: number): void {
+  if ('startedAt' in state.value.session) extendedSession.value = state.value.session.startedAt
+  void extendSession(minutes)
+}
 const arrowStyle = computed(() => {
   const x = placement.value.arrowX
   if (!desktop || demo || !isMac || x === null || x < 26 || x > viewportWidth.value - 26) return undefined
@@ -108,7 +114,7 @@ function onKeydown(event: KeyboardEvent): void {
   if (!action) return
   event.preventDefault()
   if (action.kind === 'start') void startSession(action.request)
-  else if (action.kind === 'extend') { if (timed.value) void extendSession(action.minutes) }
+  else if (action.kind === 'extend') { if (timed.value) extend(action.minutes) }
   else if (on.value || held.value) void stopSession()
   else void startSession(startRequest.value)
 }
@@ -168,7 +174,7 @@ onUnmounted(() => {
             <p class="sr-only" role="status" aria-live="polite">{{ spoken }}</p>
             <div class="hero-copy">
               <h1 class="hero-title">{{ statusTitle }}</h1>
-              <p class="hero-detail" :class="{ 'is-notice': !on && !held && state.notice }">{{ statusDetail }}<template v-if="!on && !held && state.pausedBy"> · <button class="text-button inline-action" :disabled="busy" @click="resumeTriggers">Resume</button></template><template v-if="timed && !state.pausedByLock"> · <button class="text-button inline-action" :disabled="busy" @click="extendSession(15)">Add 15 min</button></template></p>
+              <p class="hero-detail" :class="{ 'is-notice': !on && !held && state.notice }">{{ statusDetail }}<template v-if="!on && !held && state.pausedBy"> · <button class="text-button inline-action" :disabled="busy" @click="resumeTriggers">Resume</button></template><template v-if="timed && !state.pausedByLock"> · <button class="text-button inline-action" :disabled="busy" @click="extend(15)">Add 15 min</button></template></p>
             </div>
             <AppTooltip v-if="held" text="Pause this trigger until it ends"><button class="button hero-action" :disabled="busy" @click="stopSession">Stop</button></AppTooltip>
             <button v-else-if="on" class="button hero-action" :disabled="busy" @click="stopSession">Stop</button>

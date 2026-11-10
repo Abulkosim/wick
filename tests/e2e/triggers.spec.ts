@@ -175,3 +175,9 @@ test('arrow keys move through a radio group with one tab stop', async ({ page })
   await page.keyboard.press('ArrowDown')
   await expect(page.getByRole('radio', { name: 'External display connected' })).toHaveAttribute('aria-checked', 'true')
 })
+
+test('a condition that holds the Mac is styled as running', async ({ page }) => {
+  await page.goto('/?demo=1&state=conditions')
+  await expect(page.locator('.trigger-row.running')).not.toHaveCount(0)
+  await expect(page.locator('.trigger-row.running').first()).not.toContainText('Not running')
+})
