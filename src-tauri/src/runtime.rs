@@ -74,6 +74,8 @@ struct Inner {
     tracker: Tracker,
     history_saved_at: i64,
     history_dirty: bool,
+    #[cfg(test)]
+    refuse_assertions: bool,
 }
 
 #[derive(Default)]
@@ -143,6 +145,10 @@ impl Inner {
         let timeout = session
             .remaining_ms(now)
             .map(|ms| Duration::from_millis(ms as u64) + Duration::from_secs(2));
+        #[cfg(test)]
+        if self.refuse_assertions {
+            return Err("The assertion was refused.".into());
+        }
         let next = assertion::create(kind, &assertion_name(&session, key.2.as_deref()), timeout)?;
         self.assertion = Some(next);
         self.held_for = Some(key);
@@ -278,12 +284,14 @@ impl Runtime {
             .unwrap_or_default()
     }
 
-    /// Applies a change, then swaps the assertion, then saves. A failed swap keeps the old
-    /// assertion and state; a failed save rolls the change back. Returns the view and whether it
-    /// changed.
+    /// Applies a change, then swaps the assertion, then saves. A failed save rolls the change
+    /// back. A failed swap keeps the old assertion; an intent is rolled back, while the ticker
+    /// (`observed`) keeps what already happened, such as a session running out, shows the error
+    /// and tries again on its next tick. Returns the view and whether it changed.
     fn commit<T>(
         &self,
         change: impl FnOnce(&mut Inner, i64) -> Result<T, String>,
+        observed: bool,
     ) -> Result<(AppState, bool), String> {
         let mut inner = self
             .inner
@@ -295,9 +303,13 @@ impl Runtime {
             inner.view = previous;
             return Err(error);
         }
+        let mut failed = None;
         if let Err(error) = inner.reconcile(now) {
-            inner.view = previous;
-            return Err(error);
+            if !observed {
+                inner.view = previous;
+                return Err(error);
+            }
+            failed = Some(error);
         }
         if inner.view.settings != previous.settings || inner.view.triggers != previous.triggers {
             if let Err(error) = inner.persist() {
@@ -306,7 +318,7 @@ impl Runtime {
                 return Err(error);
             }
         }
-        inner.view.error = None;
+        inner.view.error = failed;
         inner.track(now, false);
         let changed = inner.view != previous;
         if changed {
@@ -321,7 +333,7 @@ impl Runtime {
         app: &AppHandle,
         change: impl FnOnce(&mut Inner, i64) -> Result<T, String>,
     ) -> Result<AppState, String> {
-        let (view, _) = self.commit(change)?;
+        let (view, _) = self.commit(change, false)?;
         publish(app, &view);
         self.wake.notify_one();
         Ok(view)
@@ -333,7 +345,7 @@ impl Runtime {
         app: &AppHandle,
         change: impl FnOnce(&mut Inner, i64) -> Result<T, String>,
     ) -> Result<AppState, String> {
-        let (view, changed) = self.commit(change)?;
+        let (view, changed) = self.commit(change, true)?;
         if changed {
             publish(app, &view);
         }
@@ -591,7 +603,8 @@ impl Runtime {
             || (state.settings.pause_when_locked && holding)
             || visible;
         match state.session.remaining_ms(now) {
-            Some(ms) => TICK.min(Duration::from_millis(ms.max(0) as u64)),
+            // A floor, so a session that can't end yet never spins the ticker.
+            Some(ms) => TICK.min(Duration::from_millis(ms.max(250) as u64)),
             None if state.session.is_on() || watching => TICK,
             None => IDLE_TICK,
         }
@@ -769,15 +782,48 @@ mod tests {
         std::fs::write(&path, "{ damaged").unwrap();
         let runtime = Runtime::new(path);
         let before = runtime.state();
-        let result = runtime.commit(|inner, _| {
-            inner.view.settings.start_minutes = Some(30);
-            Ok(())
-        });
+        let result = runtime.commit(
+            |inner, _| {
+                inner.view.settings.start_minutes = Some(30);
+                Ok(())
+            },
+            false,
+        );
         assert!(result.is_err());
         assert_eq!(runtime.state(), before);
-        let (view, changed) = runtime.commit(|_, _| Ok(())).unwrap();
+        let (view, changed) = runtime.commit(|_, _| Ok(()), false).unwrap();
         assert!(!changed);
         assert_eq!(view.revision, before.revision);
+    }
+
+    #[test]
+    fn a_session_runs_out_even_when_the_handover_assertion_is_refused() {
+        let runtime = Runtime::default();
+        let start = now_ms();
+        {
+            let mut inner = runtime.inner.lock().unwrap();
+            inner.refuse_assertions = true;
+            inner.view.session = Session::For {
+                started_at: start - 60_000,
+                ends_at: start - 1,
+            };
+            inner.view.held_by = Some("on power".into());
+        }
+        let ended = |inner: &mut Inner, _| {
+            inner.view.session = Session::Off;
+            Ok(())
+        };
+        assert!(runtime.commit(ended, false).is_err());
+        assert!(runtime.state().session.is_on());
+
+        let (view, changed) = runtime.commit(ended, true).unwrap();
+        assert!(changed);
+        assert_eq!(view.session, Session::Off);
+        assert_eq!(view.error.as_deref(), Some("The assertion was refused."));
+
+        runtime.inner.lock().unwrap().refuse_assertions = false;
+        let (view, _) = runtime.commit(|_, _| Ok(()), true).unwrap();
+        assert_eq!(view.error, None);
     }
 
     #[test]
