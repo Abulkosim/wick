@@ -13,6 +13,29 @@ pub struct Other {
     pub parent: Option<String>,
 }
 
+/// The longest name or reason the page shows, in UTF-16 units like JavaScript's `length`.
+pub const TEXT_LIMIT: usize = 256;
+
+fn clip(text: &mut String) {
+    let mut units = 0;
+    if let Some((end, _)) = text.char_indices().find(|(_, c)| {
+        units += c.len_utf16();
+        units > TEXT_LIMIT
+    }) {
+        text.truncate(end);
+    }
+}
+
+impl Other {
+    /// Names and reasons come from other processes and can be any length.
+    pub fn clipped(mut self) -> Self {
+        clip(&mut self.name);
+        self.reason.as_mut().map(clip);
+        self.parent.as_mut().map(clip);
+        self
+    }
+}
+
 const SLEEP_TYPES: [&str; 5] = [
     "PreventUserIdleSystemSleep",
     "PreventUserIdleDisplaySleep",
@@ -340,5 +363,22 @@ mod tests {
         assert_eq!(found.pid, pid);
         assert_eq!(found.name, "caffeinate");
         assert!(found.parent.is_some_and(|name| name.starts_with("wick")));
+    }
+
+    #[test]
+    fn long_names_are_clipped_to_what_the_page_shows() {
+        let other = Other {
+            pid: 1,
+            name: "x".repeat(300),
+            display: false,
+            reason: Some("😀".repeat(200)),
+            parent: Some("short".into()),
+        }
+        .clipped();
+        assert_eq!(other.name.len(), TEXT_LIMIT);
+        let reason = other.reason.unwrap();
+        assert_eq!(reason.encode_utf16().count(), TEXT_LIMIT);
+        assert_eq!(reason.chars().count(), TEXT_LIMIT / 2);
+        assert_eq!(other.parent.as_deref(), Some("short"));
     }
 }

@@ -547,7 +547,10 @@ impl Runtime {
         let holding =
             snapshot.session.is_on() || snapshot.held_by.is_some() || snapshot.paused_by_lock;
         let locked = snapshot.settings.pause_when_locked && holding && lock::screen_locked();
-        let others = visible.then(others::read).flatten();
+        let others = visible
+            .then(others::read)
+            .flatten()
+            .map(|list| list.into_iter().map(Other::clipped).collect::<Vec<_>>());
         let lid_sleeps = visible.then(lid::closing_sleeps);
         let mut ended: Option<(String, bool)> = None;
         let result = self.update_quiet(app, |inner, now| {

@@ -189,7 +189,7 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
 
 - [x] **10.1 `wick://` links run once.** On Windows and Linux single-instance passes a second launch's link to the deep-link plugin, which runs it, then to our callback, which ran it again: `wick://toggle` did nothing.
   Verify: unit test of the forwarded-link check; CI on all platforms.
-- [ ] **10.2 One odd value can't blank the state.** Rust caps other apps' names and per-day minutes to what the page accepts; Zod clamps instead of rejecting.
+- [x] **10.2 One odd value can't blank the state.** Rust caps other apps' names and per-day minutes to what the page accepts; Zod clamps instead of rejecting.
   Verify: Rust tests for the caps; unit test that an over-long name still parses.
 - [ ] **10.3 A session ends even when the handover fails.** If the new assertion can't be made at the end of a session, the old one is still released, the error is shown, and the ticker never spins.
   Verify: runtime test with a failing assertion; error state in the demo.

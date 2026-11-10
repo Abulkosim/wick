@@ -8,6 +8,8 @@ const VERSION: u64 = 1;
 const MAX_BYTES: u64 = 64 * 1024;
 pub const KEEP_DAYS: u64 = 30;
 pub const SHOWN_DAYS: u64 = 7;
+/// The page accepts up to 25 hours a day, the longest a local date can be.
+pub const MAX_MINUTES: u64 = 25 * 60;
 const DAY_MS: u64 = 86_400_000;
 /// Windows keeps counting its monotonic clock through sleep, so a long silence between ticks
 /// (which come every 5 s while awake) is sleep there.
@@ -72,7 +74,9 @@ impl History {
             .filter_map(|back| today.checked_sub_days(Days::new(back)))
             .map(|date| Day {
                 date: date.format("%Y-%m-%d").to_string(),
-                minutes: (self.days.get(&date).copied().unwrap_or(0) / 60_000) as u32,
+                // A time zone change can put more than a day on one date.
+                minutes: (self.days.get(&date).copied().unwrap_or(0) / 60_000).min(MAX_MINUTES)
+                    as u32,
             })
             .collect()
     }
@@ -205,6 +209,25 @@ mod tests {
         )
         .unwrap()
         .timestamp_millis()
+    }
+
+    #[test]
+    fn a_day_never_reports_more_than_the_page_accepts() {
+        let east = FixedOffset::east_opt(14 * 3600).unwrap();
+        let west = FixedOffset::west_opt(12 * 3600).unwrap();
+        let mut history = History::default();
+        history.add(
+            at(&east, "2026-10-26 00:00"),
+            at(&east, "2026-10-26 23:59"),
+            &east,
+        );
+        history.add(
+            at(&west, "2026-10-26 00:00"),
+            at(&west, "2026-10-26 23:59"),
+            &west,
+        );
+        let today = date("2026-10-26");
+        assert_eq!(history.recent(today, 1)[0].minutes, MAX_MINUTES as u32);
     }
 
     #[test]
