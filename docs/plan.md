@@ -222,7 +222,7 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
   👤 Move `TAURI_SIGNING_PRIVATE_KEY` and its password into the `release` environment and delete the repo-level copies.
 - [x] **10.14 Docs.** Package updates do ask for a password on Linux; issue template, SECURITY and CONTRIBUTING cover every platform; README screen-lock note; CONTRIBUTING layout and demo states; `check-all.sh` runs the production build; the repo's Homebrew cask matches the tap; changelog date set before tagging.
   Verify: links resolve; `scripts/check-all.sh` passes.
-- [ ] **10.15 Site and social image for every platform.** Meta tags and `og.png` say computer, not Mac.
+- [x] **10.15 Site and social image for every platform.** Meta tags and `og.png` say computer, not Mac.
   Verify: screenshot of the new image; site renders.
   👤 Upload `docs/images/social-preview.png` in the repo's settings.
 - [ ] **10.16 Release v0.8.0.** Version, changelog (arm64 + sweep), README with arm64 row, full release flow.

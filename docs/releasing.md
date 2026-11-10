@@ -52,6 +52,10 @@ Actions are pinned to commit SHAs (the repository requires it), runner images an
 
 The workflow refuses to replace assets on a published release. Never edit a published release's files or reuse a version; ship a new patch.
 
+## Screenshots and social image
+
+When visible copy changes, refresh the README and site screenshots from the demo states, then render the social image from the site: `node scripts/og-image.mjs site/index.html site/og.png` and copy it to `docs/images/social-preview.png`. GitHub's social preview is uploaded by hand in the repository settings.
+
 ## Homebrew
 
 `packaging/homebrew/Casks/wick.rb` is the cask; [Abulkosim/homebrew-tap](https://github.com/Abulkosim/homebrew-tap) serves it as `abulkosim/tap/wick`. Publishing a release runs `.github/workflows/homebrew.yml`, which reads the DMG checksum from the release's `SHA256SUMS.txt`, rewrites `version` and `sha256` with `packaging/homebrew/update-cask.mjs`, and pushes to the tap. Drafts and prereleases are refused, since their assets are not public.
