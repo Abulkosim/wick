@@ -201,7 +201,7 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
 - [x] **10.6 Nothing fails silently.** Windows updates keep the running session and history; shortcut, icon-click and link errors show as notifications like menu errors.
   Verify: Rust tests where pure; review of the updater hook.
   Done: the updater's `on_before_exit` (Windows only) flushes history and marks the session to resume, then does the plugin's own cleanup.
-- [ ] **10.7 Store edges.** Reset keeps triggers and the update-check time and re-registers the shortcut; one backup per recovery; recovery notes stay until the user saves.
+- [x] **10.7 Store edges.** Reset keeps triggers and the update-check time and re-registers the shortcut; one backup per recovery; recovery notes stay until the user saves.
   Verify: store and runtime tests.
 - [ ] **10.8 Rust tidy.** Digits-only schedule times, dead code removed, comments fixed, one app id, pin notes in Cargo.toml, DST tests, app commands limited to the main window's capability.
   Verify: tests; CI.

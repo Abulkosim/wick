@@ -251,7 +251,6 @@ impl Inner {
             stored.last_update_check_at = self.last_update_check_at.clone();
             store::save(path, &stored)?;
         }
-        self.view.recovered.clear();
         Ok(())
     }
 }
@@ -265,8 +264,10 @@ impl Runtime {
                 Some(format!("{error} Settings file: {}.", store_path.display())),
             ),
         };
-        if !stored.recovered.is_empty() {
-            let _ = store::backup(&store_path);
+        // Back up the partly readable file once, then write what was recovered, so the next
+        // launch neither backs it up again nor repeats the notes.
+        if !stored.recovered.is_empty() && store::backup(&store_path).is_ok() {
+            let _ = store::save(&store_path, &stored);
         }
         let history_path = store_path.with_file_name(history::FILE);
         let history = history::load(&history_path);
@@ -336,6 +337,8 @@ impl Runtime {
                 let _ = inner.reconcile(now);
                 return Err(error);
             }
+            // The notes describe what an earlier file lost; a saved change supersedes them.
+            inner.view.recovered.clear();
         }
         inner.view.error = failed;
         inner.track(now, false);
@@ -531,7 +534,10 @@ impl Runtime {
                 ..Settings::default()
             };
             if let Some(path) = &inner.store_path {
-                store::reset(path, &StoredState::new(settings.clone()))?;
+                let mut stored = StoredState::new(settings.clone());
+                stored.triggers = inner.view.triggers.clone();
+                stored.last_update_check_at = inner.last_update_check_at.clone();
+                store::reset(path, &stored)?;
             }
             inner.view.settings = settings;
             inner.view.recovery = None;
@@ -871,6 +877,46 @@ mod tests {
         runtime.inner.lock().unwrap().refuse_assertions = false;
         let (view, _) = runtime.commit(|_, _| Ok(()), true).unwrap();
         assert_eq!(view.error, None);
+    }
+
+    #[test]
+    fn a_partly_damaged_file_is_backed_up_once_and_its_notes_last_until_a_save() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.json");
+        std::fs::write(
+            &path,
+            r#"{"version":1,"settings":{"theme":"dark","iconClick":42}}"#,
+        )
+        .unwrap();
+        let backups = || {
+            std::fs::read_dir(directory.path())
+                .unwrap()
+                .filter(|entry| {
+                    let name = entry.as_ref().unwrap().file_name();
+                    name.to_string_lossy().contains(".bak-")
+                })
+                .count()
+        };
+        let runtime = Runtime::new(path.clone());
+        assert_eq!(runtime.state().recovered.len(), 1);
+        assert_eq!(backups(), 1);
+        runtime.record_update_check("2026-11-10T00:00:00Z".into());
+        assert_eq!(runtime.state().recovered.len(), 1);
+
+        let again = Runtime::new(path.clone());
+        assert!(again.state().recovered.is_empty());
+        assert_eq!(again.state().settings.theme, Theme::Dark);
+        assert_eq!(backups(), 1);
+        let (view, _) = runtime
+            .commit(
+                |inner, _| {
+                    inner.view.settings.start_minutes = Some(30);
+                    Ok(())
+                },
+                false,
+            )
+            .unwrap();
+        assert!(view.recovered.is_empty());
     }
 
     #[test]

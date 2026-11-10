@@ -101,7 +101,14 @@ fn set_launch_at_login(app: &AppHandle, from: bool, to: bool) -> Result<(), Stri
 
 #[tauri::command]
 pub fn reset_store(app: AppHandle, runtime: State<'_, Arc<Runtime>>) -> Result<AppState, String> {
-    runtime.reset_store(&app)
+    let previous = runtime.state().settings.shortcut;
+    let view = runtime.reset_store(&app)?;
+    if let Err(error) =
+        crate::shortcut::replace(&app, previous.as_deref(), view.settings.shortcut.as_deref())
+    {
+        eprintln!("wick: {error}");
+    }
+    Ok(view)
 }
 
 #[tauri::command]
