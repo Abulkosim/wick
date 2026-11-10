@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 import { collectArtifacts } from './collect-artifacts.mjs'
-import { createUpdaterManifest, releaseAssetNames } from './updater-manifest.mjs'
+import { createUpdaterManifest, releaseAssetNames, signedAssets } from './updater-manifest.mjs'
 import { verifyUpdaterSignature } from './updater-signature.mjs'
 
 const fixture = fileURLToPath(new URL('./fixtures/updater/', import.meta.url))
@@ -20,7 +20,7 @@ async function releaseFixture(t) {
   t.after(() => rm(directory, { recursive: true, force: true }))
   const assets = releaseAssetNames(version)
   for (const name of Object.values(assets)) await writeFile(join(directory, name), artifact)
-  for (const name of [assets.mac, assets.nsis, assets.msi, assets.appimage, assets.deb, assets.rpm]) await writeFile(join(directory, `${name}.sig`), signature)
+  for (const name of signedAssets(assets)) await writeFile(join(directory, `${name}.sig`), signature)
   return {
     directory,
     version,
@@ -74,13 +74,19 @@ test('maps both Mac architectures to universal and keeps the Windows and Linux i
   assert.equal(manifest.version, version)
   assert.equal(manifest.pub_date, '2026-10-16T00:00:00.000Z')
   assert.deepEqual(Object.keys(manifest.platforms).sort(), [
-    'darwin-aarch64', 'darwin-x86_64', 'linux-x86_64', 'linux-x86_64-appimage', 'linux-x86_64-deb', 'linux-x86_64-rpm',
+    'darwin-aarch64', 'darwin-x86_64',
+    'linux-aarch64', 'linux-aarch64-appimage', 'linux-aarch64-deb', 'linux-aarch64-rpm',
+    'linux-x86_64', 'linux-x86_64-appimage', 'linux-x86_64-deb', 'linux-x86_64-rpm',
     'windows-x86_64', 'windows-x86_64-msi', 'windows-x86_64-nsis',
   ])
   assert.deepEqual(manifest.platforms['linux-x86_64'], manifest.platforms['linux-x86_64-appimage'])
   assert.match(manifest.platforms['linux-x86_64-appimage'].url, /v0\.2\.0\/Wick_0\.2\.0_amd64\.AppImage$/)
   assert.match(manifest.platforms['linux-x86_64-deb'].url, /Wick_0\.2\.0_amd64\.deb$/)
   assert.match(manifest.platforms['linux-x86_64-rpm'].url, /Wick-0\.2\.0-1\.x86_64\.rpm$/)
+  assert.deepEqual(manifest.platforms['linux-aarch64'], manifest.platforms['linux-aarch64-appimage'])
+  assert.match(manifest.platforms['linux-aarch64-appimage'].url, /v0\.2\.0\/Wick_0\.2\.0_aarch64\.AppImage$/)
+  assert.match(manifest.platforms['linux-aarch64-deb'].url, /Wick_0\.2\.0_arm64\.deb$/)
+  assert.match(manifest.platforms['linux-aarch64-rpm'].url, /Wick-0\.2\.0-1\.aarch64\.rpm$/)
   assert.deepEqual(manifest.platforms['darwin-aarch64'], manifest.platforms['darwin-x86_64'])
   assert.equal(manifest.platforms['darwin-aarch64'].url, 'https://github.com/Abulkosim/wick/releases/download/v0.2.0/Wick.app.tar.gz')
   assert.match(manifest.platforms['windows-x86_64-nsis'].url, /v0\.2\.0\/Wick_0\.2\.0_x64-setup\.exe$/)
@@ -113,10 +119,10 @@ test('checksums cover installers, packages, Mac archive, signatures, and manifes
   await writeFile(join(options.directory, 'latest.json'), JSON.stringify(manifest))
   execFileSync(process.execPath, [fileURLToPath(new URL('./checksums.mjs', import.meta.url)), options.directory])
   const lines = (await readFile(join(options.directory, 'SHA256SUMS.txt'), 'utf8')).trim().split('\n')
-  assert.equal(lines.length, 14)
+  assert.equal(lines.length, 20)
   assert(lines.every((line) => /^[a-f0-9]{64}  .+$/.test(line)))
   assert(lines.some((line) => line.endsWith('  latest.json')))
-  assert.equal(lines.filter((line) => line.endsWith('.sig')).length, 6)
+  assert.equal(lines.filter((line) => line.endsWith('.sig')).length, 9)
 })
 
 async function bundleFixture(t, target, artifacts) {
@@ -151,15 +157,19 @@ test('collects both Windows installer signatures', async (t) => {
   assert.equal((await readdir(join(root, 'release-artifacts'))).length, 4)
 })
 
-test('collects the AppImage, deb and rpm with their signatures', async (t) => {
-  const target = 'x86_64-unknown-linux-gnu'
-  const root = await bundleFixture(t, target, {
-    appimage: ['Wick_0.2.0_amd64.AppImage', 'Wick_0.2.0_amd64.AppImage.sig'],
-    deb: ['Wick_0.2.0_amd64.deb', 'Wick_0.2.0_amd64.deb.sig'],
-    rpm: ['Wick-0.2.0-1.x86_64.rpm', 'Wick-0.2.0-1.x86_64.rpm.sig'],
-  })
-  await collectArtifacts(target, { updater: true, root })
-  assert.equal((await readdir(join(root, 'release-artifacts'))).length, 6)
+test('collects the AppImage, deb and rpm with their signatures on both Linux architectures', async (t) => {
+  for (const [target, appimage, deb, rpm] of [
+    ['x86_64-unknown-linux-gnu', 'Wick_0.2.0_amd64.AppImage', 'Wick_0.2.0_amd64.deb', 'Wick-0.2.0-1.x86_64.rpm'],
+    ['aarch64-unknown-linux-gnu', 'Wick_0.2.0_aarch64.AppImage', 'Wick_0.2.0_arm64.deb', 'Wick-0.2.0-1.aarch64.rpm'],
+  ]) {
+    const root = await bundleFixture(t, target, {
+      appimage: [appimage, `${appimage}.sig`],
+      deb: [deb, `${deb}.sig`],
+      rpm: [rpm, `${rpm}.sig`],
+    })
+    await collectArtifacts(target, { updater: true, root })
+    assert.deepEqual((await readdir(join(root, 'release-artifacts'))).sort(), [appimage, `${appimage}.sig`, deb, `${deb}.sig`, rpm, `${rpm}.sig`].sort())
+  }
 })
 
 test('fails collection when signature missing or stale installers coexist', async (t) => {

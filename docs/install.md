@@ -9,6 +9,7 @@ Wick is free and open source. Builds are not signed with an Apple Developer ID o
 | macOS 12+ · Apple Silicon and Intel | `Wick_<version>_universal.dmg` |
 | Windows 10/11 x64 (from v0.2.0) | `Wick_<version>_x64-setup.exe` (recommended) or `Wick_<version>_x64_en-US.msi` |
 | Linux x86_64 (from v0.7.0), glibc 2.35+: Ubuntu 22.04, Debian 12, Fedora 36 and newer | `Wick_<version>_amd64.AppImage` (any distribution), `Wick_<version>_amd64.deb` or `Wick-<version>-1.x86_64.rpm` |
+| Linux arm64 (from v0.7.2), same distributions | `Wick_<version>_aarch64.AppImage`, `Wick_<version>_arm64.deb` or `Wick-<version>-1.aarch64.rpm` |
 
 ## macOS
 
@@ -59,7 +60,7 @@ A managed device may hide **Run anyway**. See [Microsoft Defender SmartScreen](h
 
 ## Linux
 
-Pick one:
+Pick one. The commands below are for x86_64; on arm64 the files end in `_aarch64.AppImage`, `_arm64.deb` and `.aarch64.rpm`.
 
 - **AppImage** (any distribution, updates itself):
 

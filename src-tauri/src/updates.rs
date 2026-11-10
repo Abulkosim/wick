@@ -95,6 +95,9 @@ fn trusted_download(url: &tauri::Url, version: &str) -> bool {
         || file == format!("Wick_{version}_amd64.AppImage")
         || file == format!("Wick_{version}_amd64.deb")
         || file == format!("Wick-{version}-1.x86_64.rpm")
+        || file == format!("Wick_{version}_aarch64.AppImage")
+        || file == format!("Wick_{version}_arm64.deb")
+        || file == format!("Wick-{version}-1.aarch64.rpm")
 }
 
 #[tauri::command]
@@ -266,6 +269,9 @@ mod tests {
             "Wick_0.2.0_amd64.AppImage",
             "Wick_0.2.0_amd64.deb",
             "Wick-0.2.0-1.x86_64.rpm",
+            "Wick_0.2.0_aarch64.AppImage",
+            "Wick_0.2.0_arm64.deb",
+            "Wick-0.2.0-1.aarch64.rpm",
         ] {
             let url = good.replace("Wick.app.tar.gz", file);
             assert!(trusted_download(&url.parse().unwrap(), "0.2.0"), "{url}");
@@ -273,6 +279,8 @@ mod tests {
         let stale = good.replace("Wick.app.tar.gz", "Wick_0.1.0_x64-setup.exe");
         assert!(!trusted_download(&stale.parse().unwrap(), "0.2.0"));
         let stale = good.replace("Wick.app.tar.gz", "Wick_0.1.0_amd64.AppImage");
+        assert!(!trusted_download(&stale.parse().unwrap(), "0.2.0"));
+        let stale = good.replace("Wick.app.tar.gz", "Wick_0.1.0_aarch64.AppImage");
         assert!(!trusted_download(&stale.parse().unwrap(), "0.2.0"));
         for url in [
             good.replace("v0.2.0", "v0.1.1"),

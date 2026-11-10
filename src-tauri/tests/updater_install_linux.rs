@@ -16,7 +16,17 @@ async fn signed_appimage_replaces_a_disposable_one() {
     let version = config["version"].as_str().unwrap();
     let public_key = config["plugins"]["updater"]["pubkey"].as_str().unwrap();
     assert_eq!(config["plugins"]["updater"]["requireSignedVersion"], true);
-    let file = format!("Wick_{version}_amd64.AppImage");
+    let (file, platforms) = if cfg!(target_arch = "aarch64") {
+        (
+            format!("Wick_{version}_aarch64.AppImage"),
+            ["linux-aarch64", "linux-aarch64-appimage"],
+        )
+    } else {
+        (
+            format!("Wick_{version}_amd64.AppImage"),
+            ["linux-x86_64", "linux-x86_64-appimage"],
+        )
+    };
     let artifact_directory = PathBuf::from(
         std::env::var_os("WICK_UPDATE_ARTIFACT_DIR")
             .expect("Set WICK_UPDATE_ARTIFACT_DIR to the release assets"),
@@ -24,13 +34,7 @@ async fn signed_appimage_replaces_a_disposable_one() {
     let artifact = fs::read(artifact_directory.join(&file)).unwrap();
     let signature = fs::read_to_string(artifact_directory.join(format!("{file}.sig"))).unwrap();
     assert!(artifact.starts_with(b"\x7fELF"), "not an AppImage");
-    let server = ReleaseServer::start(
-        version,
-        signature.trim(),
-        &artifact,
-        &file,
-        &["linux-x86_64", "linux-x86_64-appimage"],
-    );
+    let server = ReleaseServer::start(version, signature.trim(), &artifact, &file, &platforms);
 
     let disposable = tempfile::tempdir().unwrap();
     let appimage = disposable.path().join("Wick.AppImage");

@@ -148,7 +148,7 @@ Mac features first, Windows last, then the release. Presets dropped for now: the
 
 ## Phase 8 — Linux → v0.7.0 ⛳
 
-Asked for publicly ("Any plans for a Linux version?"), promised for the end of the week. Every step lands as its own PR, merged once CI is green. x86_64 first; arm64 later.
+Asked for publicly ("Any plans for a Linux version?"), promised for the end of the week. Every step lands as its own PR, merged once CI is green. x86_64 first; arm64 in Phase 9.
 
 Decisions (research in [research.md](research.md#linux)):
 
@@ -172,6 +172,15 @@ Decisions (research in [research.md](research.md#linux)):
   Done 2026-11-05: published on the owner's go-ahead; tap bumped itself; owner's Mac updated. Evidence in docs/verification.md.
 - [x] **8.5 Cross-review with Codex** after the release; fixes go out as a patch.
   Done 2026-11-05: `codex exec` (read-only) over v0.6.0..v0.7.0 found one high and five medium issues, all confirmed and fixed for v0.7.1: Xfce's portal accepted a request it then refused, which hid the ScreenSaver fallback; the no-tray window could be hidden with a session running; a portal read on the main thread at every icon redraw; no timeout on the D-Bus handshake; USB PD PPS chargers (`online=2`) read as unplugged; µWh and µAh batteries summed together.
+
+## Phase 9 — Linux arm64 → v0.7.2 ⛳
+
+Same app on ARM Linux (Raspberry Pi 4/5 with a desktop, Asahi, ARM laptops and VMs). Native build on GitHub's free `ubuntu-22.04-arm` runner, so glibc 2.35+ like x64; no cross-compiling.
+
+- [ ] **9.1 arm64 build and release pipeline.** CI job, `aarch64.AppImage`, `arm64.deb`, `aarch64.rpm`; signed updater artifacts; `linux-aarch64*` in `latest.json`; checksums, attestations; updater allowlist; install docs.
+  Verify: script tests for names, manifest and checksums; Rust test for the allowlist; the arm64 CI job passes fmt, clippy, tests, all three bundles and the smoke test on the binary and the AppImage.
+- [ ] **9.2 Release v0.7.2.** README row with arm64 links.
+  Verify: full release flow; the arm64 updater install test passes on its signed AppImage in the tag build.
 
 ## Later / maybe
 
