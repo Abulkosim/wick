@@ -177,8 +177,9 @@ Decisions (research in [research.md](research.md#linux)):
 
 Same app on ARM Linux (Raspberry Pi 4/5 with a desktop, Asahi, ARM laptops and VMs). Native build on GitHub's free `ubuntu-22.04-arm` runner, so glibc 2.35+ like x64; no cross-compiling.
 
-- [ ] **9.1 arm64 build and release pipeline.** CI job, `aarch64.AppImage`, `arm64.deb`, `aarch64.rpm`; signed updater artifacts; `linux-aarch64*` in `latest.json`; checksums, attestations; updater allowlist; install docs.
+- [x] **9.1 arm64 build and release pipeline.** CI job, `aarch64.AppImage`, `arm64.deb`, `aarch64.rpm`; signed updater artifacts; `linux-aarch64*` in `latest.json`; checksums, attestations; updater allowlist; install docs.
   Verify: script tests for names, manifest and checksums; Rust test for the allowlist; the arm64 CI job passes fmt, clippy, tests, all three bundles and the smoke test on the binary and the AppImage.
+  Done 2026-11-10 (PR #24): Tauri named the bundles `Wick_0.7.1_aarch64.AppImage`, `Wick_0.7.1_arm64.deb`, `Wick-0.7.1-1.aarch64.rpm`, as the manifest expects; 96 Rust tests (including the live logind inhibitor) and the smoke test on the binary and the extracted AppImage pass on the arm runner. linuxdeploy ships aarch64 builds, so the AppImage needs nothing extra.
 - [ ] **9.2 Release v0.7.2.** README row with arm64 links.
   Verify: full release flow; the arm64 updater install test passes on its signed AppImage in the tag build.
 
