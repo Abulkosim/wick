@@ -16,6 +16,31 @@ export function keyAction(event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKe
   }
 }
 
+/** Typing into a field, or into a picker whose typeahead jumps to an option. */
 export function isTyping(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+  if (!(target instanceof HTMLElement)) return false
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.closest('[role="combobox"], [role="listbox"]') !== null
+}
+
+/** Arrow keys move through a radio group: -1 back, 1 forward. */
+export function radioStep(key: string): -1 | 0 | 1 {
+  if (key === 'ArrowRight' || key === 'ArrowDown') return 1
+  if (key === 'ArrowLeft' || key === 'ArrowUp') return -1
+  return 0
+}
+
+/** Moves focus and selection to the next radio in the group the event came from. */
+export function moveRadio(event: KeyboardEvent): void {
+  const step = radioStep(event.key)
+  if (!step || !(event.currentTarget instanceof HTMLElement)) return
+  const radios = [...event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]:not(:disabled)')]
+  if (!radios.length) return
+  const index = radios.findIndex(radio => radio === document.activeElement)
+  const next = radios[(Math.max(index, 0) + step + radios.length) % radios.length]
+  if (!next) return
+  event.preventDefault()
+  next.focus()
+  next.click()
+  // Choosing can move focus to the field it reveals; arrows keep it in the group.
+  requestAnimationFrame(() => next.focus())
 }

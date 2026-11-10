@@ -6,6 +6,7 @@ import AppSwitch from './ui/AppSwitch.vue'
 import AppTooltip from './ui/AppTooltip.vue'
 import type { RunningApp, Trigger } from '../lib/model'
 import { isMac, isWindows } from '../lib/platform'
+import { moveRadio } from '../lib/keys'
 import { dayLetters, daysLabel, defaultThreshold, processSuggestions, thresholdLabel, thresholds, triggerId, validProcessName, validSchedule } from '../lib/triggers'
 
 const props = defineProps<{ triggers: Trigger[]; running: string[]; busy: boolean; save: (triggers: Trigger[]) => Promise<boolean>; loadApps: () => Promise<RunningApp[]> }>()
@@ -137,23 +138,23 @@ function remove(id: string): void {
       </li>
     </ul>
     <form v-if="adding" class="trigger-form" @submit.prevent="add" @keydown.esc.stop.prevent="close">
-      <div class="segmented" role="radiogroup" aria-label="Trigger type">
-        <button v-if="isMac" type="button" role="radio" :aria-checked="kind === 'app'" :class="{ selected: kind === 'app' }" @click="choose('app')"><AppIcon name="app" :size="14"/>App</button>
-        <button type="button" role="radio" :aria-checked="kind === 'process'" :class="{ selected: kind === 'process' }" @click="choose('process')"><AppIcon name="terminal" :size="14"/>Command</button>
-        <button type="button" role="radio" :aria-checked="kind === 'condition'" :class="{ selected: kind === 'condition' }" @click="choose('condition')"><AppIcon name="bolt" :size="14"/>Condition</button>
+      <div class="segmented" role="radiogroup" aria-label="Trigger type" @keydown="moveRadio">
+        <button v-if="isMac" type="button" role="radio" :aria-checked="kind === 'app'" :tabindex="kind === 'app' ? 0 : -1" :class="{ selected: kind === 'app' }" @click="choose('app')"><AppIcon name="app" :size="14"/>App</button>
+        <button type="button" role="radio" :aria-checked="kind === 'process'" :tabindex="kind === 'process' ? 0 : -1" :class="{ selected: kind === 'process' }" @click="choose('process')"><AppIcon name="terminal" :size="14"/>Command</button>
+        <button type="button" role="radio" :aria-checked="kind === 'condition'" :tabindex="kind === 'condition' ? 0 : -1" :class="{ selected: kind === 'condition' }" @click="choose('condition')"><AppIcon name="bolt" :size="14"/>Condition</button>
       </div>
       <template v-if="kind === 'app'">
         <AppSelect v-if="appOptions.length" v-model="appPath" class="app-picker" label="Running app" placeholder="Choose a running app" :options="appOptions"/>
         <p v-else class="card-empty">No other apps are running. Open the app first, or add its command.</p>
       </template>
       <template v-else-if="kind === 'condition'">
-        <div v-if="conditions.length" class="condition-options" role="radiogroup" aria-label="Condition">
-          <button v-for="option in conditions" :key="option.kind" type="button" role="radio" class="duration-option" :class="{ selected: condition === option.kind }" :aria-checked="condition === option.kind" @click="pickCondition(option.kind)">{{ option.label }}</button>
+        <div v-if="conditions.length" class="condition-options" role="radiogroup" aria-label="Condition" @keydown="moveRadio">
+          <button v-for="(option, index) in conditions" :key="option.kind" type="button" role="radio" :tabindex="condition === option.kind || (condition === null && index === 0) ? 0 : -1" class="duration-option" :class="{ selected: condition === option.kind }" :aria-checked="condition === option.kind" @click="pickCondition(option.kind)">{{ option.label }}</button>
         </div>
         <div v-if="activity" class="activity-editor">
-          <div class="threshold-options" role="radiogroup" aria-label="Busy above">
+          <div class="threshold-options" role="radiogroup" aria-label="Busy above" @keydown="moveRadio">
             <span>Above</span>
-            <button v-for="value in thresholds[activity]" :key="value" type="button" role="radio" class="threshold-chip" :class="{ selected: threshold === value }" :aria-checked="threshold === value" @click="threshold = value">{{ thresholdLabel(activity, value) }}</button>
+            <button v-for="value in thresholds[activity]" :key="value" type="button" role="radio" :tabindex="threshold === value ? 0 : -1" class="threshold-chip" :class="{ selected: threshold === value }" :aria-checked="threshold === value" @click="threshold = value">{{ thresholdLabel(activity, value) }}</button>
           </div>
           <p class="card-empty">Stays awake until it’s quiet for 2 minutes.</p>
         </div>

@@ -8,7 +8,7 @@ test('lists other apps keeping the Mac awake while Wick is on', async ({ page })
 
 test('says who holds the Mac when Wick is off', async ({ page }) => {
   await page.goto('/?demo=1&state=others-off')
-  await expect(page.getByRole('status')).toContainText('claude is keeping your Mac awake.')
+  await expect(page.locator('.hero-copy')).toContainText('claude is keeping your Mac awake.')
   await expect(page.getByRole('region', { name: 'Keeping your Mac awake' })).toBeVisible()
 })
 

@@ -44,6 +44,23 @@ export function title(session: Session, now: number, heldBy: string | null = nul
   }
 }
 
+/**
+ * What a screen reader hears when the state changes: no countdown, so it isn't read out every
+ * minute, and a timed session's end is fixed from its start.
+ */
+export function announcement(session: Session, context: { heldBy: string | null; pausedBy: string | null; notice: string | null; lockPaused: boolean }): string {
+  if (context.lockPaused && (session.mode !== 'off' || context.heldBy)) return 'Paused while the screen is locked'
+  switch (session.mode) {
+    case 'indefinite': return 'Awake until you stop it'
+    case 'for':
+    case 'until': return `Awake until ${clockTime(session.endsAt, session.startedAt)}`
+    case 'off':
+      if (context.heldBy) return `Awake while ${context.heldBy}`
+      if (context.pausedBy) return `Paused until ${context.pausedBy}`
+      return context.notice ?? 'Off'
+  }
+}
+
 export function detail(session: Session, now: number, display: boolean, heldBy: string | null = null, pausedBy: string | null = null): string {
   const screen = display ? ' · Display on' : ''
   switch (session.mode) {

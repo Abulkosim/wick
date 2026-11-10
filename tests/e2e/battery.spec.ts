@@ -2,11 +2,11 @@ import { expect, test } from '@playwright/test'
 
 test('a battery stop is explained and blocks a new start', async ({ page }) => {
   await page.goto('/?demo=1&state=battery')
-  await expect(page.getByRole('status').getByText('Stopped: battery below 20%')).toBeVisible()
+  await expect(page.locator('.hero-copy').getByText('Stopped: battery below 20%')).toBeVisible()
   await expect(page.getByText('On battery · 19%')).toBeVisible()
   await page.getByRole('button', { name: 'Start', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('Not started: battery below 20%. Plug in, or change it in Settings → Battery.')
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Off')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Off')
 })
 
 test('a lower threshold lets it start', async ({ page }) => {
@@ -15,7 +15,7 @@ test('a lower threshold lets it start', async ({ page }) => {
   await expect(page.getByRole('button', { name: '10%' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Back to overview' }).click()
   await page.getByRole('button', { name: '1 hour' }).click()
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Awake · 1h 00m left')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Awake · 1h 00m left')
 })
 
 test('thresholds are off with the guard', async ({ page }) => {

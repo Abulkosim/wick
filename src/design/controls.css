@@ -29,7 +29,7 @@
 .app-switch:focus-visible,
 .text-input:focus-visible {
   outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 .app-select-trigger:disabled,

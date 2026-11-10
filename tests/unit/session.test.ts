@@ -58,3 +58,17 @@ test('held and paused by a trigger', () => {
   assert.equal(detail({ mode: 'off' }, now, false, null, 'you unplug'), 'Paused until you unplug')
   assert.equal(title(start({ mode: 'indefinite' }, now), now, 'Xcode'), 'Awake')
 })
+
+test('announcements name the state, never the countdown', async () => {
+  const { announcement } = await import('../../src/lib/session.ts')
+  const quiet = { heldBy: null, pausedBy: null, notice: null, lockPaused: false }
+  const startedAt = new Date(2026, 9, 26, 15, 0).getTime()
+  const timed = { mode: 'for', startedAt, endsAt: startedAt + 90 * 60_000 } as const
+  assert.match(announcement(timed, quiet), /^Awake until 16:30$|^Awake until 4:30/)
+  assert.equal(announcement({ mode: 'indefinite', startedAt }, quiet), 'Awake until you stop it')
+  assert.equal(announcement({ mode: 'off' }, { ...quiet, heldBy: 'Xcode is running' }), 'Awake while Xcode is running')
+  assert.equal(announcement({ mode: 'off' }, { ...quiet, pausedBy: 'Xcode quits' }), 'Paused until Xcode quits')
+  assert.equal(announcement({ mode: 'off' }, { ...quiet, notice: 'Stopped: battery below 20%' }), 'Stopped: battery below 20%')
+  assert.equal(announcement(timed, { ...quiet, lockPaused: true }), 'Paused while the screen is locked')
+  assert.equal(announcement({ mode: 'off' }, quiet), 'Off')
+})

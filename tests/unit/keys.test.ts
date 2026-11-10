@@ -18,3 +18,12 @@ test('typing and modifier chords are left alone', () => {
   assert.equal(keyAction(key('1', { altKey: true }), false), null)
   assert.equal(keyAction(key('x'), false), null)
 })
+
+test('arrow keys step through radios', async () => {
+  const { radioStep } = await import('../../src/lib/keys.ts')
+  assert.equal(radioStep('ArrowRight'), 1)
+  assert.equal(radioStep('ArrowDown'), 1)
+  assert.equal(radioStep('ArrowLeft'), -1)
+  assert.equal(radioStep('ArrowUp'), -1)
+  assert.equal(radioStep('Tab'), 0)
+})

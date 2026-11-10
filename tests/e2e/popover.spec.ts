@@ -2,27 +2,27 @@ import { expect, test } from '@playwright/test'
 
 test('off: one click starts indefinitely, one click stops', async ({ page }) => {
   await page.goto('/?demo=1&state=off')
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Off')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Off')
   await expect(page.getByText('Your Mac sleeps as usual.')).toBeVisible()
   await page.getByRole('button', { name: 'Start', exact: true }).click()
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Awake')
-  await expect(page.getByText('Until you stop it')).toBeVisible()
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Awake')
+  await expect(page.locator('.hero-copy').getByText('Until you stop it')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Indefinitely' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Stop' }).click()
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Off')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Off')
 })
 
 test('a preset starts a timed session in one click', async ({ page }) => {
   await page.goto('/?demo=1&state=off')
   await page.getByRole('button', { name: '1 hour' }).click()
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Awake · 1h 00m left')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Awake · 1h 00m left')
   await expect(page.getByRole('button', { name: '1 hour' })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('timed demo counts down with the end time', async ({ page }) => {
   await page.goto('/?demo=1&state=timed')
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText(/^Awake · 4[12]m left$/)
-  await expect(page.getByRole('status').getByText(/^Until (\w{3} )?\d/)).toBeVisible()
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText(/^Awake · 4[12]m left$/)
+  await expect(page.locator('.hero-copy').getByText(/^Until (\w{3} )?\d/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
 })
 
@@ -31,7 +31,7 @@ test('until and custom take typed values', async ({ page }) => {
   await page.getByRole('button', { name: 'Until…' }).click()
   await page.getByLabel('Until').fill('23:59')
   await page.locator('#duration-editor').getByRole('button', { name: 'Start' }).click()
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText(/^Awake until /)
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText(/^Awake until /)
   await expect(page.getByRole('button', { name: 'Until…' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Custom…' }).click()
   await page.getByLabel('Hours').fill('0')
@@ -39,7 +39,7 @@ test('until and custom take typed values', async ({ page }) => {
   await expect(page.locator('#duration-editor').getByRole('button', { name: 'Start' })).toBeDisabled()
   await page.getByLabel('Minutes').fill('45')
   await page.getByLabel('Minutes').press('Enter')
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Awake · 45m left')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Awake · 45m left')
   await expect(page.getByRole('button', { name: 'Custom…' })).toHaveAttribute('aria-pressed', 'true')
 })
 
@@ -76,16 +76,16 @@ for (const theme of ['light', 'dark'] as const) {
 
 test('a locked screen pauses the session', async ({ page }) => {
   await page.goto('/?demo=1&state=locked')
-  await expect(page.getByRole('status')).toContainText('Paused while the screen is locked')
+  await expect(page.locator('.hero-copy')).toContainText('Paused while the screen is locked')
   await page.getByRole('button', { name: 'Open settings' }).click()
   await expect(page.getByRole('switch', { name: 'Pause while the screen is locked' })).toBeChecked()
 })
 
 test('a timed session can be extended in place', async ({ page }) => {
   await page.goto('/?demo=1&state=timed')
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText(/^Awake · 4[12]m left$/)
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText(/^Awake · 4[12]m left$/)
   await page.getByRole('button', { name: 'Add 15 min' }).click()
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText(/^Awake · 5[67]m left$/)
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText(/^Awake · 5[67]m left$/)
   await page.goto('/?demo=1&state=indefinite')
   await expect(page.getByRole('button', { name: 'Add 15 min' })).toHaveCount(0)
 })
@@ -93,12 +93,31 @@ test('a timed session can be extended in place', async ({ page }) => {
 test('single keys start, extend and stop', async ({ page }) => {
   await page.goto('/?demo=1&state=off')
   await page.keyboard.press('2')
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Awake · 1h 00m left')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Awake · 1h 00m left')
   await page.keyboard.press('+')
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Awake · 1h 15m left')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Awake · 1h 15m left')
   await page.keyboard.press('s')
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Off')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Off')
   await page.getByRole('button', { name: 'Custom…' }).click()
   await page.getByLabel('Hours').fill('2')
-  await expect(page.getByRole('status').getByRole('heading')).toHaveText('Off')
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Off')
+})
+
+test('the live region announces changes without the countdown', async ({ page }) => {
+  await page.goto('/?demo=1&state=off')
+  const live = page.locator('[role="status"][aria-live="polite"]')
+  await expect(live).toHaveText('Off')
+  await page.keyboard.press('2')
+  await expect(live).toHaveText(/^Awake until (\w{3} )?\d/)
+  await expect(live).not.toContainText('left')
+})
+
+test('Escape closes the time editor and keeps the popover open', async ({ page }) => {
+  await page.goto('/?demo=1&state=off')
+  await page.getByRole('button', { name: 'Until…' }).click()
+  await expect(page.getByLabel('Until')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(page.getByLabel('Until')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Until…' })).toBeFocused()
+  await expect(page.locator('.hero-copy').getByRole('heading')).toHaveText('Off')
 })
