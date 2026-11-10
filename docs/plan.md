@@ -227,6 +227,7 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
   👤 Upload `docs/images/social-preview.png` in the repo's settings.
 - [ ] **10.16 Release v0.8.0.** Version, changelog (arm64 + sweep), README with arm64 row, full release flow.
   Verify: full release flow; both Linux updater install tests pass on their signed AppImages in the tag build.
+  Draft verified 2026-11-10 (docs/verification.md). 👤 Say "publish"; then it is published, marked latest, and the installed app updates in-app.
 
 ## Later / maybe
 
