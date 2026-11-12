@@ -12,6 +12,7 @@ Linux arm64 and the Phase 10 sweep: PRs [#24](https://github.com/Abulkosim/wick/
 - Mac archive, checked without a Mac: its signature verifies for 0.8.0 with the app's public key; flipped bytes and version 0.8.1 are rejected; `Info.plist` says 0.8.0. The `updater_install` test against it needs macOS.
 - The tag build used the repository-level signing secrets: the `release` environment exists and gates the jobs, but the secrets haven't moved there yet.
 - Published 2026-11-10 21:09 UTC on the owner's go-ahead, marked latest; `latest.json` (0.8.0, 13 platforms), the DMG, both AppImages, the arm64 deb and rpm and the Windows installer resolve publicly. Homebrew workflow run [42902291210](https://github.com/Abulkosim/wick/actions/runs/42902291210) pushed `wick 0.8.0` with the DMG checksum.
+- After publishing, 2026-11-12, on an x86_64 Ubuntu 24.04 server (Xvfb, no tray): the public `Wick_0.8.0_amd64.AppImage` and its deb and rpm matched `SHA256SUMS.txt`; the smoke test passed on the AppImage (logind inhibitor while awake, none after stop or `kill -9`); the deb installed with its dependencies on a clean `ubuntu:24.04` container and the rpm on `fedora:latest` (45), and `wick status` ran from both.
 - Pending 👤: `updater_install` on a Mac against `Wick.app.tar.gz`; update the installed app in-app; move the signing secrets into the `release` environment; Linux on real hardware (#22) and on a real ARM board; Windows VM.
 
 Checksums:
