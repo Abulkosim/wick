@@ -59,6 +59,19 @@ function Assert-Status([string]$Name, $Expected, [string]$What) {
     if ($actual -cne $Expected) { throw "${What}: expected $Name $Expected, got $actual" }
 }
 
+# The app takes commands asynchronously and writes status.json after it changes the power
+# request, so a status read right after a command can still show the previous state.
+function Wait-Status([string]$Name, $Expected, [string]$What) {
+    $deadline = (Get-Date).AddSeconds(15)
+    while ($true) {
+        Get-Status | Out-Null
+        $property = $script:status.PSObject.Properties[$Name]
+        if ($property -and $property.Value -ceq $Expected) { return }
+        if ((Get-Date) -gt $deadline) { Assert-Status $Name $Expected "$What (waited 15s)" }
+        Start-Sleep -Milliseconds 500
+    }
+}
+
 # Polls a check every half second for at most $Seconds seconds.
 function Wait-Until([string]$What, [scriptblock]$Check, [int]$Seconds = 15) {
     $deadline = (Get-Date).AddSeconds($Seconds)
@@ -107,12 +120,10 @@ function Test-Holds {
     # Until the agents folder exists Wick reads it on the idle tick, once a minute.
     Invoke-Wick 'hold', 'smoke', '--pid', "$PID" | Out-Null
     Assert-Requests 'wick hold' 75
-    Get-Status | Out-Null
-    Assert-Status 'awake' $true 'not awake while a hold works'
+    Wait-Status 'awake' $true 'not awake while a hold works'
     Invoke-Wick 'release', 'smoke' | Out-Null
     Wait-Until 'request left after wick release' { Test-Released }
-    Get-Status | Out-Null
-    Assert-Status 'awake' $false 'still awake after wick release'
+    Wait-Status 'awake' $false 'still awake after wick release'
 
     $script:runner = Start-Wick 'run', '--', 'ping', '-n', '21', '127.0.0.1'
     Assert-Requests 'wick run'
@@ -143,30 +154,26 @@ function Test-Wick {
     if (-not (Test-Released)) { throw "a request from wick.exe exists before any start: $(Get-WickRequests)" }
 
     Invoke-Wick 'start', '1' | Out-Null
-    Get-Status | Out-Null
-    Assert-Status 'awake' $true 'not awake after start 1'
+    Wait-Status 'awake' $true 'not awake after start 1'
     if ($script:status.session.mode -cne 'for') { throw "start 1 is not a timed session: $($script:status.session.mode)" }
     Assert-Requests 'start 1'
 
     Invoke-Wick 'stop' | Out-Null
     Wait-Until 'request left after stop' { Test-Released }
-    Get-Status | Out-Null
-    Assert-Status 'awake' $false 'still awake after stop'
+    Wait-Status 'awake' $false 'still awake after stop'
     if ($script:status.session.mode -cne 'off') { throw "session still on after stop: $($script:status.session.mode)" }
 
     if ($env:WICK_SMOKE_HOLDS -ne '0') { Test-Holds }
 
     Invoke-Wick 'start' | Out-Null
-    Get-Status | Out-Null
-    Assert-Status 'awake' $true 'not awake after start'
+    Wait-Status 'awake' $true 'not awake after start'
     if ($script:status.session.mode -cne 'indefinite') { throw "start is not open-ended: $($script:status.session.mode)" }
     Assert-Requests 'start'
 
     Stop-Process -Id $script:appPid -Force
     Wait-Process -Id $script:appPid -Timeout 15 -ErrorAction SilentlyContinue
     Wait-Until 'request left after a forced kill' { Test-Released }
-    Get-Status | Out-Null
-    Assert-Status 'running' $false 'status still says running after a forced kill'
+    Wait-Status 'running' $false 'status still says running after a forced kill'
     Assert-Status 'awake' $false 'status still says awake after a forced kill'
 }
 
