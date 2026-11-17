@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
 import type { AgentConnection } from '../../lib/model'
-import { connectionAction, connectionStatus } from '../../lib/agents'
+import { connectionAction, connectionStatus, trustFile } from '../../lib/agents'
 import { device } from '../../lib/platform'
 import AppIcon from '../AppIcon.vue'
 import AppSwitch from '../ui/AppSwitch.vue'
@@ -86,7 +86,9 @@ onMounted(load)
             <button v-if="confirming !== connection.agent" class="button button-small connection-action" :class="{ 'button-primary': connectionAction(connection) === 'reconnect' }" :disabled="connection.status === 'missing' || working !== null" :aria-busy="working === connection.agent" :aria-describedby="`connection-${connection.agent}`" @click="activate(connection)">{{ working === connection.agent ? 'Working…' : labels[connectionAction(connection)] }}</button>
           </div>
           <div v-if="confirming === connection.agent" class="connection-confirm" role="group" :aria-label="`Connect ${connection.name}`" @keydown.esc.stop.prevent="cancel(connection.agent)">
-            <p>Adds hooks to <code>{{ connection.file }}</code>. The file is backed up first.</p>
+            <p v-if="trustFile(connection) === null">Adds hooks to <code>{{ connection.file }}</code>. The file is backed up first.</p>
+            <p v-else-if="trustFile(connection) === connection.file">Adds hooks to <code>{{ connection.file }}</code> and marks them trusted there. The file is backed up first.</p>
+            <p v-else>Adds hooks to <code>{{ connection.file }}</code> and marks them trusted in <code>{{ trustFile(connection) }}</code>. Both files are backed up first.</p>
             <div class="form-actions">
               <button class="button button-small" @click="cancel(connection.agent)">Cancel</button>
               <button class="button button-primary button-small confirm-connect" :disabled="working !== null" @click="run(connection, 'connect')">{{ working === connection.agent ? 'Connecting…' : 'Connect' }}</button>

@@ -103,7 +103,7 @@ test('connecting works from the keyboard and Escape cancels without leaving Sett
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
   await expect(codex.getByRole('button', { name: 'Connect' })).toBeFocused()
   await page.keyboard.press('Enter')
-  await expect(codex).toContainText('~/.codex/config.toml')
+  await expect(codex).toContainText('Adds hooks to ~/.codex/hooks.json and marks them trusted in ~/.codex/config.toml. Both files are backed up first.')
   await page.keyboard.press('Enter')
   await expect(codex).toContainText('Connected')
   await expect(codex.getByRole('button', { name: 'Disconnect' })).toBeFocused()
@@ -142,12 +142,12 @@ for (const theme of ['light', 'dark'] as const) {
       await page.locator('.app-shell').screenshot({ path: testInfo.outputPath(`${state}-${theme}.png`) })
     })
   }
-  for (const state of ['off', 'agents-connected', 'agents-stale', 'agents-missing', 'agents-error', 'confirm']) {
+  for (const state of ['off', 'agents-connected', 'agents-stale', 'agents-missing', 'agents-error', 'confirm', 'confirm-codex']) {
     test(`screenshot settings ${state} agents ${theme}`, async ({ page }, testInfo) => {
-      await page.goto(`/?demo=1&state=${state === 'confirm' ? 'off' : state}&theme=${theme}&page=settings`)
+      await page.goto(`/?demo=1&state=${state.startsWith('confirm') ? 'off' : state}&theme=${theme}&page=settings`)
       const section = page.locator('.agent-settings')
       await expect(section.locator('.connection-row')).toHaveCount(2)
-      if (state === 'confirm') await row(page, 'claude').getByRole('button', { name: 'Connect' }).click()
+      if (state.startsWith('confirm')) await row(page, state === 'confirm' ? 'claude' : 'codex').getByRole('button', { name: 'Connect' }).click()
       await section.evaluate(element => element.scrollIntoView({ block: 'start' }))
       await page.locator('.app-shell').screenshot({ path: testInfo.outputPath(`settings-${state}-${theme}.png`) })
     })

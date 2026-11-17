@@ -72,7 +72,7 @@ CI runs the same commands ([`ci.yml`](.github/workflows/ci.yml)). Some Rust test
 
 ```
 src-tauri/src/
-  commands.rs, cli.rs    command surface, `wick start|stop|toggle|status` and wick:// links
+  commands.rs, cli.rs    command surface, `wick start|stop|toggle|status|hook|hold|release|run` and wick:// links
   runtime.rs             state, ticker, persistence, reconciling the assertion
   status.rs              status.json for `wick status` and resuming after an update
   tray.rs, popover.rs    tray icon and popover placement
@@ -87,6 +87,8 @@ src-tauri/src/
     activity.rs          network and CPU activity
     processes.rs         process scan
     others.rs            other apps keeping the computer awake
+    agents.rs            agent hold files, hook events, expiry and phrases
+    connect.rs           connect and disconnect Claude Code and Codex hooks
     power.rs, lid.rs     battery guard, Low Power Mode, lid state
     display.rs, lock.rs  external displays, screen lock
     history.rs           time awake per day

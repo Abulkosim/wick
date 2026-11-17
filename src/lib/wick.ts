@@ -1,15 +1,14 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { createDemoState, demoApps, demoConnections } from './demo.ts'
 import { z } from 'zod'
-import { agentConnectionSchema, appStateSchema, initialState, runningAppSchema, settingsSchema, startRequestSchema, triggerSchema, type AgentConnection, type AppState, type RunningApp, type Settings, type StartRequest, type Trigger } from './model.ts'
-import { agentPause, agentsHold } from './agents.ts'
+import { agentConnectionSchema, agentConnectionsSchema, appStateSchema, initialState, runningAppSchema, settingsSchema, startRequestSchema, triggerSchema, type AgentConnection, type AppState, type RunningApp, type Settings, type StartRequest, type Trigger } from './model.ts'
+import { agentHolder, agentPause, agentsHold } from './agents.ts'
 import { start } from './session.ts'
 import { stopReason } from './power.ts'
 
 type Command = 'start_session' | 'stop_session' | 'extend_session' | 'set_display' | 'save_settings' | 'reset_store' | 'save_triggers' | 'resume_triggers' | 'clear_history' | 'connect_agent' | 'disconnect_agent'
 type ConnectableAgent = AgentConnection['agent']
 const connectableAgent = agentConnectionSchema.shape.agent
-const connectionsSchema = z.array(agentConnectionSchema).max(8)
 
 /** What each command may send; Rust checks again, this catches a page bug before the call. */
 export const outgoing: Partial<Record<Command, z.ZodType>> = {
@@ -85,7 +84,7 @@ export function useWick() {
     state.value.notice = null
   })
   const stopSession = () => perform('stop_session', undefined, () => {
-    if (state.value.session.mode === 'off' && !state.value.pausedBy && agentsHold(state.value.agents, state.value.settings.agents.enabled)) {
+    if (state.value.session.mode === 'off' && state.value.heldBy && state.value.heldBy === agentHolder(state.value.agents)) {
       state.value.pausedBy = agentPause(state.value.agents)
       state.value.heldBy = null
     } else if (state.value.session.mode === 'off' && state.value.heldBy) {
@@ -101,7 +100,8 @@ export function useWick() {
     state.value.session = { ...session, endsAt: Math.max(session.endsAt, Date.now()) + minutes * 60_000 }
   })
   const resumeTriggers = () => perform('resume_triggers', undefined, () => {
-    if (state.value.pausedBy && state.value.pausedBy !== agentPause(state.value.agents)) state.value.heldBy = state.value.pausedBy.replace(/ quits$/, ' is running').replace(/^you unplug$/, 'on power').replace(/^the display is disconnected$/, 'an external display is connected').replace(/ is quiet$/, ' is busy')
+    if (state.value.pausedBy && state.value.pausedBy === agentPause(state.value.agents)) state.value.heldBy = agentsHold(state.value.agents, state.value.settings.agents.enabled) ? agentHolder(state.value.agents) : null
+    else if (state.value.pausedBy) state.value.heldBy = state.value.pausedBy.replace(/ quits$/, ' is running').replace(/^you unplug$/, 'on power').replace(/^the display is disconnected$/, 'an external display is connected').replace(/ is quiet$/, ' is busy')
     state.value.pausedBy = null
   })
   const saveTriggers = (triggers: Trigger[]) => perform('save_triggers', { triggers }, () => {
@@ -121,7 +121,12 @@ export function useWick() {
     }
   }
   const setDisplay = (display: boolean) => perform('set_display', { display }, () => { state.value.settings = { ...state.value.settings, keepDisplayOn: display } })
-  const saveSettings = (settings: Settings) => perform('save_settings', { settings }, () => { state.value.settings = settings; state.value.recovered = [] })
+  const saveSettings = (settings: Settings) => perform('save_settings', { settings }, () => {
+    const otherHolder = state.value.heldBy !== null && state.value.heldBy !== agentHolder(state.value.agents)
+    state.value.settings = settings
+    state.value.recovered = []
+    if (!otherHolder && !state.value.pausedBy && state.value.session.mode === 'off') state.value.heldBy = agentsHold(state.value.agents, settings.agents.enabled) ? agentHolder(state.value.agents) : null
+  })
 
   async function resetStore(): Promise<boolean> {
     const reset = await perform('reset_store', undefined, () => {
@@ -158,7 +163,7 @@ export function useWick() {
       return connections.map(connection => ({ ...connection }))
     }
     try {
-      return connectionsSchema.parse(await window.__TAURI__!.core.invoke(command, args))
+      return agentConnectionsSchema.parse(await window.__TAURI__!.core.invoke(command, args))
     } catch (error: unknown) {
       if (error instanceof z.ZodError) throw new Error('Wick received an unreadable answer. Reopen Settings to try again.')
       throw new Error(error instanceof Error ? error.message : typeof error === 'string' ? error : 'That did not work. Try again.')

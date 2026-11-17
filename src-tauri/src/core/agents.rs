@@ -101,15 +101,6 @@ impl Hold {
         }
     }
 
-    /// "Claude Code is working in wick"; "build is working" for `wick hold build`.
-    fn working(&self) -> String {
-        match self.agent {
-            Agent::Other => format!("{} is working", self.label),
-            _ if self.label.is_empty() => format!("{} is working", self.name()),
-            _ => format!("{} is working in {}", self.name(), self.label),
-        }
-    }
-
     pub fn is_working(&self) -> bool {
         self.state == State::Working
     }
@@ -518,21 +509,22 @@ pub fn views(holds: &[Hold]) -> Vec<View> {
         .collect()
 }
 
-/// What keeps the computer awake: "Claude Code is working in wick", or "2 agents are working".
+/// What keeps the computer awake: "Claude Code works", or "2 agents work". The project shows
+/// in the Agents card, so the status line stays one line.
 pub fn phrase(working: &[&Hold]) -> Option<String> {
     match working {
         [] => None,
-        [hold] => Some(hold.working()),
-        many => Some(format!("{} agents are working", many.len())),
+        [hold] => Some(format!("{} works", hold.name())),
+        many => Some(format!("{} agents work", many.len())),
     }
 }
 
-/// What a pause waits for: "Claude Code stops working", or "the agents stop working".
+/// What a pause waits for: "Claude Code finishes", or "the agents finish".
 pub fn until(paused: &[&Hold]) -> Option<String> {
     match paused {
         [] => None,
-        [hold] => Some(format!("{} stops working", hold.name())),
-        _ => Some("the agents stop working".into()),
+        [hold] => Some(format!("{} finishes", hold.name())),
+        _ => Some("the agents finish".into()),
     }
 }
 
@@ -918,25 +910,16 @@ mod tests {
         let mut build = hold(Agent::Other, "build", State::Working, 0);
         build.label = "build".into();
         assert_eq!(phrase(&[]), None);
-        assert_eq!(
-            phrase(&[&claude]).as_deref(),
-            Some("Claude Code is working in wick")
-        );
-        assert_eq!(phrase(&[&build]).as_deref(), Some("build is working"));
-        assert_eq!(
-            phrase(&[&claude, &codex]).as_deref(),
-            Some("2 agents are working")
-        );
+        assert_eq!(phrase(&[&claude]).as_deref(), Some("Claude Code works"));
+        assert_eq!(phrase(&[&build]).as_deref(), Some("build works"));
+        assert_eq!(phrase(&[&claude, &codex]).as_deref(), Some("2 agents work"));
         let mut nowhere = codex.clone();
         nowhere.label.clear();
-        assert_eq!(phrase(&[&nowhere]).as_deref(), Some("Codex is working"));
-        assert_eq!(
-            until(&[&claude]).as_deref(),
-            Some("Claude Code stops working")
-        );
+        assert_eq!(phrase(&[&nowhere]).as_deref(), Some("Codex works"));
+        assert_eq!(until(&[&claude]).as_deref(), Some("Claude Code finishes"));
         assert_eq!(
             until(&[&claude, &codex]).as_deref(),
-            Some("the agents stop working")
+            Some("the agents finish")
         );
         assert_eq!(
             ended(&claude, true, "Your Mac can sleep again."),

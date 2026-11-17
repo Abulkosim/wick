@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs a built Wick on Linux without a desktop (run it under xvfb-run and dbus-run-session):
 # it must start, keep the computer awake through logind, report status, and let go on stop
-# and on kill -9. WICK_SMOKE_HOLDS=1 also checks wick hold, wick release and wick run.
+# and on kill -9. It also checks wick hold, wick release and wick run; WICK_SMOKE_HOLDS=0 skips them.
 set -euo pipefail
 bin=$1
 inhibitors() { systemd-inhibit --list --no-pager 2>/dev/null | grep -c "Wick: " || true; }
@@ -22,8 +22,9 @@ check_holds() {
   "$bin" stop
   wait_until 15 "inhibitor left before the hold checks" released
 
+  # Until the agents folder exists Wick reads it on the idle tick, once a minute.
   "$bin" hold smoke --pid "$$"
-  wait_until 15 "no inhibitor while a hold works" held
+  wait_until 75 "no inhibitor while a hold works" held
   status | grep -q '"awake":true' || { echo "not awake while a hold works"; exit 1; }
   "$bin" release smoke
   wait_until 15 "inhibitor left after wick release" released
@@ -63,7 +64,7 @@ sleep 2
 [[ "$(inhibitors)" -eq 0 ]] || { echo "inhibitor left after stop"; exit 1; }
 status | grep -q '"awake":false' || { echo "still awake after stop"; exit 1; }
 
-if [[ "${WICK_SMOKE_HOLDS:-}" == 1 ]]; then check_holds; fi
+if [[ "${WICK_SMOKE_HOLDS:-1}" == 1 ]]; then check_holds; fi
 
 "$bin" start
 sleep 2

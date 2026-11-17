@@ -724,6 +724,20 @@ impl Runtime {
         }
     }
 
+    /// After a connect: makes the agents folder, so the ticker reads holds every 5 s from the
+    /// first hook on instead of after the next idle minute.
+    pub fn expect_agents(&self) {
+        let directory = self
+            .inner
+            .lock()
+            .ok()
+            .and_then(|inner| inner.agents_dir.clone());
+        if let Some(directory) = directory {
+            let _ = std::fs::create_dir_all(directory);
+        }
+        self.poke();
+    }
+
     /// Wakes the ticker, e.g. so it polls faster while the popover is open.
     pub fn poke(&self) {
         self.wake.notify_one();
@@ -1058,6 +1072,57 @@ mod tests {
         )
     }
 
+    /// Compares `value` with a fixture the frontend's unit tests parse through its Zod schemas,
+    /// so both sides agree on every field. `WICK_UPDATE_FIXTURES=1` rewrites it.
+    fn shared_fixture(name: &str, value: &impl Serialize) {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../tests/fixtures")
+            .join(name);
+        let text = serde_json::to_string_pretty(value).unwrap() + "\n";
+        if std::env::var_os("WICK_UPDATE_FIXTURES").is_some() {
+            std::fs::write(&path, &text).unwrap();
+        }
+        let saved = std::fs::read_to_string(&path).unwrap_or_default();
+        assert_eq!(
+            saved.replace("\r\n", "\n"),
+            text,
+            "{name} is out of date; run with WICK_UPDATE_FIXTURES=1"
+        );
+    }
+
+    #[test]
+    fn snapshots_match_the_frontend_fixtures() {
+        use crate::core::connect::{Agent, Connection, Status};
+        use agents::State::{Waiting, Working};
+        let mut inner = Inner::default();
+        let mut codex = agent("b", Working);
+        codex.agent = agents::Agent::Codex;
+        codex.label = "margin".into();
+        inner.set_holds(vec![agent("a", Waiting), codex]);
+        inner.evaluate_triggers(&triggers::Context::default(), &Power::default());
+        assert_eq!(inner.view.held_by.as_deref(), Some("Codex works"));
+        shared_fixture("state.json", &inner.view);
+        let connection = |agent: Agent, status, file: &str, error: Option<&str>| Connection {
+            agent,
+            name: agent.name(),
+            status,
+            file: file.into(),
+            error: error.map(String::from),
+        };
+        shared_fixture(
+            "connections.json",
+            &[
+                connection(
+                    Agent::Claude,
+                    Status::Error,
+                    "~/.claude/settings.json",
+                    Some("~/.claude/settings.json isn’t valid JSON. Wick left it unchanged."),
+                ),
+                connection(Agent::Codex, Status::Connected, "~/.codex/hooks.json", None),
+            ],
+        );
+    }
+
     #[test]
     fn working_agents_hold_like_a_trigger() {
         use agents::State::{Waiting, Working};
@@ -1065,15 +1130,12 @@ mod tests {
         let idle = triggers::Context::default();
         inner.set_holds(vec![agent("a", Working), agent("b", Waiting)]);
         inner.evaluate_triggers(&idle, &Power::default());
-        assert_eq!(
-            inner.view.held_by.as_deref(),
-            Some("Claude Code is working in wick")
-        );
+        assert_eq!(inner.view.held_by.as_deref(), Some("Claude Code works"));
         assert_eq!(inner.held_id.as_deref(), Some(agents::HOLDER));
         assert_eq!(inner.view.agents.len(), 2);
         inner.set_holds(vec![agent("a", Working), agent("b", Working)]);
         inner.evaluate_triggers(&idle, &Power::default());
-        assert_eq!(inner.view.held_by.as_deref(), Some("2 agents are working"));
+        assert_eq!(inner.view.held_by.as_deref(), Some("2 agents work"));
         inner.view.triggers = vec![trigger("p", TriggerKind::Power)];
         let plugged = triggers::Context {
             on_power: true,
@@ -1107,13 +1169,13 @@ mod tests {
         inner.pause_holders();
         assert_eq!(
             inner.view.paused_by.as_deref(),
-            Some("Claude Code stops working")
+            Some("Claude Code finishes")
         );
         inner.evaluate_triggers(&idle, &Power::default());
         assert_eq!(inner.view.held_by, None);
         assert_eq!(
             inner.view.paused_by.as_deref(),
-            Some("Claude Code stops working")
+            Some("Claude Code finishes")
         );
         inner.set_holds(vec![agent("a", Waiting)]);
         inner.evaluate_triggers(&idle, &Power::default());

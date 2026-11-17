@@ -77,6 +77,8 @@ export const agentConnectionSchema = z.object({
   error: shownText.nullable(),
 })
 
+export const agentConnectionsSchema = z.array(agentConnectionSchema).max(8)
+
 export const runningAppSchema = z.object({ name: z.string(), path: z.string() })
 
 export const agentSchema = z.object({

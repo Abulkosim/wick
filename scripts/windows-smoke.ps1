@@ -2,7 +2,7 @@
 # Runs a built Wick on Windows: it must start, hold a power request that powercfg lists under
 # wick.exe while awake, report status, and let go on stop and on a forced kill.
 # powercfg /requests needs an elevated shell; GitHub's Windows runners are elevated.
-# WICK_SMOKE_HOLDS=1 also checks wick hold, wick release and wick run.
+# Also checks wick hold, wick release and wick run; WICK_SMOKE_HOLDS=0 skips them.
 param([Parameter(Mandatory)][string]$Bin)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -88,12 +88,12 @@ function Get-WickRequests {
 function Test-Released { @(Get-WickRequests).Count -eq 0 }
 
 # keepDisplayOn adds a DISPLAY request to the SYSTEM one.
-function Assert-Requests([string]$What) {
+function Assert-Requests([string]$What, [int]$Seconds = 15) {
     $expected = if ($script:status.keepDisplayOn) { 'DISPLAY SYSTEM' } else { 'SYSTEM' }
-    $deadline = (Get-Date).AddSeconds(15)
+    $deadline = (Get-Date).AddSeconds($Seconds)
     while (($got = "$(Get-WickRequests)") -cne $expected) {
         if ((Get-Date) -gt $deadline) {
-            throw "${What}: expected $expected requests from wick.exe, got $(if ($got) { $got } else { 'none' }) (waited 15s)"
+            throw "${What}: expected $expected requests from wick.exe, got $(if ($got) { $got } else { 'none' }) (waited ${Seconds}s)"
         }
         Start-Sleep -Milliseconds 500
     }
@@ -104,8 +104,9 @@ function Test-Holds {
     Invoke-Wick 'stop' | Out-Null
     Wait-Until 'request left before the hold checks' { Test-Released }
 
+    # Until the agents folder exists Wick reads it on the idle tick, once a minute.
     Invoke-Wick 'hold', 'smoke', '--pid', "$PID" | Out-Null
-    Assert-Requests 'wick hold'
+    Assert-Requests 'wick hold' 75
     Get-Status | Out-Null
     Assert-Status 'awake' $true 'not awake while a hold works'
     Invoke-Wick 'release', 'smoke' | Out-Null
@@ -153,7 +154,7 @@ function Test-Wick {
     Assert-Status 'awake' $false 'still awake after stop'
     if ($script:status.session.mode -cne 'off') { throw "session still on after stop: $($script:status.session.mode)" }
 
-    if ($env:WICK_SMOKE_HOLDS -eq '1') { Test-Holds }
+    if ($env:WICK_SMOKE_HOLDS -ne '0') { Test-Holds }
 
     Invoke-Wick 'start' | Out-Null
     Get-Status | Out-Null

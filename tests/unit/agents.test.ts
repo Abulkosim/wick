@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { agentHolder, agentPause, agentPlace, agentStatus, agentsHold, connectionAction, connectionStatus, elapsed } from '../../src/lib/agents.ts'
+import { agentHolder, agentPause, agentPlace, agentStatus, agentsHold, connectionAction, connectionStatus, elapsed, trustFile } from '../../src/lib/agents.ts'
 import { appStateSchema, defaultSettings, initialState, settingsSchema, type Agent, type AgentConnection } from '../../src/lib/model.ts'
 
 const now = 1_794_940_000_000
@@ -80,4 +80,12 @@ test('agents keep the computer awake by default', () => {
   const state = initialState()
   state.settings.agents.enabled = false
   assert.equal(defaultSettings.agents.enabled, true)
+})
+
+test('codex trust lives in config.toml next to its hooks', () => {
+  const codex = (file: string): AgentConnection => ({ agent: 'codex', name: 'Codex', status: 'disconnected', file, error: null })
+  assert.equal(trustFile(connection('disconnected')), null)
+  assert.equal(trustFile(codex('~/.codex/hooks.json')), '~/.codex/config.toml')
+  assert.equal(trustFile(codex('~/.codex/config.toml')), '~/.codex/config.toml')
+  assert.equal(trustFile(codex('C:\\Users\\me\\.codex\\hooks.json')), 'C:\\Users\\me\\.codex\\config.toml')
 })

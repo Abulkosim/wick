@@ -11,7 +11,7 @@ import TriggersCard from './components/TriggersCard.vue'
 import OthersCard from './components/OthersCard.vue'
 import HistoryCard from './components/HistoryCard.vue'
 import AgentsCard from './components/AgentsCard.vue'
-import { agentHolder, agentPause, agentsHold } from './lib/agents'
+import { agentHolder, agentPause } from './lib/agents'
 import { hasHistory } from './lib/history'
 import { othersSummary } from './lib/others'
 import StatusCandle from './components/StatusCandle.vue'
@@ -38,8 +38,8 @@ const startRequest = computed<StartRequest>(() => state.value.settings.startMinu
 const startHint = computed(() => state.value.settings.startMinutes === null ? 'Keep awake until you stop it' : `Keep awake for ${shortDuration(state.value.settings.startMinutes * 60_000)}`)
 const busy = computed(() => pending.value !== null || loading.value)
 const on = computed(() => state.value.session.mode !== 'off')
-const agentsHolding = computed(() => !on.value && !state.value.pausedBy && agentsHold(state.value.agents, state.value.settings.agents.enabled))
-const heldBy = computed(() => agentsHolding.value ? agentHolder(state.value.agents) : state.value.heldBy)
+const heldBy = computed(() => state.value.heldBy)
+const agentsHolding = computed(() => !on.value && heldBy.value !== null && heldBy.value === agentHolder(state.value.agents))
 const held = computed(() => !on.value && heldBy.value !== null)
 const timed = computed(() => state.value.session.mode === 'for' || state.value.session.mode === 'until')
 const statusTitle = computed(() => title(state.value.session, now.value, heldBy.value))

@@ -154,8 +154,10 @@ pub async fn agent_connections() -> Result<Vec<Connection>, String> {
 }
 
 #[tauri::command]
-pub async fn connect_agent(agent: Agent) -> Result<Vec<Connection>, String> {
-    connections_after(move |places| connect::connect(places, agent)).await
+pub async fn connect_agent(app: AppHandle, agent: Agent) -> Result<Vec<Connection>, String> {
+    let connections = connections_after(move |places| connect::connect(places, agent)).await?;
+    app.state::<Arc<Runtime>>().expect_agents();
+    Ok(connections)
 }
 
 #[tauri::command]

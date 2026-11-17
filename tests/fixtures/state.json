@@ -1,0 +1,61 @@
+{
+  "revision": 0,
+  "session": {
+    "mode": "off"
+  },
+  "settings": {
+    "theme": "system",
+    "keepDisplayOn": false,
+    "startMinutes": null,
+    "iconClick": "open",
+    "launchAtLogin": false,
+    "shortcut": null,
+    "batteryGuard": true,
+    "batteryThreshold": 20,
+    "stopInLowPowerMode": false,
+    "notifyOnEnd": true,
+    "notifyOnTrigger": false,
+    "autoCheckUpdates": true,
+    "showTimeLeft": false,
+    "pauseWhenLocked": false,
+    "keepHistory": true,
+    "agents": {
+      "enabled": true
+    }
+  },
+  "error": null,
+  "notice": null,
+  "power": {
+    "onBattery": false,
+    "percent": null,
+    "lowPowerMode": false
+  },
+  "pausedByLock": false,
+  "lidSleeps": null,
+  "triggers": [],
+  "running": [],
+  "heldBy": "Codex works",
+  "pausedBy": null,
+  "others": [],
+  "recovery": null,
+  "recovered": [],
+  "history": [],
+  "agents": [
+    {
+      "id": "codex-b",
+      "agent": "codex",
+      "name": "Codex",
+      "label": "margin",
+      "state": "working",
+      "since": 100
+    },
+    {
+      "id": "claude-a",
+      "agent": "claude",
+      "name": "Claude Code",
+      "label": "wick",
+      "state": "waiting",
+      "since": 100
+    }
+  ]
+}

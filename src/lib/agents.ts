@@ -60,3 +60,8 @@ export function connectionStatus(connection: AgentConnection): string {
     case 'error': return connection.error ?? `Could not read ${connection.file}.`
   }
 }
+
+/** Codex also gets trust entries in config.toml next to its hooks file; null for Claude Code. */
+export function trustFile(connection: AgentConnection): string | null {
+  return connection.agent === 'codex' ? connection.file.replace(/[^/\\]+$/, 'config.toml') : null
+}

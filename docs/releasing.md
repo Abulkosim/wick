@@ -22,7 +22,7 @@ cd src-tauri && cargo fmt --check && cargo clippy --all-targets --locked -- -D w
 - macOS: checks Rust formatting, runs Clippy and the Rust tests (including live IOKit assertion tests), builds the universal Apple Silicon/Intel app and DMG, and smoke-tests the built app (`scripts/macos-smoke.sh`: start, a `Wick:` assertion in `pmset -g assertions` under the app's pid, status, stop, `kill -9`).
 - Windows: checks Rust formatting, runs Clippy and the Rust tests, builds x64 NSIS and MSI installers, and smoke-tests the built `wick.exe` (`scripts/windows-smoke.ps1`: start, SYSTEM (and DISPLAY) requests in `powercfg /requests`, status, stop, forced kill).
 - Linux x64 and arm64 (Ubuntu 22.04, for glibc 2.35+): each checks formatting, runs Clippy and the Rust tests under a private session bus against the runner's logind, builds the AppImage, `.deb` and `.rpm`, and smoke-tests the built binary (`scripts/linux-smoke.sh`: start, logind inhibitor, status, stop, `kill -9`).
-- `WICK_SMOKE_HOLDS=1` adds `wick hold`, `wick release` and `wick run` to all three smoke tests.
+- All three smoke tests also check `wick hold`, `wick release` and `wick run` (`WICK_SMOKE_HOLDS=0` skips them).
 - On a release tag in `Abulkosim/wick` only, the native jobs sign the updater artifacts (Mac archive, Windows installers, AppImage, deb, rpm) with `TAURI_SIGNING_PRIVATE_KEY`, and each Linux job runs the AppImage updater install test against its signed AppImage. The release job then:
   - verifies the signature and its signed version, and generates `latest.json`;
   - writes `SHA256SUMS.txt`;

@@ -7,7 +7,7 @@ A "while `claude` is running" trigger keeps the computer up all night while the 
 ## What was proven first (2026-11-17, x86_64 Linux)
 
 - Claude Code 2.1.326, `claude -p` with `--settings` hooks: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `Stop`, `SessionEnd` fired in order, each with `session_id`, `transcript_path`, `cwd`, `hook_event_name` as JSON on stdin.
-- Codex 0.166: `notify = [program, ...]` in `config.toml` fired once at turn end, payload as the last argv argument. `hooks.json` (events `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PermissionRequest`, `Stop`; feature flag `hooks`) did not fire under `codex exec` in a project or a separate `CODEX_HOME`; open question for the Codex spike.
+- Codex 0.166: `notify = [program, ...]` in `config.toml` fired once at turn end, payload as the last argv argument. `hooks.json` did not fire under `codex exec` at first. The Codex spike (11.1, below) found why: Codex runs a hook only once it is trusted.
 
 ## Holds
 
@@ -43,31 +43,52 @@ Wick drops a hold, deleting its file, when its pid is gone or has a different st
 | Claude Code | `UserPromptSubmit`, `PreToolUse`, `PostToolUse` | working |
 | Claude Code | `Stop`, `Notification` (permission or idle prompt), `PermissionRequest` | waiting |
 | Claude Code | `SessionEnd` | remove |
-| Codex | per the spike: hooks if they can be made reliable, else `notify` (turn end → waiting) plus whatever marks start | |
+| Codex | `UserPromptSubmit`, `PreToolUse`, `PostToolUse` | working |
+| Codex | `PermissionRequest`, `Stop`, `Interrupt` | waiting |
+| Codex | `SessionEnd` | remove (can fire twice; removing is idempotent) |
 
 `SubagentStop` and `SessionStart` change nothing.
+
+Known gaps, accepted: approving a permission request fires nothing in either agent, so an approved long command shows "waiting" until its `PostToolUse`. Treating `PermissionRequest` as working instead would keep the computer up all night when nobody answers. Esc in Claude Code fires no `Stop`; the hold stays working until the next event, an idle-prompt `Notification`, or the process exiting.
+
+## Codex mechanism (11.1 spike, codex-cli 0.166, daemon 0.169)
+
+Hooks, not `notify`. `notify` fires only at turn end, never on Esc, an approval wait or session start or end; in the TUI it also fires for a hidden title-generation thread; and it is a single slot, so taking it replaces the user's own notifier.
+
+Hooks are on by default (`codex features list`: `hooks stable true`), but Codex runs a hook only once it is trusted. Trust lives in `config.toml`:
+
+```toml
+[hooks.state."/Users/me/.codex/hooks.json:stop:<group>:0"]
+trusted_hash = "sha256:<hex>"
+```
+
+The hash is SHA-256 over compact JSON with sorted keys and UTF-8 text as is: `{"event_name":"<snake_event>","hooks":[{"async":false,"command":"<cmd>","timeout":<t>,"type":"command"}]}`, plus `"matcher"` only when set. `<t>` is the effective timeout (default 600; `SessionEnd` and `Interrupt` are clamped to 1). The formula was checked against `currentHash` from `codex app-server` `hooks/list` on 0.166 and 0.169. An untrusted hook is skipped silently under `codex exec`; the TUI shows "Hooks need review". With Wick's computed trust, `codex exec` fired every hook with no bypass flag and the TUI opened with no review screen. The Connect dialog says so: "Adds hooks to ~/.codex/hooks.json and marks them trusted in ~/.codex/config.toml."
+
+Where hooks run: under `codex exec`, the exec process (the hold's pid). In the TUI, the shared `codex app-server` daemon runs them; it is detached, outlives the TUI and serves every TUI session, so a TUI hold follows the daemon's pid. `/quit` fires no `SessionEnd`; the daemon fires it later (seen 1–2 min after). `kill -9` of `codex exec` fires nothing; the pid check drops the hold.
 
 ## CLI
 
 The hook path must not start Tauri, print to stdout (Claude Code adds `UserPromptSubmit` stdout to the prompt), or fail the agent: it always exits 0 within 100 ms, and logs problems to stderr only with `WICK_DEBUG=1`.
 
 - `wick hook claude` reads hook JSON from stdin (at most 1 MB).
-- `wick hook codex [json]` reads JSON from the last argument (notify) or stdin (hooks).
+- `wick hook codex [json]` reads hook JSON from stdin. A `notify` payload as the last argument (`agent-turn-complete` → waiting) is still understood, but Connect doesn't use it.
 - `wick hold <name> [--pid N]`, `wick release <name>`: holds for scripts and other agents (`agent: other`).
 - `wick run -- <command> [args]`: holds while the command runs, releases after, exits with its code. Like `caffeinate -i <command>` on every platform.
 
 ## App
 
-- Read `agents/` on every trigger tick (5 s) and when the popover opens. Working holds keep the computer awake like a trigger. The hold phrase: "Claude Code is working in wick", or "2 agents are working" for more than one.
+- Read `agents/` on every trigger tick (5 s) and when the popover opens. Working holds keep the computer awake like a trigger, after the triggers themselves, and not while the battery guard applies. The hold phrase (`heldBy`): "Claude Code works", or "2 agents work" for more than one; the popover shows "While Claude Code works" and the project in the Agents card, and a screen reader hears "Awake while Claude Code works in wick".
+- The ticker stays at 5 s while holds exist, or while agents are on and the `agents/` folder exists. Connect makes the folder, so the first hook is seen within 5 s. Without it (`wick hold` before any connect) the first hold can wait for the idle tick, up to a minute.
+- Stop with no session pauses working holds until they stop working: "Paused until Claude Code finishes", or "the agents finish". Resume clears the pause.
 - Snapshot field `agents`: `[{ "id": "claude-<session>", "agent": "claude", "name": "Claude Code", "label": "wick", "state": "working", "since": 1794940846 }]`, at most 16, working first then newest. Zod-validated like every payload.
 - Setting `agents: { enabled: bool }` (default true). Off: holds are read and shown but don't keep the computer awake.
-- Notification when the last working hold ends and nothing else keeps the computer awake, under the existing trigger-ended notification setting: "Claude Code finished in wick. Your Mac can sleep again." or "Claude Code is waiting for you in wick." ("computer" on Windows and Linux).
+- Notification when the last working hold ends and nothing else keeps the computer awake, under the existing trigger-ended notification setting: "Claude Code finished in wick. Your Mac can sleep again." or "Claude Code is waiting for you in wick." ("PC" on Windows and "computer" on Linux, like every other notification.)
 
 ## Connecting
 
 Settings → Agents lists Claude Code and Codex: Connected / Not connected / Not installed, and Connect / Disconnect.
 
-- Connect shows what will change ("Adds hooks to ~/.claude/settings.json.") and asks first.
+- Connect shows what will change ("Adds hooks to ~/.claude/settings.json. The file is backed up first.") and asks first.
 - Writes the absolute path of the running Wick binary (`"<exe>" hook claude`) for each event above. Keeps every other key and hook, key order and 2-space indent. Backs the file up once to `settings.json.wick-backup` before the first change. Running it twice changes nothing.
 - Disconnect removes only Wick's entries (command contains ` hook claude` and ends in a Wick binary path).
 - Shows "Reconnect" when the recorded binary path no longer exists (app moved).
@@ -90,3 +111,16 @@ Agents without hooks (gemini, aider, opencode, cursor-agent) are detected only t
 - `agent_connections()` → `[{ "agent": "claude" | "codex", "name": "Claude Code", "status": "connected" | "disconnected" | "stale" | "missing" | "error", "file": "~/.claude/settings.json", "error": null | "…" }]`. `missing`: the agent isn't installed (its config directory doesn't exist). `stale`: hooks point at a Wick binary that no longer exists.
 - `connect_agent(agent)` and `disconnect_agent(agent)` return the same list.
 - `agents.enabled` is saved through the existing settings command like every other setting.
+- One Zod schema per payload in `src/lib/model.ts`. `tests/fixtures/state.json` and `connections.json` are written by a Rust test (`WICK_UPDATE_FIXTURES=1`) and parsed by `tests/unit/fixtures.test.ts`, so a field added on one side fails the other's tests.
+
+## Measured (2026-11-17, x86_64 Linux, debug build)
+
+The app ran under `xvfb-run -a dbus-run-session` with a temporary HOME. Claude Code and Codex were connected through `connect::connect` (the code the Connect button runs). State was polled every 0.5 s from `systemd-inhibit --list`, `wick status` and the hold files.
+
+- `wick hook claude < payload`: 30–49 ms over 20 runs (median 34), 0 bytes of stdout, exit 0.
+- `claude -p --model haiku` (2.1.326) running `sleep 20`: hold working 4 s after launch, inhibitor "Wick: awake while Claude Code works" 2.7 s later, held through the command; hold removed at `SessionEnd` and the inhibitor gone 1.4 s after.
+- `kill -9` of a working `claude`: hold and inhibitor gone 1.7 s later.
+- `Stop` alone (the session stays open, as in an interactive `claude`), sent with `wick hook claude`: hold waiting, inhibitor gone within 5.1 s (one tick); `wick status` `awake: false`.
+- `codex exec` (0.166) running `sleep 20`: hold and inhibitor together (5 s tick); `Stop` → waiting, `SessionEnd` → removed 0.6 s later; inhibitor gone 2.2 s after.
+- `kill -9` of a working `codex exec`: hold and inhibitor gone 1.9 s later.
+- `scripts/linux-smoke.sh` with the hold checks (`wick hold`, `wick release`, `wick run`): passed in 49 s.

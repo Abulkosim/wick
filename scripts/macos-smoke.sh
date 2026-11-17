@@ -2,7 +2,7 @@
 # Runs a built Wick on macOS: it must start, hold a sleep assertion that powerd lists under its
 # own pid while awake, report status, and let go on stop and on kill -9.
 # Usage: macos-smoke.sh <Wick.app | Wick.app/Contents/MacOS/wick>
-# WICK_SMOKE_HOLDS=1 also checks wick hold, wick release and wick run.
+# Also checks wick hold, wick release and wick run; WICK_SMOKE_HOLDS=0 skips them.
 set -euo pipefail
 bin=${1:?Usage: macos-smoke.sh <Wick.app | path to its wick binary>}
 [[ -d "$bin" ]] && bin="$bin/Contents/MacOS/wick"
@@ -87,7 +87,7 @@ running() { status && grep -q '"running":true' "$work/status.json"; }
 expect_assertion() {
   local type=PreventUserIdleSystemSleep
   grep -q '"keepDisplayOn":true' "$work/status.json" && type=PreventUserIdleDisplaySleep
-  wait_until 15 "$1: no Wick assertion owned by pid $app_pid" held
+  wait_until "${2:-15}" "$1: no Wick assertion owned by pid $app_pid" held
   owned | grep -q "$type" || fail "$1: expected a $type assertion, got: $(owned)"
   echo "awake: $(owned | sed 's/^[[:space:]]*//')"
 }
@@ -96,8 +96,9 @@ check_holds() {
   wick stop
   wait_until 15 "assertion left before the hold checks" released
 
+  # Until the agents folder exists Wick reads it on the idle tick, once a minute.
   wick hold smoke --pid "$$"
-  expect_assertion "wick hold"
+  expect_assertion "wick hold" 75
   status
   expect awake true "not awake while a hold works"
   wick release smoke
@@ -145,7 +146,7 @@ status
 expect awake false "still awake after stop"
 expect mode '"off"' "session still on after stop"
 
-if [[ "${WICK_SMOKE_HOLDS:-}" == 1 ]]; then check_holds; fi
+if [[ "${WICK_SMOKE_HOLDS:-1}" == 1 ]]; then check_holds; fi
 
 wick start
 status

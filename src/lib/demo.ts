@@ -1,4 +1,5 @@
 import type { UpdateState } from './updater.ts'
+import { agentHolder, agentsHold } from './agents.ts'
 import { initialState, type Agent, type AgentConnection, type AppState, type Day, type RunningApp, type Trigger } from './model.ts'
 
 export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off', 'clamshell', 'update-available', 'locked', 'conditions', 'history', 'activity', 'low-power', 'schedule', 'toast', 'update-checking', 'update-downloading', 'update-installing', 'update-current', 'agents-working', 'agents-many', 'agents-waiting', 'agents-off', 'agents-connected', 'agents-stale', 'agents-missing', 'agents-error'] as const
@@ -37,7 +38,7 @@ export function demoAgents(scenario: string | null, now = Date.now()): Agent[] {
 
 export function demoConnections(scenario: string | null): AgentConnection[] {
   const claude: AgentConnection = { agent: 'claude', name: 'Claude Code', status: 'disconnected', file: '~/.claude/settings.json', error: null }
-  const codex: AgentConnection = { agent: 'codex', name: 'Codex', status: 'disconnected', file: '~/.codex/config.toml', error: null }
+  const codex: AgentConnection = { agent: 'codex', name: 'Codex', status: 'disconnected', file: '~/.codex/hooks.json', error: null }
   switch (scenario) {
     case 'agents-working':
     case 'agents-waiting':
@@ -75,6 +76,7 @@ export function createDemoState(scenario: string | null, now = Date.now()): AppS
   if (scenario && !['off', 'recovery', 'error', 'battery'].includes(scenario)) state.history = demoHistory([95, 210, 0, 160, 312, 48, 192], now)
   state.agents = demoAgents(scenario, now)
   if (scenario === 'agents-off') state.settings.agents = { enabled: false }
+  if (agentsHold(state.agents, state.settings.agents.enabled)) state.heldBy = agentHolder(state.agents)
   switch (scenario) {
     case 'timed':
       state.session = { mode: 'for', startedAt: now - minutes(18), endsAt: now + minutes(42) }
