@@ -94,7 +94,7 @@ pub fn run() {
         .plugin(shortcut::plugin())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .manage(updates::Updates::default())
+        .manage(updates::Updates::for_this_install())
         .manage(Visibility::default())
         .manage(tray::Presentation::default())
         .invoke_handler(tauri::generate_handler![
