@@ -239,8 +239,12 @@ Design in [agents.md](agents.md). Wick keeps the computer awake while coding age
   Verify: Rust tests (parsing, pid walk, expiry, atomic writes); `wick hook` exits 0 under 100 ms with no stdout; real `claude -p` run holds the logind inhibitor while working and drops it after Stop and after `kill -9`.
 - [ ] **11.3 Popover and Settings.** Agent holds in the popover; Settings → Agents with connect, disconnect, reconnect and the switch.
   Verify: demo states for each; e2e; screenshots light + dark.
-- [ ] **11.4 Connect.** Install and remove hooks for Claude Code and Codex, safely.
+- [x] **11.4 Connect.** Install and remove hooks for Claude Code and Codex, safely.
   Verify: Rust tests over real-looking config files (other hooks kept, idempotent, backup once, invalid JSON untouched, disconnect exact).
+  - 20 tests in `core/connect` (fixtures for both agents, idempotent twice, backup once, invalid JSON and TOML untouched, disconnect byte-exact, stale, missing, symlinked file, Codex trust moves, Windows quoting). Codex hashes checked against ones Codex wrote.
+  - Real runs in a temp HOME with a stub `wick` at a path with a space and "ï": `claude -p --model haiku` fired every event; `codex exec` fired all 8 hooks with no bypass flag; Codex `hooks/list` reported all 8 trusted, also with a symlinked `CODEX_HOME`. Disconnect restored both files byte for byte.
+  - Not run: `Notification` (interactive only), Windows and macOS paths on a real system.
+  - Own `Json` type keeps key order instead of serde_json's `preserve_order`, which would rebuild Tauri and change every other payload.
 - [ ] **11.5 Real-system checks in CI.** macOS and Windows smoke tests like Linux's: the assertion or power request exists while awake and is gone after stop and after a kill.
   Verify: CI green on all platforms.
 - [ ] **11.6 More places to install.** Scoop bucket in this repo; winget, AUR and Flatpak manifests ready to submit.

@@ -73,6 +73,14 @@ Settings → Agents lists Claude Code and Codex: Connected / Not connected / Not
 - Shows "Reconnect" when the recorded binary path no longer exists (app moved).
 - A file that isn't valid JSON is left alone, with an error naming the file.
 
+As built (11.4, `src-tauri/src/core/connect.rs`):
+
+- Claude Code: `$CLAUDE_CONFIG_DIR/settings.json`, else `~/.claude/settings.json`. One group per event, `{ "hooks": [{ "type": "command", "command": "\"<exe>\" hook claude" }] }`, no matcher: a real `claude -p --model haiku` (2.1.326) fired `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, `Stop` and `SessionEnd` into it, and the user's own `Stop` hook still ran.
+- Codex: `$CODEX_HOME/hooks.json` (or `config.toml` when it already holds `[[hooks.<Event>]]`), one group per event with `timeout` 5 (1 for `Interrupt` and `SessionEnd`), plus `[hooks.state."<hooks file>:<event>:<group>:0"] trusted_hash` in `config.toml`, so Codex runs them without its review screen. Codex resolves a symlinked `CODEX_HOME` before naming the file in the key, but not `~/.codex`; Wick does the same. A real `codex exec` (0.166) fired every hook with no bypass flag. Codex shows "Connected" only when every hook is trusted with the current hash; otherwise "Codex doesn’t trust Wick’s hooks yet. Connect again." `[features] hooks = false` shows "Hooks are turned off in ~/.codex/config.toml."
+- Group-level: a group is Wick's when its only handler runs `"<wick binary>" hook <agent>`. Connect keeps Wick's first group in place (rewritten if the path changed), drops other Wick groups, appends where none exists. Disconnect removes Wick's groups, then the event keys and `hooks` object it emptied, and moves the trust keys of later Codex groups down so they stay trusted.
+- Files: written atomically through a symlink to its target, keeping key order (duplicates included), 2-space indent and a trailing newline; TOML through `toml_edit`, keeping comments. Backed up once to `<file>.wick-backup` before the first change. A file Wick created (no backup) is removed when Disconnect empties it. A file changed while Wick was saving it is left alone: "… changed while Wick was saving it. Try again."
+- `<exe>`: the running binary, or `$APPIMAGE` for an AppImage. A translocated macOS app (run from Downloads) gets "Move Wick to Applications, open it from there, then connect." On Windows the path uses forward slashes inside double quotes, which `cmd` and Git Bash both run.
+
 ## Out of scope for v0.9
 
 Agents without hooks (gemini, aider, opencode, cursor-agent) are detected only through `wick hold`/`wick run` or the existing process trigger.

@@ -11,6 +11,7 @@ pub mod activity;
 pub mod assertion;
 pub mod boot;
 pub mod candle;
+pub mod connect;
 pub mod display;
 pub mod history;
 pub mod lid;
