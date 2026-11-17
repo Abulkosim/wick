@@ -229,6 +229,27 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
   Verify: full release flow; both Linux updater install tests pass on their signed AppImages in the tag build.
   Done 2026-11-10: draft verified (docs/verification.md), published on the owner's go-ahead, tap bumped itself. 👤 Update the installed app in-app.
 
+## Phase 11 — Agents and reach → v0.9.0 ⛳
+
+Design in [agents.md](agents.md). Wick keeps the computer awake while coding agents work and lets it sleep when they finish or wait for you. Plus more places to install from, a demo video and a launch kit.
+
+- [ ] **11.1 Codex spike.** Find a reliable way to see when Codex starts and stops working.
+  Verify: real `codex` runs on Linux; the exact config and payloads in agents.md.
+- [ ] **11.2 Holds and CLI.** Hold files, `wick hook claude|codex`, `wick hold`, `wick release`, `wick run`; the app reads holds, keeps awake while one works, drops dead ones, notifies when the last ends.
+  Verify: Rust tests (parsing, pid walk, expiry, atomic writes); `wick hook` exits 0 under 100 ms with no stdout; real `claude -p` run holds the logind inhibitor while working and drops it after Stop and after `kill -9`.
+- [ ] **11.3 Popover and Settings.** Agent holds in the popover; Settings → Agents with connect, disconnect, reconnect and the switch.
+  Verify: demo states for each; e2e; screenshots light + dark.
+- [ ] **11.4 Connect.** Install and remove hooks for Claude Code and Codex, safely.
+  Verify: Rust tests over real-looking config files (other hooks kept, idempotent, backup once, invalid JSON untouched, disconnect exact).
+- [ ] **11.5 Real-system checks in CI.** macOS and Windows smoke tests like Linux's: the assertion or power request exists while awake and is gone after stop and after a kill.
+  Verify: CI green on all platforms.
+- [ ] **11.6 More places to install.** Scoop bucket in this repo; winget, AUR and Flatpak manifests ready to submit.
+  Verify: each validates with its own tool where it runs here. 👤 Submit winget, AUR and Flathub.
+- [ ] **11.7 Demo video and launch kit.** A short video generated from the demo bridge; drafts for Show HN and r/macapps.
+  Verify: one command regenerates the video; numbers in the drafts read from the repo. 👤 Post.
+- [ ] **11.8 Release v0.9.0.**
+  Verify: full release flow.
+
 ## Later / maybe
 
 - winget (Margin `packaging/winget`).
