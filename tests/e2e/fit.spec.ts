@@ -20,7 +20,7 @@ async function desktop(page: Page, scenario: string): Promise<void> {
   }, { state })
 }
 
-for (const scenario of ['off', 'held', 'others']) {
+for (const scenario of ['off', 'held', 'others', 'agents-many']) {
   test(`the native window gets the full content height (${scenario})`, async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 300 })
     await desktop(page, scenario)

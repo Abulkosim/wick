@@ -237,8 +237,11 @@ Design in [agents.md](agents.md). Wick keeps the computer awake while coding age
   Verify: real `codex` runs on Linux; the exact config and payloads in agents.md.
 - [ ] **11.2 Holds and CLI.** Hold files, `wick hook claude|codex`, `wick hold`, `wick release`, `wick run`; the app reads holds, keeps awake while one works, drops dead ones, notifies when the last ends.
   Verify: Rust tests (parsing, pid walk, expiry, atomic writes); `wick hook` exits 0 under 100 ms with no stdout; real `claude -p` run holds the logind inhibitor while working and drops it after Stop and after `kill -9`.
-- [ ] **11.3 Popover and Settings.** Agent holds in the popover; Settings → Agents with connect, disconnect, reconnect and the switch.
+- [x] **11.3 Popover and Settings.** Agent holds in the popover; Settings → Agents with connect, disconnect, reconnect and the switch.
   Verify: demo states for each; e2e; screenshots light + dark.
+  - Demo states `agents-working`, `agents-many`, `agents-waiting`, `agents-off`, and Settings `agents-connected`, `agents-stale`, `agents-missing`, `agents-error` (not connected is the default). `tests/e2e/agents.spec.ts` covers each, keyboard connect and Escape, screenshots light + dark.
+  - The status line reads "While Claude Code works" or "While 2 agents work"; the project shows in the Agents card, since "· wick" wrapped at popover width. Screen readers hear "Awake while Claude Code works in wick".
+  - Stop while only agents hold pauses until they finish ("Paused until Claude Code finishes", Resume), like triggers. Rust's `stop_session` and `resume_triggers` must match this in 11.2.
 - [ ] **11.4 Connect.** Install and remove hooks for Claude Code and Codex, safely.
   Verify: Rust tests over real-looking config files (other hooks kept, idempotent, backup once, invalid JSON untouched, disconnect exact).
 - [ ] **11.5 Real-system checks in CI.** macOS and Windows smoke tests like Linux's: the assertion or power request exists while awake and is gone after stop and after a kill.

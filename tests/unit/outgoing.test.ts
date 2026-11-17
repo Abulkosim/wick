@@ -11,4 +11,8 @@ test('outgoing payloads are checked before they reach Rust', async () => {
   assert.ok(outgoing.save_settings?.safeParse({ settings: defaultSettings }).success)
   assert.ok(!outgoing.save_settings?.safeParse({ settings: { ...defaultSettings, batteryThreshold: 'low' } }).success)
   assert.ok(!outgoing.set_display?.safeParse({ display: 'yes' }).success)
+  assert.ok(outgoing.connect_agent?.safeParse({ agent: 'claude' }).success)
+  assert.ok(outgoing.disconnect_agent?.safeParse({ agent: 'codex' }).success)
+  assert.ok(!outgoing.connect_agent?.safeParse({ agent: 'other' }).success)
+  assert.ok(!outgoing.save_settings?.safeParse({ settings: { ...defaultSettings, agents: { enabled: 'yes' } } }).success)
 })

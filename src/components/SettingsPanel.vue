@@ -11,9 +11,10 @@ import AppSelect from './ui/AppSelect.vue'
 import AppSwitch from './ui/AppSwitch.vue'
 import ShortcutField from './ShortcutField.vue'
 import UpdateSettings from './settings/UpdateSettings.vue'
+import AgentSettings, { type AgentBridge } from './settings/AgentSettings.vue'
 import type { UpdateState } from '../lib/updater'
 
-const props = defineProps<{ updateState: UpdateState; updateBusy: boolean; demo: boolean; settings: Settings; power: Power; recovered: string[]; recovery: string | null; busy: boolean; save: (settings: Settings) => Promise<boolean>; reset: () => Promise<boolean>; clearHistory: () => Promise<boolean>; history: Day[]; shortcuts?: boolean }>()
+const props = defineProps<{ updateState: UpdateState; updateBusy: boolean; demo: boolean; settings: Settings; power: Power; recovered: string[]; recovery: string | null; busy: boolean; save: (settings: Settings) => Promise<boolean>; reset: () => Promise<boolean>; clearHistory: () => Promise<boolean>; history: Day[]; shortcuts?: boolean; agentBridge: AgentBridge }>()
 defineEmits<{ back: []; checkUpdate: []; installUpdate: [] }>()
 
 const themes: { id: Settings['theme']; label: string; icon: 'system' | 'sun' | 'moon' }[] = [
@@ -71,6 +72,7 @@ function setClick(value: string): void {
         <div v-if="!isWindows" class="setting-row"><div><span id="lock-label" class="setting-label">Pause while the screen is locked</span><p>Lets the {{ device }} sleep until you unlock it.</p></div><AppSwitch :model-value="settings.pauseWhenLocked" aria-labelledby="lock-label" :disabled="busy" @update:model-value="patch({ pauseWhenLocked: $event })"/></div>
         <div class="setting-row"><span id="login-label" class="setting-label">Launch at login</span><AppSwitch :model-value="settings.launchAtLogin" aria-labelledby="login-label" :disabled="busy" @update:model-value="patch({ launchAtLogin: $event })"/></div>
       </section>
+      <AgentSettings :enabled="settings.agents.enabled" :settings-busy="busy" :bridge="agentBridge" @enabled="patch({ agents: { enabled: $event } })"/>
       <section v-if="hasBattery(power)" class="settings-section">
         <h2>Battery</h2>
         <div class="setting-row"><div><span id="battery-guard-label" class="setting-label">Stop on low battery</span><p>Only while on battery power.</p></div><AppSwitch :model-value="settings.batteryGuard" aria-labelledby="battery-guard-label" :disabled="busy" @update:model-value="patch({ batteryGuard: $event })"/></div>
