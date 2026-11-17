@@ -121,6 +121,15 @@ pub fn proc_stat(text: &str) -> Option<(i32, String)> {
     Some((ppid, name))
 }
 
+/// State letter and start time (clock ticks after boot) from `/proc/<pid>/stat`.
+pub fn proc_start(text: &str) -> Option<(char, u64)> {
+    let close = text.rfind(')')?;
+    let mut rest = text.get(close + 1..)?.split_whitespace();
+    let state = rest.next()?.chars().next()?;
+    let start = rest.nth(18)?.parse().ok()?;
+    Some((state, start))
+}
+
 /// The basename of argv[0] from `/proc/<pid>/cmdline`: what users typed (`claude`), which the
 /// 15-character kernel name may cut short.
 pub fn argv0(cmdline: &[u8]) -> Option<String> {
@@ -421,6 +430,10 @@ mod tests {
             Some((4100, "Web Content (x)".to_string()))
         );
         assert_eq!(proc_stat("garbage"), None);
+        let stat = "4242 (claude) S 4100 4242 4100 0 -1 4194560 1 0 0 0 5 2 0 0 20 0 9 0 \
+                    123456 1000 200 18446744073709551615";
+        assert_eq!(proc_start(stat), Some(('S', 123456)));
+        assert_eq!(proc_start("7 (x) Z 1 7"), None);
         assert_eq!(
             argv0(b"/usr/local/bin/claude\0--resume\0").as_deref(),
             Some("claude")

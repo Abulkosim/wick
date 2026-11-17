@@ -54,6 +54,20 @@ fn platform_script() -> tauri::plugin::TauriPlugin<tauri::Wry> {
 }
 
 pub fn run() {
+    // Hooks run on every agent event: no app, no plugins, no windowing, and no panic on an
+    // argument that isn't UTF-8.
+    let raw: Vec<String> = std::env::args_os()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect();
+    if let Some(command) = cli::command(&raw) {
+        std::process::exit(match command {
+            Ok(command) => cli::execute(command),
+            Err(error) => {
+                eprintln!("wick: {error}");
+                2
+            }
+        });
+    }
     // WebKitGTK's DMA-BUF renderer draws blank windows on some GPU drivers (NVIDIA, older
     // Mesa); the popover is small enough that the shared-memory path costs nothing.
     #[cfg(target_os = "linux")]

@@ -116,7 +116,7 @@ export function useWick() {
 
   async function resetStore(): Promise<boolean> {
     const reset = await perform('reset_store', undefined, () => {
-      state.value.settings = { ...defaultSettings }
+      state.value.settings = { ...defaultSettings, agents: { ...defaultSettings.agents } }
       state.value.recovery = null
       state.value.recovered = []
     })
