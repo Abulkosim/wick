@@ -9,6 +9,8 @@ ignore = [
     { id = "RUSTSEC-2026-0370", reason = "zvariant via zbus 5 in Tauri plugins; waits on upstream zbus 6" },
     { id = "RUSTSEC-2026-0371", reason = "zbus_names via zbus 5 in Tauri plugins; waits on upstream zbus 6" },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive via zbus 5 in Tauri plugins; waits on upstream zbus 6" },
+    { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained, no vulnerability; local time and schedules; move to jiff later" },
+    { id = "RUSTSEC-2026-0555", reason = "chrono-tz unmaintained, no vulnerability; dev-only DST tests; moves with chrono" },
 ]
 
 [licenses]
