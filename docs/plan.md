@@ -254,10 +254,11 @@ Design in [agents.md](agents.md). Wick keeps the computer awake while coding age
   - Real runs in a temp HOME with a stub `wick` at a path with a space and "ï": `claude -p --model haiku` fired every event; `codex exec` fired all 8 hooks with no bypass flag; Codex `hooks/list` reported all 8 trusted, also with a symlinked `CODEX_HOME`. Disconnect restored both files byte for byte.
   - Not run: `Notification` (interactive only), Windows and macOS paths on a real system.
   - Own `Json` type keeps key order instead of serde_json's `preserve_order`, which would rebuild Tauri and change every other payload.
-- [ ] **11.5 Real-system checks in CI.** macOS and Windows smoke tests like Linux's: the assertion or power request exists while awake and is gone after stop and after a kill.
+- [x] **11.5 Real-system checks in CI.** macOS and Windows smoke tests like Linux's: the assertion or power request exists while awake and is gone after stop and after a kill.
   Verify: CI green on all platforms.
   - `scripts/macos-smoke.sh` and `scripts/windows-smoke.ps1` run in the native CI job after the build; all three smoke tests also check `wick hold`, `wick release` and `wick run` (`WICK_SMOKE_HOLDS=0` skips). The first hold waits up to 75 s, since without a connect the agents folder is read on the idle tick.
-  - Linux smoke with hold checks passed here against the debug build (49 s). macOS and Windows: pending their first CI run.
+  - Linux smoke with hold checks passed here against the debug build (49 s).
+  - CI green on all platforms on PR #51 ([run 44189834927](https://github.com/Abulkosim/wick/actions/runs/44189834927)): macOS, Windows, Linux x64 and arm64 smoke tests, hold checks included. The first Windows run read `wick status` before the app had rewritten it after `wick stop`; status checks after a command now poll for 15 s. Windows Rust tests also caught `~\.claude\settings.json` in Settings; home paths now always show with `/`.
 - [ ] **11.6 More places to install.** Scoop bucket in this repo; winget, AUR and Flatpak manifests ready to submit.
   Verify: each validates with its own tool where it runs here. 👤 Submit winget, AUR and Flathub.
 - [ ] **11.7 Demo video and launch kit.** A short video generated from the demo bridge; drafts for Show HN and r/macapps.
