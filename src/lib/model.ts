@@ -69,6 +69,14 @@ export const daySchema = z.object({
   minutes: z.number().int().min(0).transform((minutes) => Math.min(minutes, 25 * 60)),
 })
 
+export const agentConnectionSchema = z.object({
+  agent: z.enum(['claude', 'codex']),
+  name: shownText,
+  status: z.enum(['connected', 'disconnected', 'stale', 'missing', 'error']),
+  file: shownText,
+  error: shownText.nullable(),
+})
+
 export const runningAppSchema = z.object({ name: z.string(), path: z.string() })
 
 export const agentSchema = z.object({
@@ -77,7 +85,7 @@ export const agentSchema = z.object({
   name: shownText,
   label: shownText,
   state: z.enum(['working', 'waiting']),
-  since: z.number().int(),
+  since: z.number().int().nonnegative(),
 })
 
 export const appStateSchema = z.object({
@@ -114,7 +122,8 @@ export type Schedule = z.infer<typeof scheduleSchema>
 export type RunningApp = z.infer<typeof runningAppSchema>
 export type Other = z.infer<typeof otherSchema>
 export type Day = z.infer<typeof daySchema>
-export type AgentHold = z.infer<typeof agentSchema>
+export type Agent = z.infer<typeof agentSchema>
+export type AgentConnection = z.infer<typeof agentConnectionSchema>
 export type AppState = z.infer<typeof appStateSchema>
 export type StartRequest = z.infer<typeof startRequestSchema>
 
