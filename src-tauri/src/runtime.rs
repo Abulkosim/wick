@@ -1,6 +1,7 @@
 use crate::{
     core::{
         activity,
+        agents::{self, Hold},
         assertion::{self, Assertion, Kind},
         display,
         history::{self, Day, History, Tracker},
@@ -56,6 +57,8 @@ pub struct AppState {
     pub recovered: Vec<String>,
     /// Minutes Wick kept the Mac awake on each of the last seven days, today last.
     pub history: Vec<Day>,
+    /// Coding agents and scripts that told Wick they're working or waiting.
+    pub agents: Vec<agents::View>,
 }
 
 #[derive(Default)]
@@ -76,6 +79,9 @@ struct Inner {
     history_dirty: bool,
     /// When the held assertion's own timeout fires, on the monotonic clock.
     held_until: Option<u64>,
+    /// Agent holds as last read from `agents_dir`.
+    holds: Vec<Hold>,
+    agents_dir: Option<PathBuf>,
     #[cfg(test)]
     refuse_assertions: bool,
 }
@@ -176,21 +182,41 @@ impl Inner {
 
     /// Decides which trigger holds the Mac, from the current list and pause state, so a
     /// Resume or Stop that lands mid-tick isn't overwritten.
+    /// Working agent holds count like a trigger, after the triggers themselves.
     fn evaluate_triggers(&mut self, context: &triggers::Context, power: &Power) {
         let active = triggers::active(&self.view.triggers, context);
-        self.paused
-            .retain(|id| active.iter().any(|trigger| &trigger.id == id));
+        let working: Vec<&Hold> = self.holds.iter().filter(|hold| hold.is_working()).collect();
+        self.paused.retain(|id| {
+            active.iter().any(|trigger| &trigger.id == id)
+                || working.iter().any(|hold| &agents::pause_key(hold) == id)
+        });
         let allowed = power::stop_reason(power, &self.view.settings.guard()).is_none();
         let holder = active
             .iter()
             .find(|trigger| allowed && !self.paused.contains(&trigger.id));
-        self.held_id = holder.map(|trigger| trigger.id.clone());
-        self.view.held_by = holder.map(|trigger| trigger.phrase());
+        let enabled = self.view.settings.agents.enabled;
+        let (paused, free): (Vec<&Hold>, Vec<&Hold>) = working
+            .iter()
+            .partition(|hold| self.paused.contains(&agents::pause_key(hold)));
+        let agents_hold = (holder.is_none() && allowed && enabled)
+            .then(|| agents::phrase(&free))
+            .flatten();
+        self.held_id = holder
+            .map(|trigger| trigger.id.clone())
+            .or_else(|| agents_hold.as_ref().map(|_| agents::HOLDER.to_string()));
+        self.view.held_by = holder.map(|trigger| trigger.phrase()).or(agents_hold);
         self.view.paused_by = active
             .iter()
             .find(|trigger| self.paused.contains(&trigger.id))
-            .map(|trigger| trigger.until());
+            .map(|trigger| trigger.until())
+            .or_else(|| enabled.then(|| agents::until(&paused)).flatten());
         self.view.running = active.iter().map(|trigger| trigger.id.clone()).collect();
+    }
+
+    /// Replaces the agent holds with a fresh read and returns the previous ones.
+    fn set_holds(&mut self, holds: Vec<Hold>) -> Vec<Hold> {
+        self.view.agents = agents::views(&holds);
+        std::mem::replace(&mut self.holds, holds)
     }
 
     /// Counts the time an assertion is held, saving at most once a minute while it is.
@@ -220,7 +246,7 @@ impl Inner {
     /// After `evaluate_triggers`: the notification for a trigger that held the Mac and has now
     /// ended, leaving nothing holding it. A Stop, a session or the battery guard taking over
     /// says nothing.
-    fn trigger_ended(&self, before: Option<&str>) -> Option<String> {
+    fn trigger_ended(&self, before: Option<&str>, holds_before: &[Hold]) -> Option<String> {
         let before = before?;
         if self.view.session.is_on()
             || self.held_id.is_some()
@@ -228,12 +254,50 @@ impl Inner {
         {
             return None;
         }
+        if before == agents::HOLDER {
+            return self.agent_ended(holds_before);
+        }
         let trigger = self
             .view
             .triggers
             .iter()
             .find(|trigger| trigger.id == before)?;
         Some(format!("{}. {}", trigger.ended(), can_sleep()))
+    }
+
+    /// The newest hold that was working and now waits or is gone. None while they all still
+    /// work, so a setting or the battery guard letting go says nothing.
+    fn agent_ended(&self, holds_before: &[Hold]) -> Option<String> {
+        holds_before
+            .iter()
+            .filter(|hold| hold.is_working())
+            .filter_map(
+                |hold| match self.holds.iter().find(|now| now.id() == hold.id()) {
+                    Some(now) if now.is_working() => None,
+                    now => Some((hold, now.is_none())),
+                },
+            )
+            .max_by_key(|(hold, _)| hold.updated)
+            .map(|(hold, gone)| agents::ended(hold, gone, &can_sleep()))
+    }
+
+    /// Stop without a session: every running trigger and working agent is ignored until it
+    /// ends, so nothing else takes over.
+    fn pause_holders(&mut self) {
+        let working: Vec<&Hold> = self.holds.iter().filter(|hold| hold.is_working()).collect();
+        let held = self.held_id.take();
+        self.view.paused_by = match held.as_deref() {
+            Some(agents::HOLDER) => agents::until(&working),
+            held => self
+                .view
+                .triggers
+                .iter()
+                .find(|trigger| Some(trigger.id.as_str()) == held)
+                .map(|trigger| trigger.until()),
+        };
+        self.paused = self.view.running.clone();
+        self.paused
+            .extend(working.iter().map(|hold| agents::pause_key(hold)));
     }
 
     fn changed(&mut self) {
@@ -284,6 +348,7 @@ impl Runtime {
                     history: history.recent(today, history::SHOWN_DAYS),
                     ..AppState::default()
                 },
+                agents_dir: store_path.parent().map(agents::directory),
                 store_path: Some(store_path),
                 history,
                 history_path: Some(history_path),
@@ -448,14 +513,7 @@ impl Runtime {
     pub fn stop(&self, app: &AppHandle) -> Result<AppState, String> {
         self.update(app, |inner, _| {
             if !inner.view.session.is_on() && inner.view.held_by.take().is_some() {
-                inner.paused = inner.view.running.clone();
-                let held = inner.held_id.take();
-                inner.view.paused_by = inner
-                    .view
-                    .triggers
-                    .iter()
-                    .find(|trigger| Some(&trigger.id) == held.as_ref())
-                    .map(|trigger| trigger.until());
+                inner.pause_holders();
             }
             inner.view.session = Session::Off;
             inner.view.notice = None;
@@ -589,6 +647,15 @@ impl Runtime {
             .flatten()
             .map(|list| list.into_iter().map(Other::clipped).collect::<Vec<_>>());
         let lid_sleeps = visible.then(lid::closing_sleeps);
+        let agents_dir = self
+            .inner
+            .lock()
+            .ok()
+            .and_then(|inner| inner.agents_dir.clone());
+        let holds = agents_dir
+            .as_deref()
+            .map(|directory| agents::read_all(directory, now / 1000, agents::alive))
+            .unwrap_or_default();
         let mut ended: Option<(String, bool)> = None;
         let result = self.update_quiet(app, |inner, now| {
             inner.view.power = power;
@@ -600,8 +667,9 @@ impl Runtime {
                 inner.view.lid_sleeps = lid_sleeps;
             }
             let before = inner.held_id.clone();
+            let holds_before = inner.set_holds(holds);
             inner.evaluate_triggers(&context, &power);
-            if let Some(message) = inner.trigger_ended(before.as_deref()) {
+            if let Some(message) = inner.trigger_ended(before.as_deref(), &holds_before) {
                 ended = Some((message, inner.view.settings.notify_on_trigger));
             }
             if let Due::End { notice, message } = due(&inner.view, power, now) {
@@ -624,8 +692,12 @@ impl Runtime {
         #[cfg(target_os = "linux")]
         tray::panel::refresh();
         tray::update(app, &state, now);
+        // The agents folder appears with the first hook; until then the idle tick is enough.
         let watching = state.triggers.iter().any(|trigger| trigger.enabled)
             || (state.settings.pause_when_locked && holding)
+            || !state.agents.is_empty()
+            || (state.settings.agents.enabled
+                && agents_dir.as_deref().is_some_and(std::path::Path::is_dir))
             || visible;
         match state.session.remaining_ms(now) {
             // A floor, so a session that can't end yet never spins the ticker.
@@ -952,13 +1024,13 @@ mod tests {
         let before = inner.held_id.clone();
         inner.evaluate_triggers(&triggers::Context::default(), &Power::default());
         assert_eq!(
-            inner.trigger_ended(before.as_deref()).as_deref(),
+            inner.trigger_ended(before.as_deref(), &[]).as_deref(),
             Some(format!("Unplugged. {}", can_sleep()).as_str())
         );
         inner.evaluate_triggers(&plugged, &Power::default());
         inner.view.session = Session::Indefinite { started_at: 0 };
         inner.evaluate_triggers(&triggers::Context::default(), &Power::default());
-        assert_eq!(inner.trigger_ended(Some("p")), None);
+        assert_eq!(inner.trigger_ended(Some("p"), &[]), None);
         inner.view.session = Session::Off;
         let low = Power {
             on_battery: true,
@@ -966,8 +1038,121 @@ mod tests {
             low_power_mode: false,
         };
         inner.evaluate_triggers(&plugged, &low);
-        assert_eq!(inner.trigger_ended(Some("p")), None);
-        assert_eq!(inner.trigger_ended(None), None);
+        assert_eq!(inner.trigger_ended(Some("p"), &[]), None);
+        assert_eq!(inner.trigger_ended(None, &[]), None);
+    }
+
+    fn agent(session: &str, state: agents::State) -> Hold {
+        agents::next(
+            None,
+            agents::Update {
+                agent: agents::Agent::Claude,
+                session: session.into(),
+                label: "wick".into(),
+                cwd: None,
+                state,
+                pid: None,
+                pid_start: None,
+            },
+            100,
+        )
+    }
+
+    #[test]
+    fn working_agents_hold_like_a_trigger() {
+        use agents::State::{Waiting, Working};
+        let mut inner = Inner::default();
+        let idle = triggers::Context::default();
+        inner.set_holds(vec![agent("a", Working), agent("b", Waiting)]);
+        inner.evaluate_triggers(&idle, &Power::default());
+        assert_eq!(
+            inner.view.held_by.as_deref(),
+            Some("Claude Code is working in wick")
+        );
+        assert_eq!(inner.held_id.as_deref(), Some(agents::HOLDER));
+        assert_eq!(inner.view.agents.len(), 2);
+        inner.set_holds(vec![agent("a", Working), agent("b", Working)]);
+        inner.evaluate_triggers(&idle, &Power::default());
+        assert_eq!(inner.view.held_by.as_deref(), Some("2 agents are working"));
+        inner.view.triggers = vec![trigger("p", TriggerKind::Power)];
+        let plugged = triggers::Context {
+            on_power: true,
+            ..triggers::Context::default()
+        };
+        inner.evaluate_triggers(&plugged, &Power::default());
+        assert_eq!(inner.view.held_by.as_deref(), Some("on power"));
+        inner.view.triggers.clear();
+        inner.view.settings.agents.enabled = false;
+        inner.evaluate_triggers(&idle, &Power::default());
+        assert_eq!(inner.view.held_by, None);
+        assert_eq!(inner.view.agents.len(), 2);
+        inner.view.settings.agents.enabled = true;
+        let low = Power {
+            on_battery: true,
+            percent: Some(5),
+            low_power_mode: false,
+        };
+        inner.evaluate_triggers(&idle, &low);
+        assert_eq!(inner.view.held_by, None);
+    }
+
+    #[test]
+    fn stop_pauses_working_agents_until_they_stop() {
+        use agents::State::{Waiting, Working};
+        let mut inner = Inner::default();
+        let idle = triggers::Context::default();
+        inner.set_holds(vec![agent("a", Working)]);
+        inner.evaluate_triggers(&idle, &Power::default());
+        inner.view.held_by = None;
+        inner.pause_holders();
+        assert_eq!(
+            inner.view.paused_by.as_deref(),
+            Some("Claude Code stops working")
+        );
+        inner.evaluate_triggers(&idle, &Power::default());
+        assert_eq!(inner.view.held_by, None);
+        assert_eq!(
+            inner.view.paused_by.as_deref(),
+            Some("Claude Code stops working")
+        );
+        inner.set_holds(vec![agent("a", Waiting)]);
+        inner.evaluate_triggers(&idle, &Power::default());
+        assert!(inner.paused.is_empty());
+        assert_eq!(inner.view.paused_by, None);
+        inner.set_holds(vec![agent("a", Working)]);
+        inner.evaluate_triggers(&idle, &Power::default());
+        assert!(inner.view.held_by.is_some());
+    }
+
+    #[test]
+    fn the_last_working_agent_says_when_it_waits_or_finishes() {
+        use agents::State::{Waiting, Working};
+        let mut inner = Inner::default();
+        let idle = triggers::Context::default();
+        let step = |inner: &mut Inner, holds: Vec<Hold>| {
+            let before = inner.held_id.clone();
+            let previous = inner.set_holds(holds);
+            inner.evaluate_triggers(&idle, &Power::default());
+            inner.trigger_ended(before.as_deref(), &previous)
+        };
+        assert_eq!(step(&mut inner, vec![agent("a", Working)]), None);
+        assert_eq!(
+            step(&mut inner, vec![agent("a", Waiting)]).as_deref(),
+            Some("Claude Code is waiting for you in wick.")
+        );
+        step(&mut inner, vec![agent("a", Working), agent("b", Working)]);
+        assert_eq!(step(&mut inner, vec![agent("b", Working)]), None);
+        assert_eq!(
+            step(&mut inner, Vec::new()),
+            Some(format!("Claude Code finished in wick. {}", can_sleep()))
+        );
+        step(&mut inner, vec![agent("a", Working)]);
+        inner.view.settings.agents.enabled = false;
+        assert_eq!(step(&mut inner, vec![agent("a", Working)]), None);
+        inner.view.settings.agents.enabled = true;
+        step(&mut inner, vec![agent("a", Working)]);
+        inner.view.session = Session::Indefinite { started_at: 0 };
+        assert_eq!(step(&mut inner, Vec::new()), None);
     }
 
     #[test]
