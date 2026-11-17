@@ -155,10 +155,14 @@ fn unusable_location() -> String {
     "Wick’s location has characters agents can’t run. Move Wick and try again.".into()
 }
 
-/// `~/.claude/settings.json` for a file under the home folder, else the full path.
+/// `~/.claude/settings.json` for a file under the home folder, on every platform, else the
+/// full path.
 pub fn shown(path: &Path, home: Option<&Path>) -> String {
     match home.and_then(|home| path.strip_prefix(home).ok()) {
-        Some(rest) => Path::new("~").join(rest).display().to_string(),
+        Some(rest) => std::iter::once("~".into())
+            .chain(rest.iter().map(|part| part.to_string_lossy()))
+            .collect::<Vec<_>>()
+            .join("/"),
         None => path.display().to_string(),
     }
 }

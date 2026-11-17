@@ -450,10 +450,10 @@ model = "gpt-6.1-sol"   # pinned
 [projects."/home/me/work"]
 trust_level = "trusted"
 
-[hooks.state."HOOKS:stop:0:0"]
+[hooks.state.'HOOKS:stop:0:0']
 trusted_hash = "sha256:user-stop"
 
-[hooks.state."HOOKS:pre_tool_use:0:0"]
+[hooks.state.'HOOKS:pre_tool_use:0:0']
 trusted_hash = "sha256:user-pre"
 enabled = true
 "#;
@@ -579,7 +579,7 @@ fn codex_disconnect_moves_the_trust_of_later_hooks() {
     fs::write(&hooks, pretty_value(&value)).unwrap();
     let mut text = read(&config);
     text.push_str(&format!(
-        "\n[hooks.state.\"{key}:stop:2:0\"]\ntrusted_hash = \"sha256:later\"\n"
+        "\n[hooks.state.'{key}:stop:2:0']\ntrusted_hash = \"sha256:later\"\n"
     ));
     fs::write(&config, text).unwrap();
     assert_eq!(home.status(Agent::Codex).status, Status::Connected);
@@ -645,9 +645,7 @@ fn a_leftover_trust_entry_does_not_carry_over_to_a_new_hook() {
     let key = hooks.display().to_string();
     fs::write(
         &config,
-        format!(
-            "[hooks.state.\"{key}:stop:1:0\"]\ntrusted_hash = \"sha256:old\"\nenabled = false\n"
-        ),
+        format!("[hooks.state.'{key}:stop:1:0']\ntrusted_hash = \"sha256:old\"\nenabled = false\n"),
     )
     .unwrap();
     connect(&home.places, Agent::Codex).unwrap();
