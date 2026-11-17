@@ -243,8 +243,9 @@ Design in [agents.md](agents.md). Wick keeps the computer awake while coding age
   Verify: Rust tests over real-looking config files (other hooks kept, idempotent, backup once, invalid JSON untouched, disconnect exact).
 - [ ] **11.5 Real-system checks in CI.** macOS and Windows smoke tests like Linux's: the assertion or power request exists while awake and is gone after stop and after a kill.
   Verify: CI green on all platforms.
-- [ ] **11.6 More places to install.** Scoop bucket in this repo; winget, AUR and Flatpak manifests ready to submit.
+- [x] **11.6 More places to install.** Scoop bucket in this repo; winget, AUR and Flatpak manifests ready to submit.
   Verify: each validates with its own tool where it runs here. 👤 Submit winget, AUR and Flathub.
+  Done 2026-11-17: `node packaging/bump.mjs vX.Y.Z` rewrites all channels from the release's `SHA256SUMS.txt`; tests check they agree. Scoop and winget pass their JSON schemas (Scoop `schema.json`, winget 1.12.0); the MSI's tables confirm `PFiles\Wick\wick.exe` (`msiinfo`). AUR: Debian's `makepkg` builds `wick-bin` from the v0.8.0 `.deb` with passing checksums and `--printsrcinfo` matches `.SRCINFO`; no `namcap` here. Flatpak: `appstreamcli validate` and `desktop-file-validate` pass and the build commands run against the `.deb`; no `flatpak-builder` (GNOME SDK too large for this disk). Flathub ID is `io.github.abulkosim.wick`, since `com.abulkosim` needs a domain. Scoop, AUR and Flatpak installs mark themselves; Wick then leaves updates to them (Settings → Updates: "Updates come from Scoop."). Flatpak limits (command triggers, Launch at login) in [packaging/README.md](../packaging/README.md). 👤 Try `scoop install` on Windows; submit winget and AUR; Flathub after Launch at login works in Flatpak.
 - [ ] **11.7 Demo video and launch kit.** A short video generated from the demo bridge; drafts for Show HN and r/macapps.
   Verify: one command regenerates the video; numbers in the drafts read from the repo. 👤 Post.
 - [ ] **11.8 Release v0.9.0.**
@@ -252,7 +253,7 @@ Design in [agents.md](agents.md). Wick keeps the computer awake while coding age
 
 ## Later / maybe
 
-- winget (Margin `packaging/winget`).
+- Launch at login in Flatpak through the Background portal, then submit to Flathub.
 
 ## Not doing
 

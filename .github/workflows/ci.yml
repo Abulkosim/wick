@@ -51,7 +51,7 @@ jobs:
       - name: Run unit tests
         run: |
           pnpm test
-          node --test scripts/*.test.mjs packaging/homebrew/*.test.mjs
+          node --test scripts/*.test.mjs packaging/*.test.mjs packaging/homebrew/*.test.mjs
       - name: Check the Raycast extension
         working-directory: raycast
         run: |

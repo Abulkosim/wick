@@ -39,6 +39,13 @@ Download **v0.8.0** from [GitHub Releases](https://github.com/Abulkosim/wick/rel
 brew install --cask abulkosim/tap/wick
 ```
 
+**Scoop** (Windows):
+
+```powershell
+scoop bucket add wick https://github.com/Abulkosim/wick
+scoop install wick/wick
+```
+
 Builds are not signed with an Apple Developer ID or a Windows publisher certificate, so the first launch shows a warning.
 
 **macOS.** Drag Wick to Applications and open it. When **“Wick” Not Opened** appears, click **Done**, then **System Settings → Privacy & Security → Open Anyway**. Wick lives in the menu bar, with no Dock icon.

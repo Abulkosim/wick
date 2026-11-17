@@ -59,7 +59,7 @@ docker exec -w /tmp wick-linux xvfb-run -a dbus-run-session -- bash /src/scripts
 pnpm build        # type check and frontend assets; native checks need these
 pnpm test
 pnpm test:e2e
-node --test scripts/*.test.mjs packaging/homebrew/*.test.mjs
+node --test scripts/*.test.mjs packaging/*.test.mjs packaging/homebrew/*.test.mjs
 (cd raycast && npm test && npm run check && npx ray build -e dist)
 cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
