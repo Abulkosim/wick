@@ -154,6 +154,46 @@ mod native {
         (!name.is_empty()).then_some((ppid, name))
     }
 
+    /// `pbi_start_tvsec`: when the process started, in Unix seconds.
+    pub fn start_time(pid: i32) -> Option<i64> {
+        const START: usize = 120;
+        let mut buffer = [0_u8; BSDINFO_SIZE];
+        let size = unsafe {
+            proc_pidinfo(
+                pid,
+                PROC_PIDTBSDINFO,
+                0,
+                buffer.as_mut_ptr().cast(),
+                BSDINFO_SIZE as c_int,
+            )
+        };
+        if size as usize != BSDINFO_SIZE {
+            return None;
+        }
+        let seconds = u64::from_ne_bytes(buffer[START..START + 8].try_into().ok()?);
+        i64::try_from(seconds).ok().filter(|&seconds| seconds > 0)
+    }
+
+    /// `pbi_status == SSTOP`: suspended by Ctrl+Z or a debugger.
+    pub fn stopped(pid: i32) -> bool {
+        const STATUS: usize = 4;
+        const SSTOP: u32 = 4;
+        let mut buffer = [0_u8; BSDINFO_SIZE];
+        let size = unsafe {
+            proc_pidinfo(
+                pid,
+                PROC_PIDTBSDINFO,
+                0,
+                buffer.as_mut_ptr().cast(),
+                BSDINFO_SIZE as c_int,
+            )
+        };
+        size as usize == BSDINFO_SIZE
+            && buffer[STATUS..STATUS + 4]
+                .try_into()
+                .is_ok_and(|bytes| u32::from_ne_bytes(bytes) == SSTOP)
+    }
+
     pub fn path(pid: i32) -> Option<String> {
         let mut buffer = [0_u8; 4096];
         let length = unsafe { proc_pidpath(pid, buffer.as_mut_ptr().cast(), buffer.len() as u32) };
@@ -196,6 +236,98 @@ pub fn path(pid: i32) -> Option<String> {
 #[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 pub fn path(_pid: i32) -> Option<String> {
     None
+}
+
+/// Whether `pid` is a running process.
+#[cfg(target_os = "linux")]
+pub fn alive(pid: u32) -> bool {
+    super::linux::system::alive(pid)
+}
+
+#[cfg(windows)]
+pub fn alive(pid: u32) -> bool {
+    pid > 0 && super::win32::process_alive(pid)
+}
+
+#[cfg(all(unix, not(target_os = "linux")))]
+pub fn alive(pid: u32) -> bool {
+    extern "C" {
+        fn kill(pid: i32, signal: i32) -> i32;
+    }
+    const EPERM: i32 = 1;
+    i32::try_from(pid).is_ok_and(|pid| {
+        pid > 0
+            && (unsafe { kill(pid, 0) } == 0
+                || std::io::Error::last_os_error().raw_os_error() == Some(EPERM))
+    })
+}
+
+#[cfg(not(any(unix, windows)))]
+pub fn alive(_pid: u32) -> bool {
+    false
+}
+
+/// Whether `pid` is suspended (Ctrl+Z). Windows has no such state for a whole process.
+#[cfg(target_os = "linux")]
+pub fn stopped(pid: u32) -> bool {
+    super::linux::system::stopped(pid)
+}
+
+#[cfg(target_os = "macos")]
+pub fn stopped(pid: u32) -> bool {
+    i32::try_from(pid).is_ok_and(|pid| pid > 0 && native::stopped(pid))
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+pub fn stopped(_pid: u32) -> bool {
+    false
+}
+
+/// When `pid` started, in Unix seconds, so a reused pid can be told apart.
+#[cfg(target_os = "linux")]
+pub fn start_time(pid: u32) -> Option<i64> {
+    super::linux::system::start_time(pid)
+}
+
+#[cfg(target_os = "macos")]
+pub fn start_time(pid: u32) -> Option<i64> {
+    native::start_time(i32::try_from(pid).ok()?)
+}
+
+#[cfg(windows)]
+pub fn start_time(pid: u32) -> Option<i64> {
+    super::win32::process_start(pid)
+}
+
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
+pub fn start_time(_pid: u32) -> Option<i64> {
+    None
+}
+
+/// Each process's parent pid and command name, keyed by pid. Windows has no cheap lookup of
+/// one process's parent, so it is read for all at once.
+#[cfg(windows)]
+pub fn parents() -> std::collections::HashMap<u32, (u32, String)> {
+    use super::win32::*;
+    let mut table = std::collections::HashMap::new();
+    unsafe {
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snapshot == INVALID_HANDLE_VALUE {
+            return table;
+        }
+        let mut entry: ProcessEntry32W = std::mem::zeroed();
+        entry.size = std::mem::size_of::<ProcessEntry32W>() as u32;
+        let mut more = Process32FirstW(snapshot, &mut entry) != 0;
+        while more {
+            table.insert(
+                entry.process_id,
+                (entry.parent_process_id, from_wide(&entry.exe_file)),
+            );
+            more = Process32NextW(snapshot, &mut entry) != 0;
+        }
+        CloseHandle(snapshot);
+    }
+    table
 }
 
 /// Every process with its command name; executable paths only when `with_paths` (app

@@ -1,0 +1,16 @@
+[
+  {
+    "agent": "claude",
+    "name": "Claude Code",
+    "status": "error",
+    "file": "~/.claude/settings.json",
+    "error": "~/.claude/settings.json isn’t valid JSON. Wick left it unchanged."
+  },
+  {
+    "agent": "codex",
+    "name": "Codex",
+    "status": "connected",
+    "file": "~/.codex/hooks.json",
+    "error": null
+  }
+]

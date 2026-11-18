@@ -229,6 +229,46 @@ A full pass over code, tests, CI, docs and UX for technical debt, defects and po
   Verify: full release flow; both Linux updater install tests pass on their signed AppImages in the tag build.
   Done 2026-11-10: draft verified (docs/verification.md), published on the owner's go-ahead, tap bumped itself. 👤 Update the installed app in-app.
 
+## Phase 11 — Agents and reach → v0.9.0 ⛳
+
+Design in [agents.md](agents.md). Wick keeps the computer awake while coding agents work and lets it sleep when they finish or wait for you. Plus more places to install from, a demo video and a launch kit.
+
+- [x] **11.1 Codex spike.** Find a reliable way to see when Codex starts and stops working.
+  Verify: real `codex` runs on Linux; the exact config and payloads in agents.md.
+  - Hooks, not `notify`. Hooks were skipped because Codex runs only trusted hooks; trust is `[hooks.state."<file>:<event>:<group>:0"] trusted_hash` in `config.toml`, a SHA-256 Wick can compute (checked against Codex's own `hooks/list` on 0.166 and 0.169). With it, `codex exec` and the TUI fired every hook with no bypass flag or review screen.
+  - Mapping: `UserPromptSubmit`/`PreToolUse`/`PostToolUse` working; `PermissionRequest`/`Stop`/`Interrupt` waiting; `SessionEnd` removes. In the TUI the shared app-server daemon runs hooks, so its pid is the hold's. Approving a request fires nothing (same in Claude Code); accepted.
+- [x] **11.2 Holds and CLI.** Hold files, `wick hook claude|codex`, `wick hold`, `wick release`, `wick run`; the app reads holds, keeps awake while one works, drops dead ones, notifies when the last ends.
+  Verify: Rust tests (parsing, pid walk, expiry, atomic writes); `wick hook` exits 0 under 100 ms with no stdout; real `claude -p` run holds the logind inhibitor while working and drops it after Stop and after `kill -9`.
+  Progress 2026-11-17: `core/agents.rs` (holds, events, expiry, pid walk, phrases), `wick hook|hold|release|run` before any Tauri init, runtime holds like a trigger (Stop pauses working agents until they stop), `agents.enabled` setting, snapshot `agents`. Debug binary on Linux: `wick hook claude < payload` 32–40 ms (median 34, 20 runs), 0 bytes stdout, exit 0 on bad JSON, unknown agent and over 1 MB. Real `claude -p --model haiku` with `--settings` hooks: working with the right pid at `UserPromptSubmit`, waiting at `Stop`, file gone at `SessionEnd`. `wick run`: exit code forwarded, hold gone after exit, SIGTERM, SIGINT and terminal Ctrl+C (child got it once).
+  - Done 2026-11-17 with the running debug app (xvfb, temp HOME), hooks installed through `connect::connect`: real `claude -p --model haiku` running `sleep 20` held the logind inhibitor "Wick: awake while Claude Code works" while working, gone 1.4 s after the session ended; `Stop` alone released it within one tick (5.1 s); `kill -9` of a working `claude` dropped it in 1.7 s. Same for `codex exec`: held while working, gone 2.2 s after `SessionEnd`, 1.9 s after `kill -9`. Hook: 30–49 ms (median 34), no stdout.
+  - Phrases follow the popover: `heldBy` "Claude Code works" / "2 agents work", pause "Claude Code finishes" / "the agents finish". Connect makes the `agents/` folder so the first hook is read within 5 s, not after the idle minute.
+- [x] **11.3 Popover and Settings.** Agent holds in the popover; Settings → Agents with connect, disconnect, reconnect and the switch.
+  Verify: demo states for each; e2e; screenshots light + dark.
+  - Demo states `agents-working`, `agents-many`, `agents-waiting`, `agents-off`, and Settings `agents-connected`, `agents-stale`, `agents-missing`, `agents-error` (not connected is the default). `tests/e2e/agents.spec.ts` covers each, keyboard connect and Escape, screenshots light + dark.
+  - The status line reads "While Claude Code works" or "While 2 agents work"; the project shows in the Agents card, since "· wick" wrapped at popover width. Screen readers hear "Awake while Claude Code works in wick".
+  - Stop while only agents hold pauses until they finish ("Paused until Claude Code finishes", Resume), like triggers. Rust's `stop_session` and `resume_triggers` match it since the merge.
+  - Integration: the popover shows Rust's `heldBy`, and knows agents hold when it equals the agents phrase. Codex's Connect dialog names both files: "Adds hooks to ~/.codex/hooks.json and marks them trusted in ~/.codex/config.toml. Both files are backed up first." `tests/fixtures/{state,connections}.json`, written by a Rust test and parsed by Zod in `tests/unit/fixtures.test.ts`, keep both sides on the same fields.
+- [x] **11.4 Connect.** Install and remove hooks for Claude Code and Codex, safely.
+  Verify: Rust tests over real-looking config files (other hooks kept, idempotent, backup once, invalid JSON untouched, disconnect exact).
+  - 20 tests in `core/connect` (fixtures for both agents, idempotent twice, backup once, invalid JSON and TOML untouched, disconnect byte-exact, stale, missing, symlinked file, Codex trust moves, Windows quoting). Codex hashes checked against ones Codex wrote.
+  - Real runs in a temp HOME with a stub `wick` at a path with a space and "ï": `claude -p --model haiku` fired every event; `codex exec` fired all 8 hooks with no bypass flag; Codex `hooks/list` reported all 8 trusted, also with a symlinked `CODEX_HOME`. Disconnect restored both files byte for byte.
+  - Not run: `Notification` (interactive only), Windows and macOS paths on a real system.
+  - Own `Json` type keeps key order instead of serde_json's `preserve_order`, which would rebuild Tauri and change every other payload.
+- [x] **11.5 Real-system checks in CI.** macOS and Windows smoke tests like Linux's: the assertion or power request exists while awake and is gone after stop and after a kill.
+  Verify: CI green on all platforms.
+  - `scripts/macos-smoke.sh` and `scripts/windows-smoke.ps1` run in the native CI job after the build; all three smoke tests also check `wick hold`, `wick release` and `wick run` (`WICK_SMOKE_HOLDS=0` skips). The first hold waits up to 75 s, since without a connect the agents folder is read on the idle tick.
+  - Linux smoke with hold checks passed here against the debug build (49 s).
+  - CI green on all platforms on PR #51 ([run 44189834927](https://github.com/Abulkosim/wick/actions/runs/44189834927)): macOS, Windows, Linux x64 and arm64 smoke tests, hold checks included. The first Windows run read `wick status` before the app had rewritten it after `wick stop`; status checks after a command now poll for 15 s. Windows Rust tests also caught `~\.claude\settings.json` in Settings; home paths now always show with `/`.
+- [ ] **11.6 More places to install.** Scoop bucket in this repo; winget, AUR and Flatpak manifests ready to submit.
+  Verify: each validates with its own tool where it runs here. 👤 Submit winget, AUR and Flathub.
+- [ ] **11.7 Demo video and launch kit.** A short video generated from the demo bridge; drafts for Show HN and r/macapps.
+  Verify: one command regenerates the video; numbers in the drafts read from the repo. 👤 Post.
+- [ ] **11.9 Console `wick` on Windows.** Release `wick.exe` is a GUI-subsystem program, so `cmd` and PowerShell neither wait for `wick run`/`hold`/`status` nor show their output (cold review, 2026-11-17). Ship a console-subsystem `wick-cli.exe` next to it for the CLI, or document `Start-Process -Wait`.
+  Verify: the Windows smoke test runs `wick run -- cmd /c exit 7` through `cmd /c` without redirection and sees 7; output appears in the same console.
+  - Not a one-line fix: an `externalBin` sidecar built from this crate trips `tauri-build`'s check for the file before the crate compiles. Documented in docs/agents.md meanwhile.
+- [ ] **11.8 Release v0.9.0.**
+  Verify: full release flow.
+
 ## Later / maybe
 
 - winget (Margin `packaging/winget`).

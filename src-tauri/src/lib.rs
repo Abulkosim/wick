@@ -54,6 +54,20 @@ fn platform_script() -> tauri::plugin::TauriPlugin<tauri::Wry> {
 }
 
 pub fn run() {
+    // Hooks run on every agent event: no app, no plugins, no windowing, and no panic on an
+    // argument that isn't UTF-8.
+    let raw: Vec<String> = std::env::args_os()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect();
+    if let Some(command) = cli::command(&raw) {
+        std::process::exit(match command {
+            Ok(command) => cli::execute(command),
+            Err(error) => {
+                eprintln!("wick: {error}");
+                2
+            }
+        });
+    }
     // WebKitGTK's DMA-BUF renderer draws blank windows on some GPU drivers (NVIDIA, older
     // Mesa); the popover is small enough that the shared-memory path costs nothing.
     #[cfg(target_os = "linux")]
@@ -109,6 +123,9 @@ pub fn run() {
             commands::resume_triggers,
             commands::clear_history,
             commands::running_apps,
+            commands::agent_connections,
+            commands::connect_agent,
+            commands::disconnect_agent,
             updates::get_update_status,
             updates::check_for_update,
             updates::install_update,
@@ -122,6 +139,9 @@ pub fn run() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             let path = app.path().app_data_dir()?.join("settings.json");
             let runtime = Arc::new(Runtime::new(path));
+            if let Some(directory) = status::holds_directory() {
+                runtime.read_holds_from(directory);
+            }
             app.manage(runtime.clone());
             let mut tray_missing = false;
             if let Err(error) = tray::setup(app.handle()) {

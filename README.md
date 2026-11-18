@@ -20,6 +20,7 @@
 
 - **One click.** Start until you stop it, or for 15 minutes, an hour, two hours, until a time, or any length. The menu bar candle burns down as the time runs out.
 - **While something runs.** "Stay awake while **Xcode** is running", or **claude**, **codex**, **ffmpeg**, **xcodebuild**, or while the network or CPU is busy. Also on power, with an external display, or on a schedule.
+- **While agents work.** Connect Claude Code or Codex in Settings → Agents. Wick keeps the Mac awake while one works and lets it sleep when it finishes or waits for you.
 - **Says what else is awake.** "caffeinate · Started by claude", "Google Chrome · Playing audio". No more `pmset -g assertions`.
 
 ## Install
@@ -103,6 +104,9 @@ wick start 45          # 45 minutes
 wick start 16:30       # until 16:30
 wick toggle
 wick status            # {"running":true,"awake":true,"session":{"mode":"for",…},"endsAt":…,"awakeTodayMinutes":192}
+wick run -- make test  # awake while the command runs, exits with its code
+wick hold render --pid 4242  # awake while process 4242 runs, or until released
+wick release render
 ```
 
 In Shortcuts, use **Open URLs** with `wick://start?minutes=60`, `wick://start?until=18:00`, `wick://stop` or `wick://toggle`. Alfred can open the same links.

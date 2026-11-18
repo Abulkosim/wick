@@ -1,5 +1,6 @@
 use crate::{
     core::{
+        connect::{self, Agent, Connection, Places},
         processes::{self, RunningApp},
         session::Request,
         settings::Settings,
@@ -8,7 +9,7 @@ use crate::{
     popover::{self, PopoverPlacement, Visibility},
     runtime::{AppState, Runtime},
 };
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_autostart::ManagerExt;
 
@@ -129,6 +130,39 @@ pub async fn running_apps() -> Vec<RunningApp> {
     tauri::async_runtime::spawn_blocking(|| processes::running_apps(&processes::scan(true)))
         .await
         .unwrap_or_default()
+}
+
+/// One change to agent settings at a time: two would read the same file and lose a write.
+static CONNECTING: Mutex<()> = Mutex::new(());
+
+async fn connections_after(
+    change: impl FnOnce(&Places) -> Result<(), String> + Send + 'static,
+) -> Result<Vec<Connection>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = CONNECTING.lock().unwrap_or_else(PoisonError::into_inner);
+        let places = Places::current();
+        change(&places)?;
+        Ok(connect::connections(&places))
+    })
+    .await
+    .map_err(|_| "Wick couldn't finish that. Try again.".to_string())?
+}
+
+#[tauri::command]
+pub async fn agent_connections() -> Result<Vec<Connection>, String> {
+    connections_after(|_| Ok(())).await
+}
+
+#[tauri::command]
+pub async fn connect_agent(app: AppHandle, agent: Agent) -> Result<Vec<Connection>, String> {
+    let connections = connections_after(move |places| connect::connect(places, agent)).await?;
+    app.state::<Arc<Runtime>>().expect_agents();
+    Ok(connections)
+}
+
+#[tauri::command]
+pub async fn disconnect_agent(agent: Agent) -> Result<Vec<Connection>, String> {
+    connections_after(move |places| connect::disconnect(places, agent)).await
 }
 
 #[tauri::command]

@@ -126,6 +126,33 @@ pub fn path(pid: i32) -> Option<String> {
     })
 }
 
+fn stat(pid: u32) -> Option<(char, u64)> {
+    parse::proc_start(&fs::read_to_string(format!("/proc/{pid}/stat")).ok()?)
+}
+
+/// Running, not a zombie waiting to be reaped.
+pub fn alive(pid: u32) -> bool {
+    pid > 0 && stat(pid).is_some_and(|(state, _)| !matches!(state, 'Z' | 'X'))
+}
+
+/// Suspended by a job-control signal (Ctrl+Z) or stopped by a debugger.
+pub fn stopped(pid: u32) -> bool {
+    pid > 0 && stat(pid).is_some_and(|(state, _)| matches!(state, 'T' | 't'))
+}
+
+/// When the process started, in Unix seconds.
+pub fn start_time(pid: u32) -> Option<i64> {
+    extern "C" {
+        fn sysconf(name: std::ffi::c_int) -> std::ffi::c_long;
+    }
+    const SC_CLK_TCK: std::ffi::c_int = 2;
+    let ticks_per_second = u64::try_from(unsafe { sysconf(SC_CLK_TCK) })
+        .ok()
+        .filter(|&ticks| ticks > 0)?;
+    let (_, ticks) = stat(pid)?;
+    Some(boot_time()? + i64::try_from(ticks / ticks_per_second).ok()?)
+}
+
 pub fn pids() -> Vec<i32> {
     fs::read_dir("/proc")
         .into_iter()
@@ -150,6 +177,9 @@ mod tests {
         assert!(ppid > 0 && !name.is_empty());
         assert!(path(own).is_some());
         assert!(pids().contains(&own));
+        assert!(alive(own as u32) && !alive(0));
+        let started = start_time(own as u32).unwrap();
+        assert!(started >= boot && started <= chrono::Utc::now().timestamp());
         let _ = (power(), external_display(), has_lid(), network_bytes());
     }
 

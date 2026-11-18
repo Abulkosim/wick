@@ -25,6 +25,7 @@ export const settingsSchema = z.object({
   showTimeLeft: z.boolean(),
   pauseWhenLocked: z.boolean(),
   keepHistory: z.boolean(),
+  agents: z.object({ enabled: z.boolean() }),
 })
 
 export const powerSchema = z.object({
@@ -68,7 +69,27 @@ export const daySchema = z.object({
   minutes: z.number().int().min(0).transform((minutes) => Math.min(minutes, 25 * 60)),
 })
 
+export const agentConnectionSchema = z.object({
+  agent: z.enum(['claude', 'codex']),
+  name: shownText,
+  status: z.enum(['connected', 'disconnected', 'stale', 'missing', 'error']),
+  file: shownText,
+  error: shownText.nullable(),
+})
+
+export const agentConnectionsSchema = z.array(agentConnectionSchema).max(8)
+
 export const runningAppSchema = z.object({ name: z.string(), path: z.string() })
+
+export const agentSchema = z.object({
+  id: z.string().regex(/^(claude|codex|other)-[A-Za-z0-9_-]{1,64}$/),
+  agent: z.enum(['claude', 'codex', 'other']),
+  name: shownText,
+  label: shownText,
+  state: z.enum(['working', 'waiting']),
+  since: z.number().int().nonnegative(),
+  paused: z.boolean(),
+})
 
 export const appStateSchema = z.object({
   revision: z.number().int().nonnegative(),
@@ -82,11 +103,13 @@ export const appStateSchema = z.object({
   triggers: z.array(triggerSchema),
   running: z.array(z.string()),
   heldBy: z.string().nullable(),
+  heldByAgents: z.boolean(),
   pausedBy: z.string().nullable(),
   others: z.array(otherSchema),
   recovery: z.string().nullable(),
   recovered: z.array(z.string()),
   history: z.array(daySchema).max(31),
+  agents: z.array(agentSchema).max(16),
 })
 
 export const startRequestSchema = z.discriminatedUnion('mode', [
@@ -103,9 +126,11 @@ export type Schedule = z.infer<typeof scheduleSchema>
 export type RunningApp = z.infer<typeof runningAppSchema>
 export type Other = z.infer<typeof otherSchema>
 export type Day = z.infer<typeof daySchema>
+export type Agent = z.infer<typeof agentSchema>
+export type AgentConnection = z.infer<typeof agentConnectionSchema>
 export type AppState = z.infer<typeof appStateSchema>
 export type StartRequest = z.infer<typeof startRequestSchema>
 
-export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open', launchAtLogin: false, shortcut: null, batteryGuard: true, batteryThreshold: 20, stopInLowPowerMode: false, notifyOnEnd: true, notifyOnTrigger: false, autoCheckUpdates: true, showTimeLeft: false, pauseWhenLocked: false, keepHistory: true }
+export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open', launchAtLogin: false, shortcut: null, batteryGuard: true, batteryThreshold: 20, stopInLowPowerMode: false, notifyOnEnd: true, notifyOnTrigger: false, autoCheckUpdates: true, showTimeLeft: false, pauseWhenLocked: false, keepHistory: true, agents: { enabled: true } }
 
-export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings }, error: null, notice: null, power: { onBattery: false, percent: null, lowPowerMode: false }, lidSleeps: null, pausedByLock: false, triggers: [], running: [], heldBy: null, pausedBy: null, others: [], recovery: null, recovered: [], history: [] })
+export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings, agents: { ...defaultSettings.agents } }, error: null, notice: null, power: { onBattery: false, percent: null, lowPowerMode: false }, lidSleeps: null, pausedByLock: false, triggers: [], running: [], heldBy: null, heldByAgents: false, pausedBy: null, others: [], recovery: null, recovered: [], history: [], agents: [] })

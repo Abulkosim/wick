@@ -8,10 +8,13 @@ pub const DEVICE: &str = if cfg!(target_os = "macos") {
 };
 
 pub mod activity;
+pub mod agents;
 pub mod assertion;
 pub mod boot;
 pub mod candle;
+pub mod connect;
 pub mod display;
+pub mod files;
 pub mod history;
 pub mod lid;
 pub mod linux;

@@ -112,6 +112,41 @@ pub fn process_alive(pid: u32) -> bool {
     }
 }
 
+/// When the process started, in Unix seconds.
+pub fn process_start(pid: u32) -> Option<i64> {
+    const UNIX_EPOCH_SECONDS: i64 = 11_644_473_600;
+    let (mut creation, mut exit, mut kernel, mut user) = Default::default();
+    let ok = unsafe {
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+        if process == 0 {
+            return None;
+        }
+        let ok = GetProcessTimes(process, &mut creation, &mut exit, &mut kernel, &mut user);
+        CloseHandle(process);
+        ok
+    };
+    let seconds = i64::try_from(FileTime::ticks(creation) / 10_000_000).ok()?;
+    (ok != 0 && seconds > UNIX_EPOCH_SECONDS).then_some(seconds - UNIX_EPOCH_SECONDS)
+}
+
+pub const CTRL_C_EVENT: u32 = 0;
+pub const CTRL_BREAK_EVENT: u32 = 1;
+
+#[link(name = "kernel32")]
+extern "system" {
+    pub fn GetProcessTimes(
+        process: HANDLE,
+        creation: *mut FileTime,
+        exit: *mut FileTime,
+        kernel: *mut FileTime,
+        user: *mut FileTime,
+    ) -> i32;
+    pub fn SetConsoleCtrlHandler(
+        handler: Option<unsafe extern "system" fn(u32) -> i32>,
+        add: i32,
+    ) -> i32;
+}
+
 /// `FILETIME` as one 100 ns count.
 #[repr(C)]
 #[derive(Default, Clone, Copy)]
