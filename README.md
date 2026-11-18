@@ -2,7 +2,7 @@
 
 # Wick
 
-**Keeps your computer awake.** On demand, for a set time, or while an app or command is running. A quiet menu bar app for macOS, and a tray app for Windows and Linux.
+**Keeps your computer awake.** On demand, for a set time, while an app or command is running, or while Claude Code or Codex works, and lets it sleep when they wait for you. A quiet menu bar app for macOS, and a tray app for Windows and Linux.
 
 [![CI](https://github.com/Abulkosim/wick/actions/workflows/ci.yml/badge.svg)](https://github.com/Abulkosim/wick/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Abulkosim/wick)](https://github.com/Abulkosim/wick/releases/latest)
@@ -11,6 +11,12 @@
 [![MIT license](https://img.shields.io/badge/license-MIT-747a87)](LICENSE)
 
 [Download](https://github.com/Abulkosim/wick/releases/latest) · [Install](#install) · [What it does](#what-it-does) · [Privacy](#privacy) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
+
+<p>
+  <a href="docs/images/demo.mp4"><img src="docs/images/demo.gif" alt="Wick in the menu bar: one click starts 15 minutes and the candle burns down; Claude Code starts working and keeps the Mac awake after the 15 minutes end; when it finishes, a notification says the Mac can sleep again" width="720" /></a>
+</p>
+
+The 15 minutes are sped up. [Watch it as MP4](docs/images/demo.mp4).
 
 <p>
   <img src="docs/images/popover-light.png" alt="Wick awake while the network is busy, with network and CPU triggers and 3h 12m awake today" width="300" />
@@ -93,6 +99,7 @@ Updates are signed and verified in the app. Wick checks once a day and installs 
 | While an app runs | ✓ | ✓ | – | – |
 | On power or with an external display | ✓ | ✓ | display only | – |
 | While a command-line tool runs (`claude`, `ffmpeg`) | ✓ | – | – | `-w pid` |
+| While coding agents work, not while they wait for you | ✓ | – | – | – |
 | Shows what else keeps the Mac awake | ✓ | – | – | – |
 | Battery guard | ✓ | ✓ | ✓ | – |
 | Global shortcut | ✓ | ✓ | – | – |

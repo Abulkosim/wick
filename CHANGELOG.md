@@ -2,6 +2,7 @@
 
 | Version | Date (UTC) | Changes |
 | --- | --- | --- |
+| [v0.9.0](changelogs/v0.9.0.md) | 2026-11-18 | Awake while Claude Code or Codex works, `wick run`, Scoop. |
 | [v0.8.0](changelogs/v0.8.0.md) | 2026-11-10 | Linux arm64, 24-hour times, links that run once, keyboard and screen reader fixes. |
 | [v0.7.1](changelogs/v0.7.1.md) | 2026-11-05 | Linux fixes: display on Xfce, the no-tray window, chargers, battery level. |
 | [v0.7.0](changelogs/v0.7.0.md) | 2026-11-05 | Linux: AppImage, deb and rpm, with tray, inhibitors and updates. |

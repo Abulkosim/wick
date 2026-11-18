@@ -3,6 +3,19 @@ import { expect, test, type Page } from '@playwright/test'
 const hero = (page: Page) => page.locator('.hero-copy')
 const card = (page: Page) => page.getByRole('region', { name: 'Agents' })
 const row = (page: Page, agent: string) => page.locator(`[data-agent="${agent}"]`)
+const patch = (page: Page, change: object) => page.evaluate(change => (window as unknown as { wickDemo: { patch: (change: object) => void } }).wickDemo.patch(change), change)
+
+test('the demo video script can hand a session over to an agent', async ({ page }) => {
+  await page.goto('/?demo=1&state=timed')
+  await expect(hero(page).getByRole('heading')).toHaveText(/Awake · \d+m left/)
+  const since = await page.evaluate(() => Math.floor(Date.now() / 1000))
+  await patch(page, { session: { mode: 'off' }, agents: [{ id: 'claude-d442c2f9', agent: 'claude', name: 'Claude Code', label: 'wick', state: 'working', since, paused: false }], heldBy: 'Claude Code works', heldByAgents: true })
+  await expect(hero(page).getByRole('heading')).toHaveText('Awake')
+  await expect(page.locator('.hero-detail')).toHaveText('While Claude Code works')
+  await patch(page, { agents: [], heldBy: null, heldByAgents: false })
+  await expect(hero(page).getByRole('heading')).toHaveText('Off')
+  await expect(card(page)).toHaveCount(0)
+})
 
 test('a working agent keeps the Mac awake and its time ticks', async ({ page }) => {
   await page.clock.install()
