@@ -14,6 +14,7 @@ pub mod boot;
 pub mod candle;
 pub mod connect;
 pub mod display;
+pub mod files;
 pub mod history;
 pub mod lid;
 pub mod linux;

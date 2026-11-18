@@ -60,7 +60,7 @@ pub fn write(directory: &Path, state: &AppState, resume: bool) {
         return;
     };
     if serde_json::to_writer(&mut file, &value).is_ok()
-        && file.persist(directory.join(FILE)).is_ok()
+        && crate::core::files::persist(file, &directory.join(FILE)).is_ok()
     {
         *last = Some((directory.to_path_buf(), state.revision, value));
     }
@@ -142,7 +142,7 @@ pub fn resumable(directory: &Path, now: i64) -> Option<crate::core::session::Ses
 
 /// What `wick status` prints: the saved snapshot if its app is still running.
 pub fn read(directory: &Path) -> Value {
-    let saved: Option<Value> = std::fs::read(directory.join(FILE))
+    let saved: Option<Value> = crate::core::files::read(&directory.join(FILE))
         .ok()
         .and_then(|bytes| serde_json::from_slice(&bytes).ok());
     match saved {
