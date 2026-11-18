@@ -93,6 +93,25 @@ pub fn default_directory() -> Option<PathBuf> {
     })
 }
 
+/// Where hooks write holds and the app reads them. On Linux it ignores `XDG_DATA_HOME`, which
+/// a desktop launcher and a terminal often set differently, so both sides agree.
+#[cfg(target_os = "linux")]
+pub fn holds_directory() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .filter(|home| home.is_absolute())
+        .map(|home| {
+            home.join(".local/share")
+                .join(APP_ID)
+                .join(crate::core::agents::DIRECTORY)
+        })
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn holds_directory() -> Option<PathBuf> {
+    default_directory().map(|directory| crate::core::agents::directory(&directory))
+}
+
 #[cfg(windows)]
 fn alive(pid: u64) -> bool {
     u32::try_from(pid).is_ok_and(|pid| pid > 0 && crate::core::win32::process_alive(pid))

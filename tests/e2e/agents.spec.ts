@@ -22,6 +22,29 @@ test('several agents are counted and listed working first', async ({ page }) => 
   await expect(card(page).locator('.trigger-row.running')).toHaveCount(2)
 })
 
+test('the rest of a long list opens and closes from the same button', async ({ page }) => {
+  await page.goto('/?demo=1&state=agents-lots')
+  const more = card(page).getByRole('button', { name: '3 more' })
+  await expect(card(page).locator('.trigger-row')).toHaveCount(3)
+  await more.focus()
+  await page.keyboard.press('Enter')
+  await expect(card(page).locator('.trigger-row')).toHaveCount(6)
+  const fewer = card(page).getByRole('button', { name: 'Show fewer' })
+  await expect(fewer).toBeFocused()
+  await expect(fewer).toHaveAttribute('aria-expanded', 'true')
+  await page.keyboard.press('Enter')
+  await expect(card(page).locator('.trigger-row')).toHaveCount(3)
+  await expect(more).toBeFocused()
+})
+
+test('an agent that starts after a Stop holds on its own', async ({ page }) => {
+  await page.goto('/?demo=1&state=agents-paused')
+  await expect(page.locator('.hero-detail')).toHaveText('While Claude Code works')
+  await expect(page.getByRole('status')).toHaveText('Awake while Claude Code works in site')
+  await page.getByRole('button', { name: 'Stop', exact: true }).click()
+  await expect(hero(page)).toContainText('Paused until the agents finish')
+})
+
 test('a waiting agent lets the Mac sleep', async ({ page }) => {
   await page.goto('/?demo=1&state=agents-waiting')
   await expect(hero(page).getByRole('heading')).toHaveText('Off')
@@ -124,6 +147,20 @@ test('an agent that isn’t installed can’t be connected', async ({ page }) =>
   await expect(row(page, 'claude').getByRole('button', { name: 'Disconnect' })).toBeEnabled()
 })
 
+test('Codex hooks turned off keep Disconnect and say why', async ({ page }) => {
+  await page.goto('/?demo=1&state=agents-hooks-off&page=settings')
+  const codex = row(page, 'codex')
+  await expect(codex.locator('.connection-status')).toHaveText('Hooks are turned off in ~/.codex/config.toml.')
+  await codex.getByRole('button', { name: 'Disconnect' }).click()
+  await expect(codex).toContainText('Not connected')
+})
+
+test('Connect says which environment it reads', async ({ page }) => {
+  await page.goto('/?demo=1&state=off&page=settings')
+  await row(page, 'claude').getByRole('button', { name: 'Connect' }).click()
+  await expect(row(page, 'claude')).toContainText('Wick reads CLAUDE_CONFIG_DIR from its own environment, not from your shell profile.')
+})
+
 test('a file Wick can’t read is named inline and left alone', async ({ page }) => {
   await page.goto('/?demo=1&state=agents-error&page=settings')
   const claude = row(page, 'claude')
@@ -135,14 +172,14 @@ test('a file Wick can’t read is named inline and left alone', async ({ page })
 })
 
 for (const theme of ['light', 'dark'] as const) {
-  for (const state of ['agents-working', 'agents-many', 'agents-waiting', 'agents-off']) {
+  for (const state of ['agents-working', 'agents-many', 'agents-lots', 'agents-waiting', 'agents-off']) {
     test(`screenshot ${state} ${theme}`, async ({ page }, testInfo) => {
       await page.goto(`/?demo=1&state=${state}&theme=${theme}`)
       await expect(card(page)).toBeVisible()
       await page.locator('.app-shell').screenshot({ path: testInfo.outputPath(`${state}-${theme}.png`) })
     })
   }
-  for (const state of ['off', 'agents-connected', 'agents-stale', 'agents-missing', 'agents-error', 'confirm', 'confirm-codex']) {
+  for (const state of ['off', 'agents-connected', 'agents-stale', 'agents-missing', 'agents-error', 'agents-hooks-off', 'confirm', 'confirm-codex']) {
     test(`screenshot settings ${state} agents ${theme}`, async ({ page }, testInfo) => {
       await page.goto(`/?demo=1&state=${state.startsWith('confirm') ? 'off' : state}&theme=${theme}&page=settings`)
       const section = page.locator('.agent-settings')

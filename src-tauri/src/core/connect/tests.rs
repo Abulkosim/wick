@@ -621,10 +621,44 @@ fn codex_without_trust_or_with_hooks_off_asks_to_connect_again() {
     let mut text = read(&config);
     text.push_str("\n[features]\nhooks = false\n");
     fs::write(&config, text).unwrap();
+    let status = home.status(Agent::Codex);
+    assert_eq!(status.status, Status::Connected);
     assert_eq!(
-        home.status(Agent::Codex).error.as_deref(),
+        status.error.as_deref(),
         Some("Hooks are turned off in ~/.codex/config.toml.")
     );
+    let before = read(&config);
+    assert_eq!(
+        connect(&home.places, Agent::Codex).unwrap_err(),
+        "Hooks are turned off in ~/.codex/config.toml. Turn them on, then connect."
+    );
+    assert_eq!(read(&config), before);
+    disconnect(&home.places, Agent::Codex).unwrap();
+    let status = home.status(Agent::Codex);
+    assert_eq!(status.status, Status::Error);
+    assert_eq!(
+        status.error.as_deref(),
+        Some("Hooks are turned off in ~/.codex/config.toml.")
+    );
+    assert!(!read(&config).contains("trusted_hash"));
+}
+
+#[test]
+fn windows_paths_that_shells_expand_are_refused() {
+    let plain = r"C:\Users\Me\AppData\Local\Wick\wick.exe".to_string();
+    assert_eq!(runnable(plain.clone(), true), Ok(plain));
+    for odd in [
+        r"C:\Users\svc$admin\Wick\wick.exe",
+        r"D:\`x`\wick.exe",
+        r"D:\100%\wick.exe",
+    ] {
+        assert_eq!(
+            runnable(odd.into(), true),
+            Err(unusable_location()),
+            "{odd}"
+        );
+    }
+    assert!(runnable("/home/me/$apps/wick".into(), false).is_ok());
 }
 
 #[test]

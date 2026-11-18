@@ -82,7 +82,7 @@ function setClick(value: string): void {
       <section class="settings-section">
         <h2>Notifications</h2>
         <div class="setting-row"><div><span id="notify-end-label" class="setting-label">When a session ends</span><p>Also when the battery stops it.</p></div><AppSwitch :model-value="settings.notifyOnEnd" aria-labelledby="notify-end-label" :disabled="busy" @update:model-value="patch({ notifyOnEnd: $event })"/></div>
-        <div class="setting-row"><div><span id="notify-trigger-label" class="setting-label">When a trigger ends</span><p>For example “{{ isMac ? 'Xcode' : 'ffmpeg' }} quit. Your {{ device }} can sleep again.”</p></div><AppSwitch :model-value="settings.notifyOnTrigger" aria-labelledby="notify-trigger-label" :disabled="busy" @update:model-value="patch({ notifyOnTrigger: $event })"/></div>
+        <div class="setting-row"><div><span id="notify-trigger-label" class="setting-label">When a trigger or agent ends</span><p>For example “{{ isMac ? 'Xcode' : 'ffmpeg' }} quit.” or “Claude Code is waiting for you in wick.”</p></div><AppSwitch :model-value="settings.notifyOnTrigger" aria-labelledby="notify-trigger-label" :disabled="busy" @update:model-value="patch({ notifyOnTrigger: $event })"/></div>
       </section>
       <section class="settings-section">
         <h2>History</h2>

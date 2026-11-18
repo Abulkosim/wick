@@ -1,17 +1,18 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { agentHolder, agentPause, agentPlace, agentStatus, agentsHold, connectionAction, connectionStatus, elapsed, trustFile } from '../../src/lib/agents.ts'
+import { agentHolder, agentPause, agentPlace, agentSpoken, agentStatus, agentsHold, connectionAction, connectionStatus, elapsed, trustFile } from '../../src/lib/agents.ts'
 import { appStateSchema, defaultSettings, initialState, settingsSchema, type Agent, type AgentConnection } from '../../src/lib/model.ts'
 
 const now = 1_794_940_000_000
 const seconds = now / 1000
-const agent = (extra: Partial<Agent> = {}): Agent => ({ id: 'claude-a', agent: 'claude', name: 'Claude Code', label: 'wick', state: 'working', since: seconds - 12 * 60, ...extra })
+const agent = (extra: Partial<Agent> = {}): Agent => ({ id: 'claude-a', agent: 'claude', name: 'Claude Code', label: 'wick', state: 'working', since: seconds - 12 * 60, paused: false, ...extra })
 const connection = (status: AgentConnection['status'], error: string | null = null): AgentConnection => ({ agent: 'claude', name: 'Claude Code', status, file: '~/.claude/settings.json', error })
 
 test('only a working agent holds, and only while enabled', () => {
   assert.equal(agentsHold([agent()], true), true)
   assert.equal(agentsHold([agent()], false), false)
   assert.equal(agentsHold([agent({ state: 'waiting' })], true), false)
+  assert.equal(agentsHold([agent({ paused: true })], true), false)
   assert.equal(agentsHold([], true), false)
 })
 
@@ -19,9 +20,17 @@ test('the holder names one agent or counts several working ones', () => {
   assert.equal(agentHolder([]), null)
   assert.equal(agentHolder([agent({ state: 'waiting' })]), null)
   assert.equal(agentHolder([agent()]), 'Claude Code works')
-  assert.equal(agentHolder([agent()], true), 'Claude Code works in wick')
   assert.equal(agentHolder([agent(), agent({ id: 'codex-b', name: 'Codex' }), agent({ id: 'c', state: 'waiting' })]), '2 agents work')
   assert.equal(agentHolder([agent({ agent: 'other', name: 'render', label: 'render' })]), 'render works')
+  assert.equal(agentHolder([agent({ paused: true }), agent({ id: 'codex-b', name: 'Codex' })]), 'Codex works')
+})
+
+test('a screen reader hears the project only when Rust names that one agent', () => {
+  assert.equal(agentSpoken('Claude Code works', [agent()]), 'Claude Code works in wick')
+  assert.equal(agentSpoken('Claude Code works', [agent({ paused: true, label: 'site' }), agent({ id: 'claude-b' })]), 'Claude Code works in wick')
+  assert.equal(agentSpoken('20 agents work', [agent()]), '20 agents work')
+  assert.equal(agentSpoken('2 agents work', [agent(), agent({ id: 'codex-b', name: 'Codex' })]), '2 agents work')
+  assert.equal(agentSpoken('render works', [agent({ agent: 'other', name: 'render', label: 'render' })]), 'render works')
 })
 
 test('a label equal to the name is shown once', () => {
@@ -51,6 +60,7 @@ test('status says how long an agent works or that it waits', () => {
 test('each connection offers one action and says where it stands', () => {
   assert.deepEqual((['connected', 'disconnected', 'stale', 'missing', 'error'] as const).map(status => connectionAction(connection(status))), ['disconnect', 'connect', 'reconnect', 'connect', 'connect'])
   assert.equal(connectionStatus(connection('connected')), 'Connected')
+  assert.equal(connectionStatus(connection('connected', 'Hooks are turned off in ~/.codex/config.toml.')), 'Hooks are turned off in ~/.codex/config.toml.')
   assert.equal(connectionStatus(connection('disconnected')), 'Not connected')
   assert.equal(connectionStatus(connection('missing')), 'Not installed')
   assert.equal(connectionStatus(connection('stale')), 'Wick was moved')

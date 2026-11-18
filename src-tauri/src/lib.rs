@@ -139,6 +139,9 @@ pub fn run() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             let path = app.path().app_data_dir()?.join("settings.json");
             let runtime = Arc::new(Runtime::new(path));
+            if let Some(directory) = status::holds_directory() {
+                runtime.read_holds_from(directory);
+            }
             app.manage(runtime.clone());
             let mut tray_missing = false;
             if let Err(error) = tray::setup(app.handle()) {

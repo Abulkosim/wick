@@ -174,6 +174,26 @@ mod native {
         i64::try_from(seconds).ok().filter(|&seconds| seconds > 0)
     }
 
+    /// `pbi_status == SSTOP`: suspended by Ctrl+Z or a debugger.
+    pub fn stopped(pid: i32) -> bool {
+        const STATUS: usize = 4;
+        const SSTOP: u32 = 4;
+        let mut buffer = [0_u8; BSDINFO_SIZE];
+        let size = unsafe {
+            proc_pidinfo(
+                pid,
+                PROC_PIDTBSDINFO,
+                0,
+                buffer.as_mut_ptr().cast(),
+                BSDINFO_SIZE as c_int,
+            )
+        };
+        size as usize == BSDINFO_SIZE
+            && buffer[STATUS..STATUS + 4]
+                .try_into()
+                .is_ok_and(|bytes| u32::from_ne_bytes(bytes) == SSTOP)
+    }
+
     pub fn path(pid: i32) -> Option<String> {
         let mut buffer = [0_u8; 4096];
         let length = unsafe { proc_pidpath(pid, buffer.as_mut_ptr().cast(), buffer.len() as u32) };
@@ -244,6 +264,22 @@ pub fn alive(pid: u32) -> bool {
 
 #[cfg(not(any(unix, windows)))]
 pub fn alive(_pid: u32) -> bool {
+    false
+}
+
+/// Whether `pid` is suspended (Ctrl+Z). Windows has no such state for a whole process.
+#[cfg(target_os = "linux")]
+pub fn stopped(pid: u32) -> bool {
+    super::linux::system::stopped(pid)
+}
+
+#[cfg(target_os = "macos")]
+pub fn stopped(pid: u32) -> bool {
+    i32::try_from(pid).is_ok_and(|pid| pid > 0 && native::stopped(pid))
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+pub fn stopped(_pid: u32) -> bool {
     false
 }
 

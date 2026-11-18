@@ -48,6 +48,8 @@ pub struct AppState {
     pub running: Vec<String>,
     /// The running app or process keeping the Mac awake while no session is on.
     pub held_by: Option<String>,
+    /// Whether `held_by` names working agents rather than a trigger.
+    pub held_by_agents: bool,
     /// A running trigger the owner stopped; it counts again once it quits.
     pub paused_by: Option<String>,
     /// Other processes keeping the Mac awake right now.
@@ -204,6 +206,7 @@ impl Inner {
         self.held_id = holder
             .map(|trigger| trigger.id.clone())
             .or_else(|| agents_hold.as_ref().map(|_| agents::HOLDER.to_string()));
+        self.view.held_by_agents = holder.is_none() && agents_hold.is_some();
         self.view.held_by = holder.map(|trigger| trigger.phrase()).or(agents_hold);
         self.view.paused_by = active
             .iter()
@@ -211,12 +214,27 @@ impl Inner {
             .map(|trigger| trigger.until())
             .or_else(|| enabled.then(|| agents::until(&paused)).flatten());
         self.view.running = active.iter().map(|trigger| trigger.id.clone()).collect();
+        self.show_holds();
     }
 
     /// Replaces the agent holds with a fresh read and returns the previous ones.
     fn set_holds(&mut self, holds: Vec<Hold>) -> Vec<Hold> {
-        self.view.agents = agents::views(&holds);
-        std::mem::replace(&mut self.holds, holds)
+        let previous = std::mem::replace(&mut self.holds, holds);
+        self.show_holds();
+        previous
+    }
+
+    fn show_holds(&mut self) {
+        self.view.agents = agents::views(&self.holds, &self.paused);
+    }
+
+    /// Takes a trigger list. A pause stays while its trigger is still in the list; agent pauses
+    /// aren't triggers and stay until their agent stops working.
+    fn set_triggers(&mut self, list: Vec<Trigger>) {
+        self.paused.retain(|id| {
+            id.starts_with(agents::PAUSE_PREFIX) || list.iter().any(|trigger| &trigger.id == id)
+        });
+        self.view.triggers = list;
     }
 
     /// Counts the time an assertion is held, saving at most once a minute while it is.
@@ -298,6 +316,8 @@ impl Inner {
         self.paused = self.view.running.clone();
         self.paused
             .extend(working.iter().map(|hold| agents::pause_key(hold)));
+        self.view.held_by_agents = false;
+        self.show_holds();
     }
 
     fn changed(&mut self) {
@@ -526,6 +546,8 @@ impl Runtime {
             inner.paused.clear();
             inner.view.paused_by = None;
             inner.view.held_by = None;
+            inner.view.held_by_agents = false;
+            inner.show_holds();
             Ok(())
         })
     }
@@ -533,10 +555,7 @@ impl Runtime {
     pub fn save_triggers(&self, app: &AppHandle, list: Vec<Trigger>) -> Result<AppState, String> {
         triggers::validate_all(&list)?;
         self.update(app, |inner, _| {
-            inner
-                .paused
-                .retain(|id| list.iter().any(|trigger| &trigger.id == id));
-            inner.view.triggers = list;
+            inner.set_triggers(list);
             Ok(())
         })
     }
@@ -655,7 +674,10 @@ impl Runtime {
         let holds = agents_dir
             .as_deref()
             .map(|directory| agents::read_all(directory, now / 1000, agents::alive))
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .into_iter()
+            .map(|hold| agents::settle(hold, crate::core::processes::stopped))
+            .collect();
         let mut ended: Option<(String, bool)> = None;
         let result = self.update_quiet(app, |inner, now| {
             inner.view.power = power;
@@ -721,6 +743,13 @@ impl Runtime {
             if inner.view.recovery.is_none() {
                 let _ = inner.persist();
             }
+        }
+    }
+
+    /// Reads holds from `directory` instead of next to the settings file.
+    pub fn read_holds_from(&self, directory: PathBuf) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.agents_dir = Some(directory);
         }
     }
 
@@ -1184,6 +1213,45 @@ mod tests {
         inner.set_holds(vec![agent("a", Working)]);
         inner.evaluate_triggers(&idle, &Power::default());
         assert!(inner.view.held_by.is_some());
+    }
+
+    #[test]
+    fn editing_triggers_keeps_a_stop_on_agents() {
+        use agents::State::Working;
+        let mut inner = Inner::default();
+        let idle = triggers::Context::default();
+        inner.view.triggers = vec![trigger("p", TriggerKind::Power)];
+        inner.set_holds(vec![agent("a", Working)]);
+        inner.evaluate_triggers(&idle, &Power::default());
+        assert!(inner.view.held_by_agents);
+        assert!(!inner.view.agents[0].paused);
+        inner.view.held_by = None;
+        inner.pause_holders();
+        assert!(inner.view.agents[0].paused);
+        inner.set_triggers(vec![trigger("q", TriggerKind::Power)]);
+        inner.evaluate_triggers(&idle, &Power::default());
+        assert_eq!(inner.view.held_by, None);
+        assert!(!inner.view.held_by_agents);
+        assert_eq!(
+            inner.view.paused_by.as_deref(),
+            Some("Claude Code finishes")
+        );
+        assert!(inner.view.agents[0].paused);
+    }
+
+    #[test]
+    fn a_trigger_holding_is_not_an_agent_hold() {
+        use agents::State::Working;
+        let mut inner = Inner::default();
+        inner.view.triggers = vec![trigger("p", TriggerKind::Power)];
+        inner.set_holds(vec![agent("a", Working)]);
+        let plugged = triggers::Context {
+            on_power: true,
+            ..triggers::Context::default()
+        };
+        inner.evaluate_triggers(&plugged, &Power::default());
+        assert_eq!(inner.view.held_by.as_deref(), Some("on power"));
+        assert!(!inner.view.held_by_agents);
     }
 
     #[test]

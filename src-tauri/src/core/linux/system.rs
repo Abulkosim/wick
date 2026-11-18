@@ -135,6 +135,11 @@ pub fn alive(pid: u32) -> bool {
     pid > 0 && stat(pid).is_some_and(|(state, _)| !matches!(state, 'Z' | 'X'))
 }
 
+/// Suspended by a job-control signal (Ctrl+Z) or stopped by a debugger.
+pub fn stopped(pid: u32) -> bool {
+    pid > 0 && stat(pid).is_some_and(|(state, _)| matches!(state, 'T' | 't'))
+}
+
 /// When the process started, in Unix seconds.
 pub fn start_time(pid: u32) -> Option<i64> {
     extern "C" {

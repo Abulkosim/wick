@@ -11,7 +11,7 @@ A "while `claude` is running" trigger keeps the computer up all night while the 
 
 ## Holds
 
-A hold is a JSON file in `<status dir>/agents/` (the directory `status.json` lives in, from `status::default_directory()`). One file per agent session, named `<agent>-<session>.json`, where both parts match `[A-Za-z0-9_-]{1,64}` (anything else is hashed to hex). Written atomically (temp file + rename). Files survive Wick not running and are read when it starts.
+A hold is a JSON file in `status::holds_directory()`: `<status dir>/agents/` (the directory `status.json` lives in) on macOS and Windows, and always `~/.local/share/com.abulkosim.wick/agents/` on Linux, whatever `XDG_DATA_HOME` says, since a desktop launcher and a terminal often set it differently. One file per agent session, named `<agent>-<session>.json`, where both parts match `[A-Za-z0-9_-]{1,64}` (anything else is hashed to hex). Written atomically (temp file + rename). Files survive Wick not running and are read when it starts.
 
 ```json
 {
@@ -34,7 +34,7 @@ A hold is a JSON file in `<status dir>/agents/` (the directory `status.json` liv
 - `state`: `working` holds the computer awake; `waiting` doesn't.
 - `since`: when the current state began; `updated`: last event.
 
-Wick drops a hold, deleting its file, when its pid is gone or has a different start time, or when it has had no event for 24 h. A hold with `pid: null` expires 6 h after `updated`.
+Wick drops a hold, deleting its file, when its pid is gone or has a different start time, or when it has had no event for 24 h. A hold with `pid: null` expires 6 h after `updated`. A working hold whose process is suspended (Ctrl+Z; `T` in `/proc/<pid>/stat`, `SSTOP` on macOS) counts as waiting until it resumes; the file stays as it is.
 
 ## Events
 
@@ -73,16 +73,17 @@ The hook path must not start Tauri, print to stdout (Claude Code adds `UserPromp
 - `wick hook claude` reads hook JSON from stdin (at most 1 MB).
 - `wick hook codex [json]` reads hook JSON from stdin. A `notify` payload as the last argument (`agent-turn-complete` → waiting) is still understood, but Connect doesn't use it.
 - `wick hold <name> [--pid N]`, `wick release <name>`: holds for scripts and other agents (`agent: other`).
-- `wick run -- <command> [args]`: holds while the command runs, releases after, exits with its code. Like `caffeinate -i <command>` on every platform.
+- `wick run -- <command> [args]`: holds while the command runs, releases after, exits with its code. Like `caffeinate -i <command>` on every platform. Ctrl+C reaches the command through the terminal and Wick waits for it; Wick passes on SIGTERM but not SIGINT, which the command already gets (a second one makes many tools quit at once). A command killed by HUP, INT, KILL, PIPE, ALRM or TERM ends Wick with the same signal; any other (ABRT, SEGV) makes Wick exit with 128 + the signal instead of crashing too. On Windows a bare name that isn't an `.exe` (`npm`, `pnpm`) is looked up with `PATHEXT`, so `.cmd` shims run.
+- Windows: release builds are GUI-subsystem programs, so `cmd` and PowerShell don't wait for `wick run`, `wick hold` or `wick status` and show none of their output. Agents run hooks through pipes and wait, so hooks work. Until a console `wick` ships (plan 11.9), use `Start-Process -Wait -NoNewWindow` or Git Bash for `wick run`.
 
 ## App
 
 - Read `agents/` on every trigger tick (5 s) and when the popover opens. Working holds keep the computer awake like a trigger, after the triggers themselves, and not while the battery guard applies. The hold phrase (`heldBy`): "Claude Code works", or "2 agents work" for more than one; the popover shows "While Claude Code works" and the project in the Agents card, and a screen reader hears "Awake while Claude Code works in wick".
 - The ticker stays at 5 s while holds exist, or while agents are on and the `agents/` folder exists. Connect makes the folder, so the first hook is seen within 5 s. Without it (`wick hold` before any connect) the first hold can wait for the idle tick, up to a minute.
-- Stop with no session pauses working holds until they stop working: "Paused until Claude Code finishes", or "the agents finish". Resume clears the pause.
-- Snapshot field `agents`: `[{ "id": "claude-<session>", "agent": "claude", "name": "Claude Code", "label": "wick", "state": "working", "since": 1794940846 }]`, at most 16, working first then newest. Zod-validated like every payload.
+- Stop with no session pauses working holds until they stop working: "Paused until Claude Code finishes", or "the agents finish". Resume clears the pause. Saving triggers keeps agent pauses (keys `agent:<id>`, which no trigger id can match).
+- Snapshot field `agents`: `[{ "id": "claude-<session>", "agent": "claude", "name": "Claude Code", "label": "wick", "state": "working", "since": 1794940846, "paused": false }]`, at most 16, working first then newest. `paused`: a Stop holds it off. `heldByAgents`: `heldBy` names agents, not a trigger; the frontend never rebuilds the phrase. Zod-validated like every payload.
 - Setting `agents: { enabled: bool }` (default true). Off: holds are read and shown but don't keep the computer awake.
-- Notification when the last working hold ends and nothing else keeps the computer awake, under the existing trigger-ended notification setting: "Claude Code finished in wick. Your Mac can sleep again." or "Claude Code is waiting for you in wick." ("PC" on Windows and "computer" on Linux, like every other notification.)
+- Notification when the last working hold ends and nothing else keeps the computer awake, under the trigger-ended notification setting, labeled "When a trigger or agent ends": "Claude Code finished in wick. Your Mac can sleep again." or "Claude Code is waiting for you in wick." ("PC" on Windows and "computer" on Linux, like every other notification.)
 
 ## Connecting
 
@@ -96,11 +97,12 @@ Settings → Agents lists Claude Code and Codex: Connected / Not connected / Not
 
 As built (11.4, `src-tauri/src/core/connect.rs`):
 
+- `CLAUDE_CONFIG_DIR` and `CODEX_HOME` come from Wick's own environment. An app opened from Finder, the Dock or a desktop launcher doesn't see variables set in `~/.zshrc`; the Connect confirmation says so ("Wick reads CLAUDE_CONFIG_DIR from its own environment, not from your shell profile."). On macOS, `launchctl setenv` and restarting Wick makes it see them.
 - Claude Code: `$CLAUDE_CONFIG_DIR/settings.json`, else `~/.claude/settings.json`. One group per event, `{ "hooks": [{ "type": "command", "command": "\"<exe>\" hook claude" }] }`, no matcher: a real `claude -p --model haiku` (2.1.326) fired `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, `Stop` and `SessionEnd` into it, and the user's own `Stop` hook still ran.
-- Codex: `$CODEX_HOME/hooks.json` (or `config.toml` when it already holds `[[hooks.<Event>]]`), one group per event with `timeout` 5 (1 for `Interrupt` and `SessionEnd`), plus `[hooks.state."<hooks file>:<event>:<group>:0"] trusted_hash` in `config.toml`, so Codex runs them without its review screen. Codex resolves a symlinked `CODEX_HOME` before naming the file in the key, but not `~/.codex`; Wick does the same. A real `codex exec` (0.166) fired every hook with no bypass flag. Codex shows "Connected" only when every hook is trusted with the current hash; otherwise "Codex doesn’t trust Wick’s hooks yet. Connect again." `[features] hooks = false` shows "Hooks are turned off in ~/.codex/config.toml."
+- Codex: `$CODEX_HOME/hooks.json` (or `config.toml` when it already holds `[[hooks.<Event>]]`), one group per event with `timeout` 5 (1 for `Interrupt` and `SessionEnd`), plus `[hooks.state."<hooks file>:<event>:<group>:0"] trusted_hash` in `config.toml`, so Codex runs them without its review screen. Codex resolves a symlinked `CODEX_HOME` before naming the file in the key, but not `~/.codex`; Wick does the same. A real `codex exec` (0.166) fired every hook with no bypass flag. Codex shows "Connected" only when every hook is trusted with the current hash; otherwise "Codex doesn’t trust Wick’s hooks yet. Connect again." `[features] hooks = false` shows "Hooks are turned off in ~/.codex/config.toml.": as an error with no Wick hooks (Connect then refuses: "… Turn them on, then connect."), or as a note on a connected row while Wick's hooks are there, so Disconnect still removes them.
 - Group-level: a group is Wick's when its only handler runs `"<wick binary>" hook <agent>`. Connect keeps Wick's first group in place (rewritten if the path changed), drops other Wick groups, appends where none exists. Disconnect removes Wick's groups, then the event keys and `hooks` object it emptied, and moves the trust keys of later Codex groups down so they stay trusted.
 - Files: written atomically through a symlink to its target, keeping key order (duplicates included), 2-space indent and a trailing newline; TOML through `toml_edit`, keeping comments. Backed up once to `<file>.wick-backup` before the first change. A file Wick created (no backup) is removed when Disconnect empties it. A file changed while Wick was saving it is left alone: "… changed while Wick was saving it. Try again."
-- `<exe>`: the running binary, or `$APPIMAGE` for an AppImage. A translocated macOS app (run from Downloads) gets "Move Wick to Applications, open it from there, then connect." On Windows the path uses forward slashes inside double quotes, which `cmd` and Git Bash both run.
+- `<exe>`: the running binary, or `$APPIMAGE` for an AppImage. A translocated macOS app (run from Downloads) gets "Move Wick to Applications, open it from there, then connect." On Windows the path uses forward slashes inside double quotes, which `cmd` and Git Bash both run; a path with `$`, `` ` `` or `%`, which they would expand, gets "Wick’s location has characters agents can’t run. Move Wick and try again."
 
 ## Out of scope for v0.9
 
@@ -108,7 +110,7 @@ Agents without hooks (gemini, aider, opencode, cursor-agent) are detected only t
 
 ## Commands (frontend ↔ Rust)
 
-- `agent_connections()` → `[{ "agent": "claude" | "codex", "name": "Claude Code", "status": "connected" | "disconnected" | "stale" | "missing" | "error", "file": "~/.claude/settings.json", "error": null | "…" }]`. `missing`: the agent isn't installed (its config directory doesn't exist). `stale`: hooks point at a Wick binary that no longer exists.
+- `agent_connections()` → `[{ "agent": "claude" | "codex", "name": "Claude Code", "status": "connected" | "disconnected" | "stale" | "missing" | "error", "file": "~/.claude/settings.json", "error": null | "…" }]`. `error` is set with `error`, and on `connected` it is a note shown in place of "Connected" (Codex hooks turned off). `missing`: the agent isn't installed (its config directory doesn't exist). `stale`: hooks point at a Wick binary that no longer exists.
 - `connect_agent(agent)` and `disconnect_agent(agent)` return the same list.
 - `agents.enabled` is saved through the existing settings command like every other setting.
 - One Zod schema per payload in `src/lib/model.ts`. `tests/fixtures/state.json` and `connections.json` are written by a Rust test (`WICK_UPDATE_FIXTURES=1`) and parsed by `tests/unit/fixtures.test.ts`, so a field added on one side fails the other's tests.

@@ -115,7 +115,7 @@ impl Places {
                 .map(|path| fs::canonicalize(&path).unwrap_or(path))
                 .or_else(|| home.as_ref().map(|h| h.join(".codex"))),
             home,
-            exe: current_exe(),
+            exe: current_exe().and_then(|exe| runnable(exe, cfg!(windows))),
             windows: cfg!(windows),
         }
     }
@@ -151,6 +151,16 @@ fn current_exe() -> Result<String, String> {
     Ok(text.to_string())
 }
 
+/// On Windows the hook command keeps the path as is inside double quotes, where Git Bash still
+/// expands `$` and `` ` `` and `cmd` expands `%`. A path with them is refused.
+pub fn runnable(exe: String, windows: bool) -> Result<String, String> {
+    if windows && exe.contains(['$', '`', '%']) {
+        Err(unusable_location())
+    } else {
+        Ok(exe)
+    }
+}
+
 fn unusable_location() -> String {
     "Wick’s location has characters agents can’t run. Move Wick and try again.".into()
 }
@@ -169,7 +179,7 @@ pub fn shown(path: &Path, home: Option<&Path>) -> String {
 
 /// `"<exe>" hook claude`. POSIX shells read the quoted path literally once `\`, `"`, `$` and
 /// `` ` `` are escaped. On Windows the path uses forward slashes, which `cmd` and Git Bash
-/// both run as is, and which can't hold a quote.
+/// both run as is; it can't hold a quote, and `runnable` refuses `$`, `` ` `` and `%`.
 pub fn hook_command(exe: &str, agent: Agent, windows: bool) -> String {
     let path = if windows {
         exe.replace('\\', "/")
@@ -887,12 +897,15 @@ pub fn connections(places: &Places) -> Vec<Connection> {
 }
 
 pub fn connection(places: &Places, agent: Agent) -> Connection {
-    let (file, outcome) = match agent {
-        Agent::Claude => claude_status(places),
+    let (file, outcome, note) = match agent {
+        Agent::Claude => {
+            let (file, outcome) = claude_status(places);
+            (file, outcome, None)
+        }
         Agent::Codex => codex_status(places),
     };
     let (status, error) = match outcome {
-        Ok(status) => (status, None),
+        Ok(status) => (status, note),
         Err(error) => (Status::Error, Some(error)),
     };
     Connection {
@@ -1023,34 +1036,61 @@ fn hooks_off(document: &DocumentMut) -> bool {
         == Some(false)
 }
 
-fn codex_status(places: &Places) -> (String, Result<Status, String>) {
+fn hooks_off_note(files: &CodexFiles) -> Option<String> {
+    hooks_off(&files.document).then(|| format!("Hooks are turned off in {}.", files.config.shown))
+}
+
+/// The hooks file, the connection, and a note. With hooks turned off, Wick's hooks never run:
+/// without them the row says so in place of Connect; with them it stays connected, so they can
+/// be removed, and carries the note.
+fn codex_status(places: &Places) -> (String, Result<Status, String>, Option<String>) {
     let Some(directory) = installed(places.codex.as_ref()) else {
         let path = places
             .codex
             .as_ref()
             .map(|directory| directory.join("hooks.json"))
             .unwrap_or_else(|| PathBuf::from("~/.codex/hooks.json"));
-        return (places.shown(&path), Ok(Status::Missing));
+        return (places.shown(&path), Ok(Status::Missing), None);
     };
     let files = match CodexFiles::read(places, directory) {
         Ok(files) => files,
-        Err(error) => return (places.shown(&directory.join("hooks.json")), Err(error)),
+        Err(error) => {
+            return (
+                places.shown(&directory.join("hooks.json")),
+                Err(error),
+                None,
+            )
+        }
     };
     let shown = files.hook_file().shown.clone();
-    if hooks_off(&files.document) {
-        let error = format!("Hooks are turned off in {}.", files.config.shown);
-        return (shown, Err(error));
+    let status = codex_hooks_status(places, &files);
+    match hooks_off_note(&files) {
+        Some(note) if matches!(status, Ok(Status::Disconnected)) => (shown, Err(note), None),
+        Some(note) if status.is_ok() || has_wick_hooks(places, &files) => {
+            (shown, Ok(Status::Connected), Some(note))
+        }
+        _ => (shown, status, None),
     }
+}
+
+fn has_wick_hooks(places: &Places, files: &CodexFiles) -> bool {
+    files.layout(places.windows).is_ok_and(|(layout, _)| {
+        layout
+            .iter()
+            .any(|(_, groups)| groups.iter().any(Option::is_some))
+    })
+}
+
+fn codex_hooks_status(places: &Places, files: &CodexFiles) -> Result<Status, String> {
     let key = files.key();
-    let status = files.layout(places.windows).and_then(|(layout, _)| {
+    files.layout(places.windows).and_then(|(layout, _)| {
         judge(&layout, Agent::Codex, |event, index, hook| {
             let snake = snake_case(event);
             trusted_hash(&files.document, &trust_key(&key, event, index)).is_some_and(|hash| {
                 hash == trust_hash(&snake, &hook.command, hook.timeout, hook.matcher.as_deref())
             })
         })
-    });
-    (shown, status)
+    })
 }
 
 /// Adds Wick's hooks for `agent`, or repairs them. Running it twice changes nothing.
@@ -1104,6 +1144,9 @@ fn change(places: &Places, agent: Agent, on: bool) -> Result<(), String> {
         }
         Agent::Codex => {
             let mut files = CodexFiles::read(places, directory)?;
+            if let Some(note) = hooks_off_note(&files).filter(|_| on) {
+                return Err(format!("{note} Turn them on, then connect."));
+            }
             let (layout, root) = files.layout(places.windows)?;
             let plans = plan(&layout, targets, &want);
             let key = files.key();

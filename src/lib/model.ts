@@ -88,6 +88,7 @@ export const agentSchema = z.object({
   label: shownText,
   state: z.enum(['working', 'waiting']),
   since: z.number().int().nonnegative(),
+  paused: z.boolean(),
 })
 
 export const appStateSchema = z.object({
@@ -102,6 +103,7 @@ export const appStateSchema = z.object({
   triggers: z.array(triggerSchema),
   running: z.array(z.string()),
   heldBy: z.string().nullable(),
+  heldByAgents: z.boolean(),
   pausedBy: z.string().nullable(),
   others: z.array(otherSchema),
   recovery: z.string().nullable(),
@@ -131,4 +133,4 @@ export type StartRequest = z.infer<typeof startRequestSchema>
 
 export const defaultSettings: Settings = { theme: 'system', keepDisplayOn: false, startMinutes: null, iconClick: 'open', launchAtLogin: false, shortcut: null, batteryGuard: true, batteryThreshold: 20, stopInLowPowerMode: false, notifyOnEnd: true, notifyOnTrigger: false, autoCheckUpdates: true, showTimeLeft: false, pauseWhenLocked: false, keepHistory: true, agents: { enabled: true } }
 
-export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings, agents: { ...defaultSettings.agents } }, error: null, notice: null, power: { onBattery: false, percent: null, lowPowerMode: false }, lidSleeps: null, pausedByLock: false, triggers: [], running: [], heldBy: null, pausedBy: null, others: [], recovery: null, recovered: [], history: [], agents: [] })
+export const initialState = (): AppState => ({ revision: 0, session: { mode: 'off' }, settings: { ...defaultSettings, agents: { ...defaultSettings.agents } }, error: null, notice: null, power: { onBattery: false, percent: null, lowPowerMode: false }, lidSleeps: null, pausedByLock: false, triggers: [], running: [], heldBy: null, heldByAgents: false, pausedBy: null, others: [], recovery: null, recovered: [], history: [], agents: [] })

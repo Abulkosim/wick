@@ -1,8 +1,10 @@
 import type { Agent, AgentConnection } from './model.ts'
 
-/** Agent holds keep the computer awake only while one works and the setting is on. */
+const holding = (agent: Agent): boolean => agent.state === 'working' && !agent.paused
+
+/** Agent holds keep the computer awake only while one works unpaused and the setting is on. */
 export function agentsHold(agents: Agent[], enabled: boolean): boolean {
-  return enabled && agents.some(agent => agent.state === 'working')
+  return enabled && agents.some(holding)
 }
 
 /** "Claude Code", or for `other` its label only once. */
@@ -10,17 +12,23 @@ export function agentPlace(agent: Agent): string | null {
   return agent.label && agent.label !== agent.name ? agent.label : null
 }
 
-/**
- * What holds the computer: "Claude Code works", "2 agents work". The status line leaves the
- * project to the agents card below it; a screen reader hears it: "Claude Code works in wick".
- */
-export function agentHolder(agents: Agent[], spoken = false): string | null {
-  const working = agents.filter(agent => agent.state === 'working')
+/** What Rust says holds the computer, for the demo bridge: "Claude Code works", "2 agents work". */
+export function agentHolder(agents: Agent[]): string | null {
+  const working = agents.filter(holding)
   const first = working[0]
   if (!first) return null
-  if (working.length > 1) return `${working.length} agents work`
-  const place = agentPlace(first)
-  return spoken && place ? `${first.name} works in ${place}` : `${first.name} works`
+  return working.length > 1 ? `${working.length} agents work` : `${first.name} works`
+}
+
+/**
+ * The status line leaves the project to the agents card below it; a screen reader hears it:
+ * "Claude Code works in wick". Anything else stays as Rust phrased it.
+ */
+export function agentSpoken(heldBy: string, agents: Agent[]): string {
+  const working = agents.filter(holding)
+  const first = working[0]
+  const place = first && working.length === 1 ? agentPlace(first) : null
+  return first && place && heldBy === `${first.name} works` ? `${heldBy} in ${place}` : heldBy
 }
 
 /** What a pause by Stop waits for. */
@@ -53,7 +61,7 @@ export function connectionAction(connection: AgentConnection): ConnectionAction 
 
 export function connectionStatus(connection: AgentConnection): string {
   switch (connection.status) {
-    case 'connected': return 'Connected'
+    case 'connected': return connection.error ?? 'Connected'
     case 'disconnected': return 'Not connected'
     case 'stale': return 'Wick was moved'
     case 'missing': return 'Not installed'

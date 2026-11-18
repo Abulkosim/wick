@@ -84,9 +84,11 @@ export function useWick() {
     state.value.notice = null
   })
   const stopSession = () => perform('stop_session', undefined, () => {
-    if (state.value.session.mode === 'off' && state.value.heldBy && state.value.heldBy === agentHolder(state.value.agents)) {
+    if (state.value.session.mode === 'off' && state.value.heldBy && state.value.heldByAgents) {
       state.value.pausedBy = agentPause(state.value.agents)
+      state.value.agents = state.value.agents.map(agent => ({ ...agent, paused: agent.state === 'working' }))
       state.value.heldBy = null
+      state.value.heldByAgents = false
     } else if (state.value.session.mode === 'off' && state.value.heldBy) {
       state.value.pausedBy = state.value.heldBy.replace(/ is running$/, ' quits').replace(/^on power$/, 'you unplug').replace(/^an external display is connected$/, 'the display is disconnected').replace(/ is busy$/, ' is quiet')
       state.value.heldBy = null
@@ -100,15 +102,18 @@ export function useWick() {
     state.value.session = { ...session, endsAt: Math.max(session.endsAt, Date.now()) + minutes * 60_000 }
   })
   const resumeTriggers = () => perform('resume_triggers', undefined, () => {
-    if (state.value.pausedBy && state.value.pausedBy === agentPause(state.value.agents)) state.value.heldBy = agentsHold(state.value.agents, state.value.settings.agents.enabled) ? agentHolder(state.value.agents) : null
-    else if (state.value.pausedBy) state.value.heldBy = state.value.pausedBy.replace(/ quits$/, ' is running').replace(/^you unplug$/, 'on power').replace(/^the display is disconnected$/, 'an external display is connected').replace(/ is quiet$/, ' is busy')
+    if (state.value.pausedBy && state.value.agents.some(agent => agent.paused)) {
+      state.value.agents = state.value.agents.map(agent => ({ ...agent, paused: false }))
+      state.value.heldBy = agentsHold(state.value.agents, state.value.settings.agents.enabled) ? agentHolder(state.value.agents) : null
+      state.value.heldByAgents = state.value.heldBy !== null
+    } else if (state.value.pausedBy) state.value.heldBy = state.value.pausedBy.replace(/ quits$/, ' is running').replace(/^you unplug$/, 'on power').replace(/^the display is disconnected$/, 'an external display is connected').replace(/ is quiet$/, ' is busy')
     state.value.pausedBy = null
   })
   const saveTriggers = (triggers: Trigger[]) => perform('save_triggers', { triggers }, () => {
     state.value.triggers = triggers
     state.value.running = state.value.running.filter(id => triggers.some(trigger => trigger.id === id && trigger.enabled))
     const holding = triggers.find(trigger => trigger.enabled && state.value.running.includes(trigger.id))
-    if (state.value.heldBy && !holding) state.value.heldBy = null
+    if (state.value.heldBy && !state.value.heldByAgents && !holding) state.value.heldBy = null
   })
 
   async function runningApps(): Promise<RunningApp[]> {
@@ -122,10 +127,13 @@ export function useWick() {
   }
   const setDisplay = (display: boolean) => perform('set_display', { display }, () => { state.value.settings = { ...state.value.settings, keepDisplayOn: display } })
   const saveSettings = (settings: Settings) => perform('save_settings', { settings }, () => {
-    const otherHolder = state.value.heldBy !== null && state.value.heldBy !== agentHolder(state.value.agents)
+    const otherHolder = state.value.heldBy !== null && !state.value.heldByAgents
     state.value.settings = settings
     state.value.recovered = []
-    if (!otherHolder && !state.value.pausedBy && state.value.session.mode === 'off') state.value.heldBy = agentsHold(state.value.agents, settings.agents.enabled) ? agentHolder(state.value.agents) : null
+    if (!otherHolder && !state.value.pausedBy && state.value.session.mode === 'off') {
+      state.value.heldBy = agentsHold(state.value.agents, settings.agents.enabled) ? agentHolder(state.value.agents) : null
+      state.value.heldByAgents = state.value.heldBy !== null
+    }
   })
 
   async function resetStore(): Promise<boolean> {

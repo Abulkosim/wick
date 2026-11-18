@@ -11,7 +11,7 @@ import TriggersCard from './components/TriggersCard.vue'
 import OthersCard from './components/OthersCard.vue'
 import HistoryCard from './components/HistoryCard.vue'
 import AgentsCard from './components/AgentsCard.vue'
-import { agentHolder, agentPause } from './lib/agents'
+import { agentPause, agentSpoken } from './lib/agents'
 import { hasHistory } from './lib/history'
 import { othersSummary } from './lib/others'
 import StatusCandle from './components/StatusCandle.vue'
@@ -39,12 +39,12 @@ const startHint = computed(() => state.value.settings.startMinutes === null ? 'K
 const busy = computed(() => pending.value !== null || loading.value)
 const on = computed(() => state.value.session.mode !== 'off')
 const heldBy = computed(() => state.value.heldBy)
-const agentsHolding = computed(() => !on.value && heldBy.value !== null && heldBy.value === agentHolder(state.value.agents))
+const agentsHolding = computed(() => !on.value && heldBy.value !== null && state.value.heldByAgents)
 const held = computed(() => !on.value && heldBy.value !== null)
 const timed = computed(() => state.value.session.mode === 'for' || state.value.session.mode === 'until')
 const statusTitle = computed(() => title(state.value.session, now.value, heldBy.value))
 const statusDetail = computed(() => state.value.pausedByLock && (on.value || held.value) ? 'Paused while the screen is locked' : state.value.session.mode === 'off' && !held.value && state.value.notice ? state.value.notice : !on.value && !held.value && !state.value.pausedBy && state.value.others.length ? othersSummary(state.value.others) ?? '' : detail(state.value.session, now.value, state.value.settings.keepDisplayOn, heldBy.value, state.value.pausedBy))
-const spoken = computed(() => announcement(state.value.session, { heldBy: agentsHolding.value ? agentHolder(state.value.agents, true) : state.value.heldBy, pausedBy: state.value.pausedBy, notice: state.value.notice, lockPaused: state.value.pausedByLock }))
+const spoken = computed(() => announcement(state.value.session, { heldBy: agentsHolding.value && heldBy.value ? agentSpoken(heldBy.value, state.value.agents) : state.value.heldBy, pausedBy: state.value.pausedBy, notice: state.value.notice, lockPaused: state.value.pausedByLock }))
 const footer = computed(() => footerNote(state.value.power, state.value.lidSleeps, on.value || held.value))
 const ringFraction = computed(() => fraction(state.value.session, now.value))
 const extendedSession = ref<number | null>(null)

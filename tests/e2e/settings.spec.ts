@@ -68,7 +68,7 @@ test('records, rejects and removes a shortcut', async ({ page }) => {
 
 test('trigger notifications are off until turned on', async ({ page }) => {
   await page.goto('/?demo=1&state=off&page=settings')
-  const toggle = page.getByRole('switch', { name: 'When a trigger ends' })
+  const toggle = page.getByRole('switch', { name: 'When a trigger or agent ends' })
   await expect(toggle).not.toBeChecked()
   await toggle.click()
   await expect(toggle).toBeChecked()

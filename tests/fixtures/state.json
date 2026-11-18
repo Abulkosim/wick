@@ -35,6 +35,7 @@
   "triggers": [],
   "running": [],
   "heldBy": "Codex works",
+  "heldByAgents": true,
   "pausedBy": null,
   "others": [],
   "recovery": null,
@@ -47,7 +48,8 @@
       "name": "Codex",
       "label": "margin",
       "state": "working",
-      "since": 100
+      "since": 100,
+      "paused": false
     },
     {
       "id": "claude-a",
@@ -55,7 +57,8 @@
       "name": "Claude Code",
       "label": "wick",
       "state": "waiting",
-      "since": 100
+      "since": 100,
+      "paused": false
     }
   ]
 }

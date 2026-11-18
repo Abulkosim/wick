@@ -20,6 +20,7 @@ const working = ref<AgentConnection['agent'] | null>(null)
 const confirming = ref<AgentConnection['agent'] | null>(null)
 const errors = ref<Partial<Record<AgentConnection['agent'], string>>>({})
 const labels = { connect: 'Connect', disconnect: 'Disconnect', reconnect: 'Reconnect' } as const
+const configVariables = { claude: 'CLAUDE_CONFIG_DIR', codex: 'CODEX_HOME' } as const
 
 async function load(): Promise<void> {
   loadError.value = null
@@ -76,7 +77,7 @@ onMounted(load)
       <p v-if="loadError" class="connection-load-error" role="alert"><span>{{ loadError }}</span><button class="text-button inline-action" @click="load">Try again</button></p>
       <p v-else-if="!connections" class="card-empty" role="status">Checking agents…</p>
       <ul v-else class="connection-list" aria-label="Agent connections">
-        <li v-for="connection in connections" :key="connection.agent" class="connection-row" :data-agent="connection.agent" :class="[`is-${connection.status}`, { confirming: confirming === connection.agent }]">
+        <li v-for="connection in connections" :key="connection.agent" class="connection-row" :data-agent="connection.agent" :class="[`is-${connection.status}`, { confirming: confirming === connection.agent, 'has-note': connection.status === 'connected' && connection.error }]">
           <div class="connection-main">
             <span class="connection-mark"><AppIcon name="spark" :size="15"/></span>
             <div class="connection-copy">
@@ -89,6 +90,7 @@ onMounted(load)
             <p v-if="trustFile(connection) === null">Adds hooks to <code>{{ connection.file }}</code>. The file is backed up first.</p>
             <p v-else-if="trustFile(connection) === connection.file">Adds hooks to <code>{{ connection.file }}</code> and marks them trusted there. The file is backed up first.</p>
             <p v-else>Adds hooks to <code>{{ connection.file }}</code> and marks them trusted in <code>{{ trustFile(connection) }}</code>. Both files are backed up first.</p>
+            <p class="connection-note">Wick reads <code>{{ configVariables[connection.agent] }}</code> from its own environment, not from your shell profile.</p>
             <div class="form-actions">
               <button class="button button-small" @click="cancel(connection.agent)">Cancel</button>
               <button class="button button-primary button-small confirm-connect" :disabled="working !== null" @click="run(connection, 'connect')">{{ working === connection.agent ? 'Connecting…' : 'Connect' }}</button>
@@ -119,14 +121,15 @@ onMounted(load)
 .connection-status .status-dot { display: inline-block; margin: 0 5px 2px 0; vertical-align: middle; background: var(--track); }
 .is-connected .connection-status { color: var(--accent-ink); }
 .is-connected .connection-status .status-dot { background: var(--accent); }
-.is-stale .connection-status { color: var(--warning); }
-.is-stale .connection-status .status-dot { background: var(--warning); }
+.is-stale .connection-status, .is-connected.has-note .connection-status { color: var(--warning); }
+.is-stale .connection-status .status-dot, .is-connected.has-note .connection-status .status-dot { background: var(--warning); }
 .is-error .connection-status { color: var(--danger); }
 .is-missing .setting-label { color: var(--tertiary); }
 .connection-action { flex-shrink: 0; min-width: 92px; }
 .connection-action:disabled { opacity: .5; cursor: default; }
 .connection-confirm { margin: 10px 0 2px 38px; font-size: 13px; line-height: 1.5; color: var(--secondary); }
 .connection-confirm .form-actions { margin-top: 9px; }
+.connection-note { margin-top: 4px; font-size: 12px; color: var(--tertiary); }
 .connection-error { margin: 6px 0 0 38px; }
 .connection-hint { margin-top: 10px; padding: 0 2px; font-size: 13px; line-height: 1.5; color: var(--tertiary); }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--secondary); overflow-wrap: anywhere; }

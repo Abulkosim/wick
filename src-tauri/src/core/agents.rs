@@ -141,12 +141,12 @@ fn asks_for_owner(payload: &Value) -> bool {
     }
 }
 
-/// Hook events, named the same by Claude Code and Codex. `SessionStart` and `SubagentStop`
-/// change nothing.
+/// Hook events, named the same by Claude Code and Codex (`Interrupt` is Codex's Esc).
+/// `SessionStart` and `SubagentStop` change nothing.
 fn hook_effect(event: &str, payload: &Value) -> Option<Effect> {
     match event {
         "UserPromptSubmit" | "PreToolUse" | "PostToolUse" => Some(Effect::Working),
-        "Stop" | "PermissionRequest" => Some(Effect::Waiting),
+        "Stop" | "PermissionRequest" | "Interrupt" => Some(Effect::Waiting),
         "Notification" => asks_for_owner(payload).then_some(Effect::Waiting),
         "SessionEnd" => Some(Effect::Remove),
         _ => None,
@@ -370,6 +370,15 @@ pub fn alive(pid: u32, start: Option<i64>) -> bool {
         }
 }
 
+/// A working hold whose process is suspended (Ctrl+Z) sends no events until it resumes, so it
+/// counts as waiting. The file keeps saying working, so the hold works again on `fg`.
+pub fn settle(mut hold: Hold, stopped: impl Fn(u32) -> bool) -> Hold {
+    if hold.is_working() && hold.pid.is_some_and(stopped) {
+        hold.state = State::Waiting;
+    }
+    hold
+}
+
 /// Every current hold. Expired and unreadable files are deleted; temporary files from a write
 /// in progress and files from a newer Wick are skipped.
 pub fn read_all(directory: &Path, now: i64, live: impl Fn(u32, Option<i64>) -> bool) -> Vec<Hold> {
@@ -484,10 +493,12 @@ pub struct View {
     pub label: String,
     pub state: State,
     pub since: i64,
+    /// Stopped by the owner until it stops working.
+    pub paused: bool,
 }
 
-/// Working holds first, then the newest; at most `SHOWN`.
-pub fn views(holds: &[Hold]) -> Vec<View> {
+/// Working holds first, then the newest; at most `SHOWN`. `paused` lists pause keys.
+pub fn views(holds: &[Hold], paused: &[String]) -> Vec<View> {
     let mut sorted: Vec<&Hold> = holds.iter().collect();
     sorted.sort_by(|a, b| {
         b.is_working()
@@ -505,6 +516,7 @@ pub fn views(holds: &[Hold]) -> Vec<View> {
             label: hold.label.clone(),
             state: hold.state,
             since: hold.since,
+            paused: hold.is_working() && paused.contains(&pause_key(hold)),
         })
         .collect()
 }
@@ -542,9 +554,11 @@ pub fn ended(hold: &Hold, gone: bool, can_sleep: &str) -> String {
     }
 }
 
-/// The key a Stop pauses a working hold under, apart from trigger ids.
+/// Starts every key a Stop pauses a working hold under, apart from trigger ids.
+pub const PAUSE_PREFIX: &str = "agent:";
+
 pub fn pause_key(hold: &Hold) -> String {
-    format!("agent:{}", hold.id())
+    format!("{PAUSE_PREFIX}{}", hold.id())
 }
 
 #[cfg(test)]
@@ -651,6 +665,8 @@ mod tests {
         assert_eq!(hook("PostToolUse"), Some(Effect::Working));
         assert_eq!(hook("PermissionRequest"), Some(Effect::Waiting));
         assert_eq!(hook("Stop"), Some(Effect::Waiting));
+        assert_eq!(hook("Interrupt"), Some(Effect::Waiting));
+        assert_eq!(hook("SessionEnd"), Some(Effect::Remove));
         assert_eq!(hook("SessionStart"), None);
         let notify = codex_event(&json!({
             "type": "agent-turn-complete",
@@ -860,6 +876,33 @@ mod tests {
         assert_eq!(fs::read_dir(temp.path()).unwrap().count(), 0);
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn a_suspended_process_is_seen_as_stopped() {
+        let mut child = std::process::Command::new("sleep")
+            .arg("30")
+            .spawn()
+            .unwrap();
+        let pid = child.id();
+        let signal = |name: &str| {
+            std::process::Command::new("kill")
+                .args([name, &pid.to_string()])
+                .status()
+                .unwrap();
+        };
+        assert!(!processes::stopped(pid));
+        signal("-STOP");
+        let stopped = (0..50).any(|_| {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            processes::stopped(pid)
+        });
+        signal("-CONT");
+        child.kill().unwrap();
+        child.wait().unwrap();
+        assert!(stopped);
+        assert!(!processes::stopped(0));
+    }
+
     fn table<'a>(rows: &'a [(u32, u32, &'a str)]) -> impl Fn(u32) -> Option<(u32, String)> + 'a {
         move |pid| {
             rows.iter()
@@ -936,13 +979,27 @@ mod tests {
     }
 
     #[test]
+    fn a_suspended_agent_waits_until_it_resumes() {
+        let watched = hold(Agent::Claude, "a", State::Working, 0);
+        let mut unwatched = watched.clone();
+        unwatched.pid = None;
+        assert_eq!(
+            settle(watched.clone(), |pid| pid == 4242).state,
+            State::Waiting
+        );
+        assert_eq!(settle(watched, |_| false).state, State::Working);
+        assert_eq!(settle(unwatched, |_| true).state, State::Working);
+    }
+
+    #[test]
     fn views_put_working_first_then_newest_and_cap_the_list() {
         let mut holds: Vec<Hold> = (0..20)
             .map(|index| hold(Agent::Claude, &format!("s{index}"), State::Waiting, index))
             .collect();
         holds.push(hold(Agent::Codex, "old-work", State::Working, -50));
-        let views = views(&holds);
+        let views = views(&holds, &["agent:codex-old-work".into()]);
         assert_eq!(views.len(), SHOWN);
+        assert!(views[0].paused && !views[1].paused);
         assert_eq!(views[0].id, "codex-old-work");
         assert_eq!(views[0].name, "Codex");
         assert_eq!(views[1].id, "claude-s19");
@@ -950,7 +1007,7 @@ mod tests {
         let value = serde_json::to_value(&views[1]).unwrap();
         assert_eq!(
             value,
-            json!({ "id": "claude-s19", "agent": "claude", "name": "Claude Code", "label": "wick", "state": "waiting", "since": 19 })
+            json!({ "id": "claude-s19", "agent": "claude", "name": "Claude Code", "label": "wick", "state": "waiting", "since": 19, "paused": false })
         );
     }
 }

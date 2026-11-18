@@ -103,9 +103,7 @@ fn now() -> i64 {
 }
 
 fn holds_directory() -> Result<std::path::PathBuf, String> {
-    crate::status::default_directory()
-        .map(|directory| agents::directory(&directory))
-        .ok_or_else(|| "Could not find Wick's data folder.".into())
+    crate::status::holds_directory().ok_or_else(|| "Could not find Wick's data folder.".into())
 }
 
 /// Runs a command and returns its exit code. A hook always returns 0 and never prints to
@@ -211,10 +209,7 @@ fn hold(name: &str, pid: Option<u32>) -> Result<(), String> {
 /// Holds while the command runs, then releases and exits with its code. Ctrl+C reaches the
 /// command, which decides whether to stop; Wick waits for it either way.
 fn run(command: &[String]) -> i32 {
-    let mut child = match std::process::Command::new(&command[0])
-        .args(&command[1..])
-        .spawn()
-    {
+    let mut child = match spawn(command) {
         Ok(child) => child,
         Err(error) => {
             eprintln!("wick: could not run {}: {error}", command[0]);
@@ -258,13 +253,71 @@ fn run(command: &[String]) -> i32 {
     }
 }
 
+fn spawn(command: &[String]) -> std::io::Result<std::process::Child> {
+    let start = |program: &std::ffi::OsStr| {
+        std::process::Command::new(program)
+            .args(&command[1..])
+            .spawn()
+    };
+    match start(command[0].as_ref()) {
+        #[cfg(windows)]
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            let path = std::env::var_os("PATH").unwrap_or_default();
+            let extensions = std::env::var("PATHEXT").unwrap_or_default();
+            match find_script(
+                &command[0],
+                std::env::split_paths(&path),
+                &extensions,
+                |path| path.is_file(),
+            ) {
+                Some(script) => start(script.as_os_str()),
+                None => Err(error),
+            }
+        }
+        result => result,
+    }
+}
+
+/// Windows finds only `.exe` files by a bare name, so `npm`, `pnpm` and other `.cmd` shims
+/// need their full path; Rust then runs them through `cmd` with safe quoting. Looks in each
+/// PATH folder for the name with each PATHEXT extension.
+#[cfg(any(windows, test))]
+fn find_script(
+    name: &str,
+    folders: impl IntoIterator<Item = std::path::PathBuf>,
+    extensions: &str,
+    is_file: impl Fn(&std::path::Path) -> bool,
+) -> Option<std::path::PathBuf> {
+    if name.contains(['/', '\\', '.']) {
+        return None;
+    }
+    let extensions: Vec<String> = extensions
+        .split(';')
+        .map(|extension| extension.trim().to_ascii_lowercase())
+        .filter(|extension| extension.starts_with('.') && extension.len() > 1)
+        .collect();
+    let extensions = if extensions.is_empty() {
+        vec![".com".into(), ".exe".into(), ".bat".into(), ".cmd".into()]
+    } else {
+        extensions
+    };
+    folders.into_iter().find_map(|folder| {
+        extensions
+            .iter()
+            .map(|extension| folder.join(format!("{name}{extension}")))
+            .find(|path| is_file(path))
+    })
+}
+
 #[cfg(unix)]
 fn exit_code(status: std::process::ExitStatus) -> i32 {
     use std::os::unix::process::ExitStatusExt;
     match (status.code(), status.signal()) {
         (Some(code), _) => code,
         (None, Some(signal)) => {
-            signals::reraise(signal);
+            if signals::ends_quietly(signal) {
+                signals::reraise(signal);
+            }
             128 + signal
         }
         _ => 1,
@@ -276,8 +329,9 @@ fn exit_code(status: std::process::ExitStatus) -> i32 {
     status.code().unwrap_or(1)
 }
 
-/// Unix: SIGTERM, and a SIGINT that didn't come from the terminal (which already sent it to
-/// the command), go on to the command; Wick releases the hold once the command ends.
+/// Unix: SIGTERM goes on to the command. SIGINT doesn't: the command shares Wick's process
+/// group, so Ctrl+C or a signal to the group already reaches it, and a second SIGINT makes many
+/// tools quit at once. Wick releases the hold once the command ends.
 #[cfg(unix)]
 mod signals {
     use std::{
@@ -289,20 +343,18 @@ mod signals {
     const SIGINT: c_int = 2;
     const SIGTERM: c_int = 15;
     const SIG_DFL: usize = 0;
+    const SIG_IGN: usize = 1;
     static CHILD: AtomicI32 = AtomicI32::new(0);
 
     extern "C" {
         fn signal(signal: c_int, handler: usize) -> usize;
         fn kill(pid: i32, signal: c_int) -> c_int;
         fn getpid() -> i32;
-        fn getpgrp() -> i32;
-        fn tcgetpgrp(fd: c_int) -> i32;
     }
 
     extern "C" fn forward(received: c_int) {
         let child = CHILD.load(Ordering::SeqCst);
-        let from_terminal = received == SIGINT && unsafe { tcgetpgrp(0) == getpgrp() };
-        if child > 0 && !from_terminal {
+        if child > 0 {
             unsafe { kill(child, received) };
         }
     }
@@ -312,10 +364,17 @@ mod signals {
             return;
         };
         CHILD.store(pid, Ordering::SeqCst);
-        let handler = forward as extern "C" fn(c_int) as usize;
-        for received in [SIGINT, SIGTERM] {
-            unsafe { signal(received, handler) };
+        unsafe {
+            signal(SIGINT, SIG_IGN);
+            signal(SIGTERM, forward as extern "C" fn(c_int) as usize);
         }
+    }
+
+    /// Signals that end a process without a core dump or crash report: HUP, INT, KILL, PIPE,
+    /// ALRM, TERM. Wick ends with these the way the command did; after any other (ABRT, SEGV)
+    /// it exits with 128 + the signal, like a shell, rather than crash itself.
+    pub fn ends_quietly(received: c_int) -> bool {
+        matches!(received, 1 | 2 | 9 | 13 | 14 | 15)
     }
 
     /// Ends Wick the way the command ended, so the shell sees the same signal.
@@ -536,6 +595,37 @@ mod tests {
             run(&["make", "-j", "--quiet"])
         );
         assert_eq!(parsed(&["run", "sleep", "1"]), run(&["sleep", "1"]));
+    }
+
+    #[test]
+    fn finds_windows_scripts_by_bare_name() {
+        use std::path::PathBuf;
+        let folders = || vec![PathBuf::from("/a"), PathBuf::from("/node")];
+        let files = ["/node/npm.cmd", "/node/npm", "/a/tool.bat"];
+        let exists =
+            |path: &std::path::Path| files.iter().any(|file| path == std::path::Path::new(file));
+        assert_eq!(
+            find_script("npm", folders(), ".COM;.EXE;.BAT;.CMD", exists),
+            Some(PathBuf::from("/node/npm.cmd"))
+        );
+        assert_eq!(
+            find_script("tool", folders(), "", exists),
+            Some(PathBuf::from("/a/tool.bat"))
+        );
+        assert_eq!(find_script("npm.cmd", folders(), "", exists), None);
+        assert_eq!(find_script("./npm", folders(), "", exists), None);
+        assert_eq!(find_script("missing", folders(), ".CMD", exists), None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn only_quiet_signals_are_raised_again() {
+        for signal in [1, 2, 9, 13, 14, 15] {
+            assert!(signals::ends_quietly(signal), "{signal}");
+        }
+        for signal in [3, 4, 6, 7, 8, 11] {
+            assert!(!signals::ends_quietly(signal), "{signal}");
+        }
     }
 
     #[test]
