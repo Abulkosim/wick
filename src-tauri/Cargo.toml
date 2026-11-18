@@ -10,7 +10,7 @@ repository = "https://github.com/Abulkosim/wick"
 
 [lib]
 name = "wick_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
