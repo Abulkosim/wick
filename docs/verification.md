@@ -2,6 +2,41 @@
 
 What was checked for each release, newest first.
 
+## v0.9.0 — 2026-11-18
+
+Agents and reach: PRs [#51](https://github.com/Abulkosim/wick/pull/51) (agent holds, connect, CLI, macOS and Windows smoke tests), [#52](https://github.com/Abulkosim/wick/pull/52) (new advisories), [#54](https://github.com/Abulkosim/wick/pull/54) (rlib-only crate), [#55](https://github.com/Abulkosim/wick/pull/55) (packaging), [#56](https://github.com/Abulkosim/wick/pull/56) (release, demo, launch kit), each green before merging. `main` run [44254449459](https://github.com/Abulkosim/wick/actions/runs/44254449459) passed before tagging. Tag `v0.9.0`, CI run [44255535573](https://github.com/Abulkosim/wick/actions/runs/44255535573): every job passed first time, and the draft was created.
+
+- Locally (x86_64 Linux): Rust tests 157 passed with 1 ignored; unit tests 54/54; script tests 33/33; e2e 445 passed with 1 skipped in Chromium and WebKit; Clippy clean. Real `claude -p` and `codex exec` runs held the logind inhibitor while working and dropped it after Stop. After `kill -9` the hold was gone within 2 s.
+- Tag build, all four native runners: smoke tests passed, including `wick hold`, `release` and `run` on macOS, Windows, Linux x64 and arm64. On both Linux runners, `updater_install_linux` passed on the signed AppImage: signature failures and signed-version failures were rejected, then it installed.
+- Draft: 20/20 checksums OK. Provenance verified for all 12 files, and the SBOM attestation for the DMG. `latest.json` is 0.9.0 with 13 platform entries, every URL on the v0.9.0 tag.
+- Updater signatures, checked without a Mac: all 9 signed artifacts verify for 0.9.0 with the app's public key. For the Mac archive, version 0.9.1 and a flipped byte are both rejected, and `Info.plist` says 0.9.0. The `updater_install` test against it needs macOS.
+- Draft `Wick_0.9.0_amd64.AppImage` on this server (Xvfb, no tray, temp HOME): `scripts/linux-smoke.sh` passed, including the hold checks.
+- The tag build signed with the `release` environment's secrets, the first build to use them.
+- Pending 👤: publish; `updater_install` on a Mac against `Wick.app.tar.gz`; update the installed app in-app, then Connect in Settings → Agents and run an agent; `scoop install wick` on Windows; Linux on real hardware (#22).
+
+Checksums:
+
+    5a388697e1d5350546b99259f91166b1613baa43ec2d4f933972b3a489b9b7ff  latest.json
+    dbf7158c583e4cdc85ccafb7279864d03adea87da12fd13056681e9057ba76ba  Wick-0.9.0-1.aarch64.rpm
+    6e0ab678ed4ee59debe622455898eb7e9e1d57e8479c25cbff14c51689dd544d  Wick-0.9.0-1.aarch64.rpm.sig
+    c89ef23c04d37acf80a5969de71995e032ab23d91d133f4959df33ac0f50367c  Wick-0.9.0-1.x86_64.rpm
+    fcc3b256e63ee59af820f78f7df05e80764caa55ad7001764ef6373a1b95c2f2  Wick-0.9.0-1.x86_64.rpm.sig
+    7824ac8911b13083895b4dd2cc45920ca4c3eef5a7498860541b45d6a1620d46  Wick.app.tar.gz
+    62c1719d0530dd940b6eac5388b81ff6e2ce889e40b7ea4ab9b33671193fc1b8  Wick.app.tar.gz.sig
+    3e815dd8ac3f114b70e3327100cb2d6c19bff22199be31faf955e46e394a2c9e  Wick_0.9.0_aarch64.AppImage
+    05cd45fac31df1e93e2c700aeceae2fc169441fdfa0526bb250ae4298276ddc9  Wick_0.9.0_aarch64.AppImage.sig
+    5f7613caf26f7cd3da63fe51be4d82a0872ebc14bde7675365e973c766251033  Wick_0.9.0_amd64.AppImage
+    0f16796f9113f8e07b6ce9736f76b296b561a71fe04285dc1c8aac5ea7761e5f  Wick_0.9.0_amd64.AppImage.sig
+    441955c7e5f1da8d7858732c64a420dc52806f7562e87765351f2c76df3a5a77  Wick_0.9.0_amd64.deb
+    9747927c4d61f833c7ed622014814c83f09781a9c339204c2ae70fd59b74720f  Wick_0.9.0_amd64.deb.sig
+    9f02d3152df928cc9b88cf4335b3b07b261769b8ce90555fbe836da53ae53a9a  Wick_0.9.0_arm64.deb
+    68976c382b2c06a908817602c332e74a99059e9d13773ae3bc3e262e49cc7f1e  Wick_0.9.0_arm64.deb.sig
+    ece14aae0399ea2a3cc9549313d649c7d784aebd6e7a63790cfc4c5b214fc4e0  Wick_0.9.0_universal.dmg
+    070908ac121af72024d34ac33c8502cde5b3d2bdedc1759f38c987cf8d701346  Wick_0.9.0_x64-setup.exe
+    8e64613057169df36fe452a8148606e9318aa5c1ca7f4b4cca4d90eb91277f87  Wick_0.9.0_x64-setup.exe.sig
+    19b88102bf6575982ef2714c9ccb7c1acec56bd43287d579b91348e54356d633  Wick_0.9.0_x64_en-US.msi
+    069c28663499a10b6c3120a8e191322f7678ffe3a22fa8cd2360857e0c64beb9  Wick_0.9.0_x64_en-US.msi.sig
+
 ## v0.8.0 — 2026-11-10
 
 Linux arm64 and the Phase 10 sweep: PRs [#24](https://github.com/Abulkosim/wick/pull/24) (arm64 pipeline) and [#27](https://github.com/Abulkosim/wick/pull/27)–[#44](https://github.com/Abulkosim/wick/pull/44), each green before merging. `main` run [42891935312](https://github.com/Abulkosim/wick/actions/runs/42891935312) passed before tagging. Tag `v0.8.0`, CI run [42894982317](https://github.com/Abulkosim/wick/actions/runs/42894982317): frontend, Windows x64, Linux x64 and Linux arm64 passed first time; macOS failed in `hdiutil create` ("Resource busy", a runner flake, the same build passed on every PR) and passed on re-running the failed jobs, then the draft release passed.
