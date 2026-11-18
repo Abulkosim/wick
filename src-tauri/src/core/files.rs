@@ -47,7 +47,10 @@ fn retry<T>(mut attempt: impl FnMut() -> io::Result<T>) -> io::Result<T> {
 pub fn persist(file: tempfile::NamedTempFile, path: &Path) -> io::Result<()> {
     let temp = file.into_temp_path();
     retry(|| fs::rename(&temp, path))?;
-    temp.keep().map(drop).map_err(|error| error.error)
+    // The temporary name is gone; keep() only stops its drop from deleting it, and on Windows
+    // it reports the missing file as an error.
+    let _ = temp.keep();
+    Ok(())
 }
 
 pub fn remove(path: &Path) -> io::Result<()> {
