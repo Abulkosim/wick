@@ -33,6 +33,7 @@ Quoted from the repo so the posts and the README say the same thing. Change them
 | Linux | ✓ | – | – | – |
 | While an app runs | ✓ | ✓ | – | – |
 | While a command-line tool runs (`claude`, `ffmpeg`) | ✓ | – | – | `-w pid` |
+| While coding agents work, not while they wait for you | ✓ | – | – | – |
 | Shows what else keeps the Mac awake | ✓ | – | – | – |
 | Closed lid without an external display | – | ✓ (admin script) | – | – |
 | Open source, free | ✓ | – | ✓ | ✓ |
@@ -53,7 +54,7 @@ Alternative (73):
 
 > Wick is a small menu bar app (tray on Windows and Linux) that keeps the computer awake: for 15 minutes, until 16:30, until you stop it, or while an app or command runs.
 >
-> The new part is agents. A "while `claude` is running" rule keeps the computer up all night while the agent sits at a prompt waiting for you. So Wick listens to the agents' own hooks instead. Settings → Agents → Connect adds hooks to `~/.claude/settings.json` or `~/.codex/hooks.json` (backed up first; Disconnect removes only Wick's entries). Each hook runs `wick hook claude`, which writes a small file saying "working" or "waiting" and exits: 30–49 ms over 20 runs, no output, always exit 0, so it can't slow down or break the agent. The app reads those files every 5 seconds. While an agent works, the computer stays awake; when it finishes or waits for you, it can sleep again, and a notification says "Claude Code finished in wick. Your Mac can sleep again." If the agent is killed, its pid is gone and the hold goes with it.
+> The new part is agents. A "while `claude` is running" rule keeps the computer up all night while the agent sits at a prompt waiting for you. So Wick listens to the agents' own hooks instead. Settings → Agents → Connect adds hooks to `~/.claude/settings.json`, or to `~/.codex/hooks.json` and marks them trusted in `~/.codex/config.toml` so Codex runs them without its review screen. Both files are backed up first, and Disconnect removes only Wick's entries. Each hook runs `wick hook claude`, which writes a small file saying "working" or "waiting" and exits: 30–49 ms over 20 runs, no output, always exit 0, so it can't slow down or break the agent. The app reads those files every 5 seconds. While an agent works, the computer stays awake; when it finishes or waits for you, it can sleep again, and a notification says "Claude Code finished in wick. Your Mac can sleep again." If the agent is killed, its pid is gone and the hold goes with it.
 >
 > For anything else: `wick run -- make test` keeps it awake while a command runs and exits with its code, and `wick hold render --pid 4242` holds until a process ends.
 >
@@ -87,6 +88,7 @@ Alternative (73):
 > | --- | :-: | :-: | :-: | :-: |
 > | While an app runs | ✓ | ✓ | – | – |
 > | While a command-line tool runs (`claude`, `ffmpeg`) | ✓ | – | – | `-w pid` |
+> | While coding agents work, not while they wait for you | ✓ | – | – | – |
 > | Shows what else keeps the Mac awake | ✓ | – | – | – |
 > | Closed lid without an external display | – | ✓ (admin script) | – | – |
 > | Open source, free | ✓ | – | ✓ | ✓ |

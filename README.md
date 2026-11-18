@@ -2,7 +2,7 @@
 
 # Wick
 
-**Keeps your computer awake.** On demand, for a set time, or while an app or command is running. A quiet menu bar app for macOS, and a tray app for Windows and Linux.
+**Keeps your computer awake.** On demand, for a set time, while an app or command is running, or while Claude Code or Codex works, and lets it sleep when they wait for you. A quiet menu bar app for macOS, and a tray app for Windows and Linux.
 
 [![CI](https://github.com/Abulkosim/wick/actions/workflows/ci.yml/badge.svg)](https://github.com/Abulkosim/wick/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Abulkosim/wick)](https://github.com/Abulkosim/wick/releases/latest)
@@ -92,6 +92,7 @@ Updates are signed and verified in the app. Wick checks once a day and installs 
 | While an app runs | ✓ | ✓ | – | – |
 | On power or with an external display | ✓ | ✓ | display only | – |
 | While a command-line tool runs (`claude`, `ffmpeg`) | ✓ | – | – | `-w pid` |
+| While coding agents work, not while they wait for you | ✓ | – | – | – |
 | Shows what else keeps the Mac awake | ✓ | – | – | – |
 | Battery guard | ✓ | ✓ | ✓ | – |
 | Global shortcut | ✓ | ✓ | – | – |
