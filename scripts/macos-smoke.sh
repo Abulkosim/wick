@@ -65,6 +65,16 @@ expect() {
   grep -q "\"$1\":$2" "$work/status.json" || fail "$3: expected \"$1\":$2"
 }
 
+not_awake() {
+  status
+  grep -q '"awake":false' "$work/status.json"
+}
+
+mode_is() {
+  status
+  grep -q "\"mode\":\"$1\"" "$work/status.json"
+}
+
 # Polls a check every half second for at most $1 seconds.
 wait_until() {
   local seconds=$1 what=$2 ticks=0
@@ -119,6 +129,7 @@ check_holds() {
   runner=""
   ((code == 0)) || fail "wick run exited with $code for a command that succeeded: $(cat "$work/run.log")"
   wait_until 15 "assertion left after wick run's command ended" released
+  wait_until 15 "still awake after wick run's command ended" not_awake
 
   limited 30 "$bin" run -- /bin/sh -c 'exit 7'
   ((code == 7)) || fail "wick run exited with $code, expected the command's 7"
@@ -135,7 +146,7 @@ expect awake false "awake before any start"
 released || fail "a Wick assertion exists before any start: $(wick_assertions)"
 
 wick start 1
-status
+wait_until 15 "start 1 is not a timed session" mode_is for
 expect awake true "not awake after start 1"
 expect mode '"for"' "start 1 is not a timed session"
 expect_assertion "start 1"
@@ -149,7 +160,7 @@ expect mode '"off"' "session still on after stop"
 if [[ "${WICK_SMOKE_HOLDS:-1}" == 1 ]]; then check_holds; fi
 
 wick start
-status
+wait_until 15 "start is not open-ended" mode_is indefinite
 expect awake true "not awake after start"
 expect mode '"indefinite"' "start is not open-ended"
 expect_assertion "start"

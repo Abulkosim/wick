@@ -72,6 +72,10 @@ function Wait-Status([string]$Name, $Expected, [string]$What) {
     }
 }
 
+function Wait-Mode([string]$Mode, [string]$What) {
+    Wait-Until "$What (session mode $($script:status.session.mode))" { (Get-Status).session.mode -ceq $Mode }
+}
+
 # Polls a check every half second for at most $Seconds seconds.
 function Wait-Until([string]$What, [scriptblock]$Check, [int]$Seconds = 15) {
     $deadline = (Get-Date).AddSeconds($Seconds)
@@ -131,6 +135,7 @@ function Test-Holds {
     $script:runner = $null
     if ($result.Code -ne 0) { throw "wick run exited with $($result.Code) for a command that succeeded: $($result.Err)" }
     Wait-Until "request left after wick run's command ended" { Test-Released }
+    Wait-Status 'awake' $false "still awake after wick run's command ended"
 
     $result = Complete-Wick (Start-Wick 'run', '--', 'cmd', '/c', 'exit 7')
     if ($result.Code -ne 7) { throw "wick run exited with $($result.Code), expected the command's 7" }
@@ -154,20 +159,20 @@ function Test-Wick {
     if (-not (Test-Released)) { throw "a request from wick.exe exists before any start: $(Get-WickRequests)" }
 
     Invoke-Wick 'start', '1' | Out-Null
+    Wait-Mode 'for' 'start 1 is not a timed session'
     Wait-Status 'awake' $true 'not awake after start 1'
-    if ($script:status.session.mode -cne 'for') { throw "start 1 is not a timed session: $($script:status.session.mode)" }
     Assert-Requests 'start 1'
 
     Invoke-Wick 'stop' | Out-Null
     Wait-Until 'request left after stop' { Test-Released }
+    Wait-Mode 'off' 'session still on after stop'
     Wait-Status 'awake' $false 'still awake after stop'
-    if ($script:status.session.mode -cne 'off') { throw "session still on after stop: $($script:status.session.mode)" }
 
     if ($env:WICK_SMOKE_HOLDS -ne '0') { Test-Holds }
 
     Invoke-Wick 'start' | Out-Null
+    Wait-Mode 'indefinite' 'start is not open-ended'
     Wait-Status 'awake' $true 'not awake after start'
-    if ($script:status.session.mode -cne 'indefinite') { throw "start is not open-ended: $($script:status.session.mode)" }
     Assert-Requests 'start'
 
     Stop-Process -Id $script:appPid -Force
