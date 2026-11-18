@@ -1,5 +1,5 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { createDemoState, demoApps, demoConnections } from './demo.ts'
+import { createDemoState, demoApps, demoConnections, scriptDemo } from './demo.ts'
 import { z } from 'zod'
 import { agentConnectionSchema, agentConnectionsSchema, appStateSchema, initialState, runningAppSchema, settingsSchema, startRequestSchema, triggerSchema, type AgentConnection, type AppState, type RunningApp, type Settings, type StartRequest, type Trigger } from './model.ts'
 import { agentHolder, agentPause, agentsHold } from './agents.ts'
@@ -28,6 +28,7 @@ export function useWick() {
   const state = ref<AppState>(demo ? createDemoState(query.get('state')) : initialState())
   const theme = query.get('theme')
   if (demo && (theme === 'light' || theme === 'dark')) state.value.settings.theme = theme
+  if (demo) scriptDemo(state)
   const loading = ref(desktop && !demo)
   const pending = ref<Command | null>(null)
   const message = ref<{ kind: 'error' | 'success'; text: string } | null>(null)

@@ -1,3 +1,4 @@
+import type { Ref } from 'vue'
 import type { UpdateState } from './updater.ts'
 import { agentHolder, agentsHold } from './agents.ts'
 import { initialState, type Agent, type AgentConnection, type AppState, type Day, type RunningApp, type Trigger } from './model.ts'
@@ -210,4 +211,10 @@ export function createDemoUpdateState(scenario: string | null): UpdateState {
     case 'update-current': return { kind: 'current' }
     default: return { kind: 'idle' }
   }
+}
+
+/** Lets scripts/demo-video.mjs move the preview from state to state, as Rust's events would. */
+export function scriptDemo(state: Ref<AppState>): void {
+  const patch = (change: Partial<AppState>): void => { state.value = { ...state.value, ...change, revision: state.value.revision + 1 } }
+  Object.assign(window, { wickDemo: { state: () => state.value, patch } })
 }
