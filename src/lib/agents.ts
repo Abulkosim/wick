@@ -47,7 +47,8 @@ export function elapsed(since: number, now: number): string {
 }
 
 export function agentStatus(agent: Agent, now: number): string {
-  return agent.state === 'working' ? `Working · ${elapsed(agent.since, now)}` : 'Waiting for you'
+  if (agent.state !== 'working') return 'Waiting for you'
+  return `Working · ${elapsed(agent.since, now)}${agent.paused ? ' · paused' : ''}`
 }
 
 export type ConnectionAction = 'connect' | 'disconnect' | 'reconnect'

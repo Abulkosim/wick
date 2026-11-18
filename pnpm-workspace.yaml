@@ -2,3 +2,7 @@ verifyDepsBeforeRun: false
 updateNotifier: false
 allowBuilds:
   esbuild: true
+auditConfig:
+  ignoreGhsas:
+    # picomatch ReDoS needs attacker-supplied globs; it runs only in dev tools (vite, vue-tsc) on our own patterns. No patched version yet.
+    - GHSA-fc5q-39xc-vjpf

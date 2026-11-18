@@ -269,7 +269,7 @@ enum Loaded {
 }
 
 fn load(path: &Path) -> Loaded {
-    let Ok(file) = fs::File::open(path) else {
+    let Ok(file) = super::files::open(path) else {
         return Loaded::Invalid;
     };
     let mut bytes = Vec::new();
@@ -302,14 +302,12 @@ pub fn write(directory: &Path, hold: &Hold) -> io::Result<()> {
     let mut file = tempfile::NamedTempFile::new_in(directory)?;
     serde_json::to_writer(&mut file, hold)?;
     file.write_all(b"\n")?;
-    file.persist(path(directory, hold.agent, &hold.session))
-        .map_err(|error| error.error)?;
-    Ok(())
+    super::files::persist(file, &path(directory, hold.agent, &hold.session))
 }
 
 /// Removes a hold; one that is already gone is fine.
 pub fn remove(directory: &Path, agent: Agent, session: &str) -> io::Result<()> {
-    match fs::remove_file(path(directory, agent, session)) {
+    match super::files::remove(&path(directory, agent, session)) {
         Err(error) if error.kind() != io::ErrorKind::NotFound => Err(error),
         _ => Ok(()),
     }
@@ -402,7 +400,7 @@ pub fn read_all(directory: &Path, now: i64, live: impl Fn(u32, Option<i64>) -> b
             }
             Loaded::Newer => {}
             _ => {
-                let _ = fs::remove_file(&path);
+                let _ = super::files::remove(&path);
             }
         }
     }
