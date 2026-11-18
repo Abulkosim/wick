@@ -55,6 +55,7 @@ test('elapsed time counts whole minutes, at least one', () => {
 test('status says how long an agent works or that it waits', () => {
   assert.equal(agentStatus(agent(), now), 'Working · 12m')
   assert.equal(agentStatus(agent({ state: 'waiting' }), now), 'Waiting for you')
+  assert.equal(agentStatus(agent({ paused: true }), now), 'Working · 12m · paused')
 })
 
 test('each connection offers one action and says where it stands', () => {

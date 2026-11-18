@@ -18,7 +18,7 @@ const folds = computed(() => props.agents.length > limit)
   <section class="card agents-card" :class="{ 'is-off': !enabled }" aria-labelledby="agents-label">
     <h2 id="agents-label" class="card-label">Agents</h2>
     <ul id="agents-list" class="trigger-list">
-      <li v-for="agent in shown" :key="agent.id" class="trigger-row agent-row" :class="{ running: enabled && agent.state === 'working', waiting: agent.state === 'waiting' }">
+      <li v-for="agent in shown" :key="agent.id" class="trigger-row agent-row" :class="{ running: enabled && agent.state === 'working' && !agent.paused, waiting: agent.state === 'waiting' || agent.paused }">
         <span class="trigger-mark"><AppIcon name="spark" :size="15"/></span>
         <span class="trigger-copy">
           <span class="trigger-sentence"><strong>{{ agent.name }}</strong><template v-if="agentPlace(agent)"><span class="agent-separator"> · </span>{{ agentPlace(agent) }}</template></span>

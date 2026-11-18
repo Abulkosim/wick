@@ -41,6 +41,8 @@ test('an agent that starts after a Stop holds on its own', async ({ page }) => {
   await page.goto('/?demo=1&state=agents-paused')
   await expect(page.locator('.hero-detail')).toHaveText('While Claude Code works')
   await expect(page.getByRole('status')).toHaveText('Awake while Claude Code works in site')
+  await expect(page.locator('.agent-row').first()).toContainText('Working · 12m · paused')
+  await expect(page.locator('.agent-row').nth(1)).not.toContainText('paused')
   await page.getByRole('button', { name: 'Stop', exact: true }).click()
   await expect(hero(page)).toContainText('Paused until the agents finish')
 })
