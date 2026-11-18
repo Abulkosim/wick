@@ -19,6 +19,19 @@ pub enum IconClick {
     Toggle,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct AgentSettings {
+    /// Working agent holds keep the computer awake. Off, they are still shown.
+    pub enabled: bool,
+}
+
+impl Default for AgentSettings {
+    fn default() -> Self {
+        Self { enabled: true }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -41,6 +54,7 @@ pub struct Settings {
     pub pause_when_locked: bool,
     /// Count the time Wick keeps the computer awake, per day, on this computer only.
     pub keep_history: bool,
+    pub agents: AgentSettings,
 }
 
 pub const BATTERY_THRESHOLDS: std::ops::RangeInclusive<u8> = 5..=80;
@@ -63,6 +77,7 @@ impl Default for Settings {
             show_time_left: false,
             pause_when_locked: false,
             keep_history: true,
+            agents: AgentSettings::default(),
         }
     }
 }
@@ -212,6 +227,7 @@ impl Settings {
                 "Keep a history",
                 notes,
             ),
+            agents: agent_settings(map.get("agents"), defaults.agents, notes),
         };
         let mut settings = settings;
         if settings
@@ -250,6 +266,23 @@ fn field<T: DeserializeOwned>(
             reset_note(label, notes);
             fallback
         }),
+    }
+}
+
+fn agent_settings(
+    value: Option<&Value>,
+    defaults: AgentSettings,
+    notes: &mut Vec<String>,
+) -> AgentSettings {
+    match value {
+        None => defaults,
+        Some(Value::Object(map)) => AgentSettings {
+            enabled: field(map, "enabled", defaults.enabled, "Agents", notes),
+        },
+        Some(_) => {
+            reset_note("Agents", notes);
+            defaults
+        }
     }
 }
 
@@ -323,6 +356,45 @@ mod tests {
         let settings = Settings::recover(Some(json!({ "batteryThreshold": 99 })), &mut notes);
         assert_eq!(settings.battery_threshold, 20);
         assert_eq!(notes, ["Battery level was reset to its default."]);
+    }
+
+    #[test]
+    fn agent_settings_load_field_by_field() {
+        let mut notes = Vec::new();
+        assert!(
+            Settings::recover(Some(json!({})), &mut notes)
+                .agents
+                .enabled
+        );
+        let off = Settings::recover(
+            Some(json!({ "agents": { "enabled": false, "later": 1 } })),
+            &mut notes,
+        );
+        assert!(!off.agents.enabled);
+        assert!(
+            Settings::recover(Some(json!({ "agents": {} })), &mut notes)
+                .agents
+                .enabled
+        );
+        assert!(notes.is_empty());
+        let bad = Settings::recover(
+            Some(json!({ "agents": { "enabled": "yes" }, "keepHistory": false })),
+            &mut notes,
+        );
+        assert!(bad.agents.enabled);
+        assert!(!bad.keep_history);
+        assert_eq!(notes, ["Agents was reset to its default."]);
+        let mut notes = Vec::new();
+        assert!(
+            Settings::recover(Some(json!({ "agents": true })), &mut notes)
+                .agents
+                .enabled
+        );
+        assert_eq!(notes, ["Agents was reset to its default."]);
+        assert_eq!(
+            serde_json::to_value(Settings::default()).unwrap()["agents"],
+            json!({ "enabled": true })
+        );
     }
 
     #[test]

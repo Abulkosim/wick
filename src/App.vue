@@ -10,6 +10,8 @@ import SettingsPanel from './components/SettingsPanel.vue'
 import TriggersCard from './components/TriggersCard.vue'
 import OthersCard from './components/OthersCard.vue'
 import HistoryCard from './components/HistoryCard.vue'
+import AgentsCard from './components/AgentsCard.vue'
+import { agentPause, agentSpoken } from './lib/agents'
 import { hasHistory } from './lib/history'
 import { othersSummary } from './lib/others'
 import StatusCandle from './components/StatusCandle.vue'
@@ -22,7 +24,7 @@ import { footerNote } from './lib/power'
 import { device, isMac, platform } from './lib/platform'
 import { isTyping, keyAction } from './lib/keys'
 
-const { state, loading, pending, message, now, demo, desktop, startSession, stopSession, extendSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, clearHistory, hideWindow } = useWick()
+const { state, loading, pending, message, now, demo, desktop, startSession, stopSession, extendSession, resumeTriggers, saveTriggers, runningApps, setDisplay, saveSettings, resetStore, clearHistory, agentConnections, connectAgent, disconnectAgent, hideWindow } = useWick()
 const query = new URLSearchParams(location.search)
 const updater = useUpdater({ demo, desktop, initial: demo ? createDemoUpdateState(query.get('state')) : undefined })
 const placementSchema = z.object({ revision: z.number().int().nonnegative(), arrowX: z.number().finite().nullable(), framed: z.boolean().default(false), shortcuts: z.boolean().default(true) })
@@ -36,11 +38,13 @@ const startRequest = computed<StartRequest>(() => state.value.settings.startMinu
 const startHint = computed(() => state.value.settings.startMinutes === null ? 'Keep awake until you stop it' : `Keep awake for ${shortDuration(state.value.settings.startMinutes * 60_000)}`)
 const busy = computed(() => pending.value !== null || loading.value)
 const on = computed(() => state.value.session.mode !== 'off')
-const held = computed(() => !on.value && state.value.heldBy !== null)
+const heldBy = computed(() => state.value.heldBy)
+const agentsHolding = computed(() => !on.value && heldBy.value !== null && state.value.heldByAgents)
+const held = computed(() => !on.value && heldBy.value !== null)
 const timed = computed(() => state.value.session.mode === 'for' || state.value.session.mode === 'until')
-const statusTitle = computed(() => title(state.value.session, now.value, state.value.heldBy))
-const statusDetail = computed(() => state.value.pausedByLock && (on.value || held.value) ? 'Paused while the screen is locked' : state.value.session.mode === 'off' && !held.value && state.value.notice ? state.value.notice : !on.value && !held.value && !state.value.pausedBy && state.value.others.length ? othersSummary(state.value.others) ?? '' : detail(state.value.session, now.value, state.value.settings.keepDisplayOn, state.value.heldBy, state.value.pausedBy))
-const spoken = computed(() => announcement(state.value.session, { heldBy: state.value.heldBy, pausedBy: state.value.pausedBy, notice: state.value.notice, lockPaused: state.value.pausedByLock }))
+const statusTitle = computed(() => title(state.value.session, now.value, heldBy.value))
+const statusDetail = computed(() => state.value.pausedByLock && (on.value || held.value) ? 'Paused while the screen is locked' : state.value.session.mode === 'off' && !held.value && state.value.notice ? state.value.notice : !on.value && !held.value && !state.value.pausedBy && state.value.others.length ? othersSummary(state.value.others) ?? '' : detail(state.value.session, now.value, state.value.settings.keepDisplayOn, heldBy.value, state.value.pausedBy))
+const spoken = computed(() => announcement(state.value.session, { heldBy: agentsHolding.value && heldBy.value ? agentSpoken(heldBy.value, state.value.agents) : state.value.heldBy, pausedBy: state.value.pausedBy, notice: state.value.notice, lockPaused: state.value.pausedByLock }))
 const footer = computed(() => footerNote(state.value.power, state.value.lidSleeps, on.value || held.value))
 const ringFraction = computed(() => fraction(state.value.session, now.value))
 const extendedSession = ref<number | null>(null)
@@ -176,7 +180,7 @@ onUnmounted(() => {
               <h1 class="hero-title">{{ statusTitle }}</h1>
               <p class="hero-detail" :class="{ 'is-notice': !on && !held && state.notice }">{{ statusDetail }}<template v-if="!on && !held && state.pausedBy"> · <button class="text-button inline-action" :disabled="busy" @click="resumeTriggers">Resume</button></template><template v-if="timed && !state.pausedByLock"> · <button class="text-button inline-action" :disabled="busy" @click="extend(15)">Add 15 min</button></template></p>
             </div>
-            <AppTooltip v-if="held" text="Pause this trigger until it ends"><button class="button hero-action" :disabled="busy" @click="stopSession">Stop</button></AppTooltip>
+            <AppTooltip v-if="held" :text="agentsHolding ? `Let it sleep until ${agentPause(state.agents)}` : 'Pause this trigger until it ends'"><button class="button hero-action" :disabled="busy" @click="stopSession">Stop</button></AppTooltip>
             <button v-else-if="on" class="button hero-action" :disabled="busy" @click="stopSession">Stop</button>
             <AppTooltip v-else :text="startHint"><button class="button button-primary hero-action" :disabled="busy" @click="startSession(startRequest)">Start</button></AppTooltip>
           </section>
@@ -186,6 +190,7 @@ onUnmounted(() => {
             <h2 id="duration-label" class="card-label">Keep awake for</h2>
             <DurationPicker :active="active" :busy="busy" @start="startSession"/>
           </section>
+          <AgentsCard v-if="state.agents.length" :agents="state.agents" :now="now" :enabled="state.settings.agents.enabled" :busy="busy" @enable="saveSettings({ ...state.settings, agents: { enabled: true } })"/>
           <OthersCard v-if="state.others.length" :others="state.others" :also="on || held"/>
           <TriggersCard :triggers="state.triggers" :running="state.running" :busy="busy" :save="saveTriggers" :load-apps="runningApps"/>
           <section class="card">
@@ -207,7 +212,7 @@ onUnmounted(() => {
           </div>
         </footer>
         </template>
-        <SettingsPanel v-else :update-state="updater.state.value" :update-busy="updater.busy.value" :demo="demo" :settings="state.settings" :power="state.power" :recovered="state.recovered" :recovery="state.recovery" :busy="busy" :save="saveSettings" :reset="resetStore" :shortcuts="placement.shortcuts" :clear-history="clearHistory" :history="state.history" @back="page = 'overview'" @check-update="updater.check" @install-update="updater.install"/>
+        <SettingsPanel v-else :update-state="updater.state.value" :update-busy="updater.busy.value" :demo="demo" :settings="state.settings" :power="state.power" :recovered="state.recovered" :recovery="state.recovery" :busy="busy" :save="saveSettings" :reset="resetStore" :shortcuts="placement.shortcuts" :clear-history="clearHistory" :agent-bridge="{ list: agentConnections, connect: connectAgent, disconnect: disconnectAgent }" :history="state.history" @back="page = 'overview'" @check-update="updater.check" @install-update="updater.install"/>
         <div v-if="demo" class="preview-ribbon"><span class="preview-dot"/>Interface preview<span>Sample data</span></div>
         <Transition name="toast"><div v-if="message" class="toast-message" :class="{ 'toast-error': message.kind === 'error' }" :role="message.kind === 'error' ? 'alert' : 'status'"><AppIcon :name="message.kind === 'error' ? 'alert' : 'check'" :size="15"/><span>{{ message.text }}</span><button class="icon-button" aria-label="Dismiss message" @click="message = null"><AppIcon name="close" :size="13"/></button></div></Transition>
       </div>

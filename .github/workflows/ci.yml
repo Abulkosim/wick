@@ -210,6 +210,20 @@ jobs:
           # The AppImage is what most people download; without FUSE on the runner it runs extracted.
           appimage=$(ls src-tauri/target/$BUILD_TARGET/release/bundle/appimage/*.AppImage)
           APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a dbus-run-session -- bash scripts/linux-smoke.sh "$appimage"
+      - name: Smoke-test the macOS app
+        if: runner.os == 'macOS'
+        timeout-minutes: 10
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: bash scripts/macos-smoke.sh "src-tauri/target/$BUILD_TARGET/release/bundle/macos/Wick.app"
+      - name: Smoke-test the Windows app
+        if: runner.os == 'Windows'
+        timeout-minutes: 10
+        shell: pwsh
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        # powercfg /requests needs an elevated shell, which GitHub's Windows runners provide.
+        run: pwsh -NoProfile -File scripts/windows-smoke.ps1 -Bin "src-tauri/target/$env:BUILD_TARGET/release/wick.exe"
       - name: Collect installers
         env:
           BUILD_TARGET: ${{ matrix.target }}

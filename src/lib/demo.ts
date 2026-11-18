@@ -1,7 +1,8 @@
 import type { UpdateState } from './updater.ts'
-import { initialState, type AppState, type Day, type RunningApp, type Trigger } from './model.ts'
+import { agentHolder, agentsHold } from './agents.ts'
+import { initialState, type Agent, type AgentConnection, type AppState, type Day, type RunningApp, type Trigger } from './model.ts'
 
-export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off', 'clamshell', 'update-available', 'locked', 'conditions', 'history', 'activity', 'low-power', 'schedule', 'toast', 'update-checking', 'update-downloading', 'update-installing', 'update-current'] as const
+export const demoScenarios = ['off', 'timed', 'until', 'indefinite', 'display', 'battery', 'error', 'recovery', 'recovered', 'desktop', 'held', 'paused', 'triggers', 'others', 'others-off', 'clamshell', 'update-available', 'locked', 'conditions', 'history', 'activity', 'low-power', 'schedule', 'toast', 'update-checking', 'update-downloading', 'update-installing', 'update-current', 'agents-working', 'agents-many', 'agents-waiting', 'agents-off', 'agents-connected', 'agents-stale', 'agents-missing', 'agents-error'] as const
 
 export const demoApps: RunningApp[] = [
   { name: 'Final Cut Pro', path: '/Applications/Final Cut Pro.app' },
@@ -14,6 +15,63 @@ export const demoTriggers = (): Trigger[] => [
   { id: 'demo-claude', kind: 'process', name: 'claude', enabled: true },
   { id: 'demo-ffmpeg', kind: 'process', name: 'ffmpeg', enabled: false },
 ]
+
+export function demoAgents(scenario: string | null, now = Date.now()): Agent[] {
+  const ago = (minutes: number): number => Math.floor(now / 1000) - minutes * 60
+  const claude = (session: string, label: string, state: Agent['state'], since: number): Agent => ({ id: `claude-${session}`, agent: 'claude', name: 'Claude Code', label, state, since, paused: false })
+  switch (scenario) {
+    case 'agents-working':
+    case 'agents-off':
+      return [claude('d442c2f9', 'wick', 'working', ago(12))]
+    case 'agents-many':
+      return [
+        claude('d442c2f9', 'wick', 'working', ago(12)),
+        { id: 'codex-7f3a91c0', agent: 'codex', name: 'Codex', label: 'margin', state: 'working', since: ago(83), paused: false },
+        claude('a1b7e004', 'site', 'waiting', ago(4)),
+      ]
+    case 'agents-lots':
+      return [
+        claude('d442c2f9', 'wick', 'working', ago(12)),
+        { id: 'codex-7f3a91c0', agent: 'codex', name: 'Codex', label: 'margin', state: 'working', since: ago(83), paused: false },
+        claude('a1b7e004', 'site', 'waiting', ago(4)),
+        claude('b20c41aa', 'notes', 'waiting', ago(26)),
+        claude('c9e1f3d2', 'api', 'waiting', ago(48)),
+        claude('e5d7a810', 'docs', 'waiting', ago(95)),
+      ]
+    case 'agents-waiting':
+      return [claude('d442c2f9', 'wick', 'waiting', ago(2))]
+    case 'agents-paused':
+      return [{ ...claude('d442c2f9', 'wick', 'working', ago(12)), paused: true }, claude('a1b7e004', 'site', 'working', ago(3))]
+    default:
+      return []
+  }
+}
+
+export function demoConnections(scenario: string | null): AgentConnection[] {
+  const claude: AgentConnection = { agent: 'claude', name: 'Claude Code', status: 'disconnected', file: '~/.claude/settings.json', error: null }
+  const codex: AgentConnection = { agent: 'codex', name: 'Codex', status: 'disconnected', file: '~/.codex/hooks.json', error: null }
+  switch (scenario) {
+    case 'agents-working':
+    case 'agents-waiting':
+    case 'agents-off':
+      return [{ ...claude, status: 'connected' }, codex]
+    case 'agents-many':
+    case 'agents-lots':
+    case 'agents-paused':
+    case 'agents-connected':
+      return [{ ...claude, status: 'connected' }, { ...codex, status: 'connected' }]
+    case 'agents-stale':
+      return [{ ...claude, status: 'stale' }, { ...codex, status: 'connected' }]
+    case 'agents-missing':
+      return [{ ...claude, status: 'connected' }, { ...codex, status: 'missing' }]
+    case 'agents-hooks-off':
+      return [{ ...claude, status: 'connected' }, { ...codex, status: 'connected', error: 'Hooks are turned off in ~/.codex/config.toml.' }]
+    case 'agents-error':
+      return [{ ...claude, status: 'error', error: '~/.claude/settings.json isn’t valid JSON. Wick left it unchanged.' }, codex]
+    default:
+      return [claude, codex]
+  }
+}
 
 /** The last seven days ending today, oldest first. */
 export function demoHistory(minutes: number[], now = Date.now()): Day[] {
@@ -31,6 +89,13 @@ export function createDemoState(scenario: string | null, now = Date.now()): AppS
   state.lidSleeps = true
   const minutes = (value: number): number => value * 60_000
   if (scenario && !['off', 'recovery', 'error', 'battery'].includes(scenario)) state.history = demoHistory([95, 210, 0, 160, 312, 48, 192], now)
+  state.agents = demoAgents(scenario, now)
+  if (scenario === 'agents-off') state.settings.agents = { enabled: false }
+  if (agentsHold(state.agents, state.settings.agents.enabled)) {
+    state.heldBy = agentHolder(state.agents)
+    state.heldByAgents = true
+  }
+  if (scenario === 'agents-paused') state.pausedBy = 'Claude Code finishes'
   switch (scenario) {
     case 'timed':
       state.session = { mode: 'for', startedAt: now - minutes(18), endsAt: now + minutes(42) }

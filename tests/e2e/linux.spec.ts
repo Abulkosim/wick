@@ -16,7 +16,7 @@ test('Linux says computer, offers commands and keeps lock and display options', 
   await expect(page.getByText('Show time left in the menu bar')).toHaveCount(0)
   await expect(page.getByText('Pause while the screen is locked')).toBeVisible()
   await expect(page.getByText('Lets the computer sleep until you unlock it.')).toBeVisible()
-  await expect(page.getByText('For example “ffmpeg quit. Your computer can sleep again.”')).toBeVisible()
+  await expect(page.getByText('For example “ffmpeg quit.” or “Claude Code is waiting for you in wick.”')).toBeVisible()
   await expect(page.getByText('Starts or stops anywhere.')).toBeVisible()
 })
 

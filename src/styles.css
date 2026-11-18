@@ -1164,3 +1164,30 @@ button:disabled:hover {
     transition: none;
   }
 }
+.agent-separator {
+  color: var(--tertiary);
+}
+.agent-row.waiting .trigger-status .status-dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--tertiary);
+}
+.agents-card.is-off .trigger-row.agent-row .trigger-mark {
+  color: var(--tertiary);
+}
+.agents-more {
+  margin: 4px 0 0 38px;
+  padding: 2px 0;
+  font-size: 12px;
+  color: var(--tertiary);
+}
+.agents-off-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--tertiary);
+}
