@@ -42,20 +42,12 @@ fn retry<T>(mut attempt: impl FnMut() -> io::Result<T>) -> io::Result<T> {
     }
 }
 
-/// Moves a finished temporary file over `path`.
+/// Moves a finished temporary file over `path`. `std::fs::rename` replaces a file that a
+/// reader holds open on Windows 10 and later; `tempfile`'s own persist does not.
 pub fn persist(file: tempfile::NamedTempFile, path: &Path) -> io::Result<()> {
-    let mut file = Some(file);
-    retry(|| {
-        let temp = file
-            .take()
-            .ok_or_else(|| io::Error::other("already persisted"))?;
-        temp.persist(path).map(drop).map_err(|error| {
-            let message = error.error.to_string();
-            let kind = error.error.kind();
-            file = Some(error.file);
-            io::Error::new(kind, message)
-        })
-    })
+    let temp = file.into_temp_path();
+    retry(|| fs::rename(&temp, path))?;
+    temp.keep().map(drop).map_err(|error| error.error)
 }
 
 pub fn remove(path: &Path) -> io::Result<()> {
