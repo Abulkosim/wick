@@ -17,7 +17,7 @@ const base = process.env.WICK_DEMO_URL ?? `http://127.0.0.1:${port}`
 const zoom = 2
 // The page runs at half speed while recording, so the screencast catches every step of a transition.
 const slow = 2
-const viewport = { width: 1040 * zoom, height: 680 * zoom }
+const viewport = { width: 760 * zoom, height: 680 * zoom }
 
 if (spawnSync(ffmpeg, ['-hide_banner', '-version'], { stdio: 'ignore' }).status !== 0) {
   console.error('ffmpeg not found. Install it (brew install ffmpeg, apt install ffmpeg) or set FFMPEG=/path/to/ffmpeg.')
@@ -41,7 +41,7 @@ function stage(zoom) {
   const css = `
     html { zoom: ${zoom} }
     .preview-ribbon { display: none !important }
-    .preview-stage { place-items: start end; padding: 30px 340px 0 0; min-height: 680px }
+    .preview-stage { place-items: start start; padding: 30px 0 0 24px; min-height: 680px }
     .stage-bar { position: fixed; inset: 0 0 auto; height: 26px; display: flex; align-items: center; justify-content: flex-end; gap: 18px; padding: 0 16px; font: 500 13px/1 Inter, sans-serif; color: #1d1d1f; background: rgba(246,246,246,.72); backdrop-filter: blur(20px); box-shadow: 0 .5px 0 #0000001f; z-index: 20; font-variant-numeric: tabular-nums }
     [data-theme=dark] .stage-bar { color: #f2f2f2; background: rgba(36,36,36,.72); box-shadow: 0 .5px 0 #ffffff1a }
     .stage-bar svg { display: block }
@@ -115,7 +115,7 @@ await page.clock.install({ time: new Date('2026-11-18T16:30:00Z') })
 await page.addInitScript(stage, zoom)
 await page.goto(`${base}/?demo=1&state=off&theme=light`)
 await page.evaluate(() => document.fonts.ready)
-await page.mouse.move(820 * zoom, 560 * zoom)
+await page.mouse.move(600 * zoom, 560 * zoom)
 await page.waitForTimeout(600)
 
 const wait = ms => page.waitForTimeout(ms * slow)
@@ -129,7 +129,7 @@ async function animate(ms, frame) {
     await page.waitForTimeout(10)
   }
 }
-let pointer = { x: 820 * zoom, y: 560 * zoom }
+let pointer = { x: 600 * zoom, y: 560 * zoom }
 async function glide(x, y, ms) {
   const from = pointer
   await animate(ms, t => {
@@ -172,7 +172,7 @@ await page.mouse.down()
 await wait(110)
 await page.mouse.up()
 await wait(300)
-await glide(190 * zoom, 500 * zoom, 800)
+await glide(560 * zoom, 470 * zoom, 800)
 await wait(300)
 
 let working = false
@@ -225,7 +225,7 @@ function encode(args) {
 const mp4 = join(images, 'demo.mp4')
 const gif = join(images, 'demo.gif')
 encode(['-vf', 'scale=out_range=tv,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '23', '-tune', 'stillimage', '-movflags', '+faststart', '-an', mp4])
-encode(['-vf', 'fps=15,scale=1040:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=full[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle', '-loop', '0', gif])
+encode(['-vf', 'fps=15,scale=760:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=full[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle', '-loop', '0', gif])
 const size = file => `${(statSync(file).size / 1e6).toFixed(2)} MB`
 console.log(`${shots.length} frames, ${(ended - shots[0].at).toFixed(1)} s`)
 console.log(`docs/images/demo.mp4 ${size(mp4)}`)
