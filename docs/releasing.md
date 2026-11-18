@@ -50,6 +50,7 @@ Actions are pinned to commit SHAs (the repository requires it), runner images an
 4. Install the DMG's app, launch it, start and stop a session, and check `pmset -g assertions`. For Linux, run the draft AppImage in a desktop session (or the dev container in CONTRIBUTING.md) and check `systemd-inhibit --list`.
 5. Record what passed in [verification.md](verification.md), newest release first.
 6. Publish the draft and mark it latest: `gh release edit vX.Y.Z --draft=false --latest`. If publishing slipped to another day, fix the date in the changelog files and the release notes; `latest.json` keeps the planned date.
+7. Bump the package managers: `node packaging/bump.mjs vX.Y.Z`, commit, and merge to `main` ([below](#scoop-winget-aur-and-flatpak)).
 
 The workflow refuses to replace assets on a published release. Never edit a published release's files or reuse a version; ship a new patch.
 
@@ -63,7 +64,18 @@ When visible copy changes, refresh the README and site screenshots from the demo
 
 The workflow pushes with a write deploy key on the tap only (secret `HOMEBREW_TAP_DEPLOY_KEY`), gated by the variable `HOMEBREW_TAP_ENABLED=true`. To rotate it, delete the deploy key in the tap's settings, add a new one with write access, and replace the secret. Re-run for a tag with `gh workflow run homebrew.yml -f tag=vX.Y.Z`.
 
-After it runs, check with `brew update && brew livecheck --cask abulkosim/tap/wick` and `brew audit --cask --online abulkosim/tap/wick`. Change stanzas in `packaging/` first, then copy the cask to the tap; `brew style --cask` must be clean. The workflow updates only the tap, so set the copy here to the latest published version and checksum when you release, or copying it rolls the tap back.
+After it runs, check with `brew update && brew livecheck --cask abulkosim/tap/wick` and `brew audit --cask --online abulkosim/tap/wick`. Change stanzas in `packaging/` first, then copy the cask to the tap; `brew style --cask` must be clean. The workflow updates only the tap, so bump the copy here too (next section), or copying it rolls the tap back.
+
+## Scoop, winget, AUR and Flatpak
+
+After publishing, point every package manager at the release with one command and commit it:
+
+```sh
+node packaging/bump.mjs vX.Y.Z
+node --test packaging/*.test.mjs
+```
+
+It reads `SHA256SUMS.txt` from the published release and the date from the changelog, and rewrites the cask, `bucket/wick.json`, `packaging/winget/`, `packaging/aur/` and `packaging/flatpak/`. The test fails if any channel names another version. Scoop users get the bump once it reaches `main`. Once winget, the AUR and Flathub are live, submit each as in [packaging/README.md](../packaging/README.md).
 
 ## Updates
 

@@ -237,6 +237,7 @@ test('only states with a newer version count as an available update', async () =
   assert.equal(updateAvailable({ kind: 'installing', version: '0.9.0' }), true)
   for (const kind of ['idle', 'checking', 'current'] as const) assert.equal(updateAvailable({ kind }), false)
   assert.equal(updateAvailable({ kind: 'error', message: 'Couldn’t check.' }), false)
+  assert.equal(updateAvailable(createDemoUpdateState('update-managed')), false)
   assert.equal(updateAvailable(createDemoUpdateState('update-available')), true)
   assert.equal(updateAvailable(createDemoUpdateState(null)), false)
 })

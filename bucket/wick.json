@@ -1,0 +1,34 @@
+{
+    "version": "0.8.0",
+    "description": "Keeps your computer awake, for a set time or while a command runs.",
+    "homepage": "https://abulkosim.github.io/wick/",
+    "license": "MIT",
+    "notes": "Update Wick with: scoop update wick",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/Abulkosim/wick/releases/download/v0.8.0/Wick_0.8.0_x64_en-US.msi",
+            "hash": "3d31da296428c3a4b25285cd06513814d910353a770292efd65603985ba3eaa2"
+        }
+    },
+    "extract_dir": "PFiles\\Wick",
+    "post_install": "Set-Content -Path \"$dir\\package-manager\" -Value 'Scoop' -NoNewline",
+    "shortcuts": [
+        [
+            "wick.exe",
+            "Wick"
+        ]
+    ],
+    "checkver": {
+        "github": "https://github.com/Abulkosim/wick"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/Abulkosim/wick/releases/download/v$version/Wick_$version_x64_en-US.msi"
+            }
+        },
+        "hash": {
+            "url": "$baseurl/SHA256SUMS.txt"
+        }
+    }
+}

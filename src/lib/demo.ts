@@ -209,6 +209,7 @@ export function createDemoUpdateState(scenario: string | null): UpdateState {
     case 'update-downloading': return { kind: 'downloading', version: '0.2.0', downloaded: 3_400_000, total: 8_200_000 }
     case 'update-installing': return { kind: 'installing', version: '0.2.0' }
     case 'update-current': return { kind: 'current' }
+    case 'update-managed': return { kind: 'managed', by: 'Scoop' }
     default: return { kind: 'idle' }
   }
 }

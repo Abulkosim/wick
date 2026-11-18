@@ -1,0 +1,26 @@
+# Maintainer: abulkosim <abulkasimkattaev at gmail dot com>
+
+pkgname=wick-bin
+pkgver=0.8.0
+pkgrel=1
+pkgdesc='Keeps your computer awake, for a set time or while a command runs'
+arch=('x86_64' 'aarch64')
+url='https://github.com/Abulkosim/wick'
+license=('MIT')
+depends=('cairo' 'dbus' 'gcc-libs' 'gdk-pixbuf2' 'glib2' 'glibc' 'gtk3' 'hicolor-icon-theme' 'libsoup3' 'webkit2gtk-4.1')
+provides=('wick')
+conflicts=('wick')
+options=('!strip' '!debug')
+source=("LICENSE-$pkgver::https://raw.githubusercontent.com/Abulkosim/wick/v$pkgver/LICENSE")
+source_x86_64=("wick-$pkgver-x86_64.deb::$url/releases/download/v$pkgver/Wick_${pkgver}_amd64.deb")
+source_aarch64=("wick-$pkgver-aarch64.deb::$url/releases/download/v$pkgver/Wick_${pkgver}_arm64.deb")
+sha256sums=('3d2a7a89e6ef0754e4e0272eafef410e80ecddd2fc4ade9e2effb28bd86460a3')
+sha256sums_x86_64=('d117c0b0ca7936dccf650ce5a3f365f96bb4c2f7f2eb9b108e2cf592d8cb3f78')
+sha256sums_aarch64=('b4a3e2b64cf4cad962fd2ca57c4e902598d0ace99f5374e3c07575ead6658305')
+
+package() {
+  bsdtar -xf data.tar.gz -C "$pkgdir" --no-same-owner
+  install -Dm644 "LICENSE-$pkgver" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -dm755 "$pkgdir/usr/lib/wick"
+  printf 'the AUR' > "$pkgdir/usr/lib/wick/package-manager"
+}

@@ -186,6 +186,21 @@ for (const theme of ['light', 'dark']) {
   })
 }
 
+for (const theme of ['light', 'dark'] as const) {
+  test(`${theme} install from a package manager names it and offers no update controls`, async ({ page }, info) => {
+    await bridge(page, theme, { kind: 'managed', by: 'Scoop' })
+    await page.goto('/')
+    await openUpdates(page)
+    const updates = page.getByRole('region', { name: 'Updates', exact: true })
+    await expect(updates.getByRole('status')).toHaveText('Updates come from Scoop.')
+    await expect(updates.getByRole('switch')).toHaveCount(0)
+    await expect(updates.getByRole('button')).toHaveCount(0)
+    await expect(page.locator('.update-dot')).toHaveCount(0)
+    await info.attach(`updater-${theme}-managed`, { body: await updates.screenshot(), contentType: 'image/png' })
+    expect(await page.evaluate(() => window.__UPDATE_TEST__?.calls)).toEqual([])
+  })
+}
+
 test('preview without an update has no dot', async ({ page }) => {
   await bridge(page)
   await page.goto('/?demo=1')

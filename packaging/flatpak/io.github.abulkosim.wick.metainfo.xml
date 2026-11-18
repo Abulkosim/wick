@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.abulkosim.wick</id>
+  <name>Wick</name>
+  <summary>Keep your computer awake</summary>
+  <developer id="io.github.abulkosim">
+    <name>abulkosim</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>Wick keeps your computer awake from the panel's tray: on demand, for a set time, or while something is running.</p>
+    <ul>
+      <li>Sessions until stopped, for 15 minutes to 7 days, or until a time</li>
+      <li>Triggers: while the network or CPU is busy, on power, with an external display, or on a schedule</li>
+      <li>Stops below a battery level you choose</li>
+      <li>Shows which other apps are keeping the computer awake</li>
+      <li>Keeps the display on only when you ask</li>
+    </ul>
+    <p>Wick uses your desktop's own inhibitors and a systemd-logind lock, and changes no system settings. Quitting releases them at once. No account, no telemetry.</p>
+  </description>
+  <launchable type="desktop-id">io.github.abulkosim.wick.desktop</launchable>
+  <url type="homepage">https://abulkosim.github.io/wick/</url>
+  <url type="bugtracker">https://github.com/Abulkosim/wick/issues</url>
+  <url type="vcs-browser">https://github.com/Abulkosim/wick</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>A two-hour session, opened from the Xfce panel</caption>
+      <image>https://raw.githubusercontent.com/Abulkosim/wick/v0.8.0/docs/images/linux-xfce.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Settings in dark mode</caption>
+      <image>https://raw.githubusercontent.com/Abulkosim/wick/v0.8.0/docs/images/settings-dark.png</image>
+    </screenshot>
+  </screenshots>
+  <branding>
+    <color type="primary" scheme_preference="light">#e5ece1</color>
+    <color type="primary" scheme_preference="dark">#303e32</color>
+  </branding>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <categories>
+    <category>Utility</category>
+  </categories>
+  <provides>
+    <binary>wick</binary>
+  </provides>
+  <releases>
+    <release version="0.8.0" date="2026-11-10">
+      <url type="details">https://github.com/Abulkosim/wick/releases/tag/v0.8.0</url>
+    </release>
+  </releases>
+</component>

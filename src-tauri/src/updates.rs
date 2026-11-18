@@ -29,6 +29,9 @@ pub enum UpdatePhase {
     Error {
         message: String,
     },
+    Managed {
+        by: String,
+    },
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -41,9 +44,55 @@ pub struct UpdateStatus {
 pub struct Updates {
     status: Mutex<UpdateStatus>,
     pending: tokio::sync::Mutex<Option<Update>>,
+    managed: bool,
+}
+
+/// Package managers that update Wick themselves (Scoop, the AUR, Flatpak) install a
+/// `package-manager` file naming themselves: next to `wick.exe` on Windows, in `../lib/wick/`
+/// beside the binary on Linux.
+fn managed_by() -> Option<String> {
+    if cfg!(target_os = "macos") {
+        return None;
+    }
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?;
+    let file = if cfg!(windows) {
+        dir.join("package-manager")
+    } else {
+        dir.join("../lib/wick/package-manager")
+    };
+    manager_name(&std::fs::read_to_string(file).ok()?)
+}
+
+fn manager_name(text: &str) -> Option<String> {
+    let name = text.trim();
+    let valid = !name.is_empty()
+        && name.chars().count() <= 40
+        && name
+            .chars()
+            .all(|c| c.is_alphanumeric() || matches!(c, ' ' | '-' | '.'));
+    valid.then(|| name.to_owned())
 }
 
 impl Updates {
+    pub fn for_this_install() -> Self {
+        Self::managed_by(managed_by())
+    }
+
+    fn managed_by(by: Option<String>) -> Self {
+        let Some(by) = by else {
+            return Self::default();
+        };
+        Self {
+            status: Mutex::new(UpdateStatus {
+                revision: 0,
+                state: UpdatePhase::Managed { by },
+            }),
+            managed: true,
+            ..Self::default()
+        }
+    }
+
     fn status(&self) -> Result<UpdateStatus, String> {
         self.status
             .lock()
@@ -114,6 +163,9 @@ pub async fn check_for_update(
 }
 
 async fn check(app: &AppHandle, updates: &Updates, quiet: bool) -> Result<UpdateStatus, String> {
+    if updates.managed {
+        return updates.status();
+    }
     let Ok(mut pending) = updates.pending.try_lock() else {
         return updates.status();
     };
@@ -185,10 +237,10 @@ pub fn start_background_checks(app: AppHandle, runtime: Arc<Runtime>) {
 async fn background_check(app: &AppHandle, runtime: &Runtime) {
     let enabled = runtime.state().settings.auto_check_updates;
     let now = Utc::now();
-    if !enabled || !due(runtime.last_update_check_at().as_deref(), now) {
+    let updates = app.state::<Updates>();
+    if updates.managed || !enabled || !due(runtime.last_update_check_at().as_deref(), now) {
         return;
     }
-    let updates = app.state::<Updates>();
     if updates.status().is_ok_and(|status| {
         matches!(
             status.state,
@@ -334,6 +386,29 @@ mod tests {
         assert!(!due(Some("2026-10-22T11:59:00Z"), now));
         assert!(!due(Some("2026-10-22T16:00:00+05:00"), now));
         assert!(due(Some("2026-10-23T12:00:00Z"), now));
+    }
+
+    #[test]
+    fn package_managers_name_themselves_in_plain_words() {
+        assert_eq!(manager_name("Scoop"), Some("Scoop".into()));
+        assert_eq!(manager_name("the AUR\n"), Some("the AUR".into()));
+        assert_eq!(manager_name("  Flatpak "), Some("Flatpak".into()));
+        for bad in ["", "  ", "<b>Scoop</b>", "a/b", &"x".repeat(41)] {
+            assert_eq!(manager_name(bad), None, "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn a_managed_install_reports_its_package_manager() {
+        let updates = Updates::managed_by(Some("Scoop".into()));
+        assert!(updates.managed);
+        assert_eq!(
+            serde_json::to_value(updates.status().unwrap()).unwrap(),
+            serde_json::json!({"revision": 0, "state": {"kind": "managed", "by": "Scoop"}})
+        );
+        let updates = Updates::managed_by(None);
+        assert!(!updates.managed);
+        assert!(matches!(updates.status().unwrap().state, UpdatePhase::Idle));
     }
 
     #[tokio::test]
