@@ -7,7 +7,7 @@ Drafts for v0.9.0, the first release with agents. 👤 The owner posts; nothing 
 - [ ] 👤 v0.9.0 is published and marked latest (plan 11.8). Agents ship in v0.9.0; until then the README's Install table points at v0.8.0, which has no Settings → Agents.
 - [ ] 👤 Download links in the README read v0.9.0.
 - [ ] If the popover changed since, run `pnpm demo:video` and commit the new `docs/images/demo.mp4` and `demo.gif`.
-- [ ] 👤 Attach `docs/images/demo.mp4` (20 s, 2080×1360, H.264) where the post takes video: Reddit, X, Bluesky. HN takes no media; the README GIF covers it.
+- [ ] 👤 Attach `docs/images/demo.mp4` (20 s, 1520×1360, H.264) where the post takes video: Reddit, X, Bluesky. HN takes no media; the README GIF covers it.
 - [ ] 👤 Read each subreddit's rules on the day. r/linux and r/macapps both limit self-promotion; say you made it.
 - [ ] 👤 Be around for a few hours after posting to answer questions.
 
