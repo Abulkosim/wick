@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Wick
+Comment=Keeps your computer awake
+Exec=wick %u
+Icon=io.github.abulkosim.wick
+Terminal=false
+Categories=Utility;
+Keywords=awake;sleep;caffeine;inhibit;power;
+MimeType=x-scheme-handler/wick;
+StartupWMClass=wick

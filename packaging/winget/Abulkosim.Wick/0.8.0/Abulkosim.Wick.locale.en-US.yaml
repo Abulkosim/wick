@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0.schema.json
+
+PackageIdentifier: Abulkosim.Wick
+PackageVersion: 0.8.0
+PackageLocale: en-US
+Publisher: Abulkosim
+PublisherUrl: https://github.com/Abulkosim
+PublisherSupportUrl: https://github.com/Abulkosim/wick/issues
+PrivacyUrl: https://github.com/Abulkosim/wick/blob/main/PRIVACY.md
+PackageName: Wick
+PackageUrl: https://abulkosim.github.io/wick/
+License: MIT
+LicenseUrl: https://github.com/Abulkosim/wick/blob/main/LICENSE
+ShortDescription: Keeps your computer awake, from the system tray
+Description: Keep your computer awake on demand, for a set time, or while a command, download or build is running. Stops below a battery level you choose.
+Moniker: wick
+Tags:
+  - awake
+  - caffeine
+  - sleep
+  - power
+  - tray
+ReleaseNotesUrl: https://github.com/Abulkosim/wick/releases/tag/v0.8.0
+ManifestType: defaultLocale
+ManifestVersion: 1.12.0

@@ -1,0 +1,66 @@
+id: io.github.abulkosim.wick
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+command: wick
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # Network and CPU triggers read the host's counters in /proc; the update check is off in Flatpak.
+  - --share=network
+  # Tray icon (StatusNotifierItem); the app is pid 2 in the sandbox, so its item name is fixed.
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --own-name=org.kde.StatusNotifierItem-2-1
+  # Single instance, under the app's own identifier.
+  - --own-name=com.abulkosim.wick.SingleInstance
+  - --talk-name=org.freedesktop.Notifications
+  # Keeping awake and listing who else does: desktop inhibitors and systemd-logind.
+  - --talk-name=org.freedesktop.PowerManagement
+  - --talk-name=org.freedesktop.ScreenSaver
+  - --talk-name=org.gnome.SessionManager
+  - --talk-name=org.kde.Solid.PowerManagement
+  - --system-talk-name=org.freedesktop.login1
+  - --system-talk-name=org.freedesktop.UPower.PowerProfiles
+  - --system-talk-name=net.hadess.PowerProfiles
+modules:
+  - name: wick
+    buildsystem: simple
+    sources:
+      - type: file
+        url: https://github.com/Abulkosim/wick/releases/download/v0.8.0/Wick_0.8.0_amd64.deb
+        sha256: d117c0b0ca7936dccf650ce5a3f365f96bb4c2f7f2eb9b108e2cf592d8cb3f78
+        dest-filename: wick.deb
+        only-arches: [x86_64]
+        x-checker-data:
+          type: json
+          url: https://api.github.com/repos/Abulkosim/wick/releases/latest
+          version-query: .tag_name | sub("^v"; "")
+          url-query: .assets[] | select(.name == "Wick_" + $version + "_amd64.deb") | .browser_download_url
+          is-main-source: true
+      - type: file
+        url: https://github.com/Abulkosim/wick/releases/download/v0.8.0/Wick_0.8.0_arm64.deb
+        sha256: b4a3e2b64cf4cad962fd2ca57c4e902598d0ace99f5374e3c07575ead6658305
+        dest-filename: wick.deb
+        only-arches: [aarch64]
+        x-checker-data:
+          type: json
+          url: https://api.github.com/repos/Abulkosim/wick/releases/latest
+          version-query: .tag_name | sub("^v"; "")
+          url-query: .assets[] | select(.name == "Wick_" + $version + "_arm64.deb") | .browser_download_url
+      - type: file
+        path: io.github.abulkosim.wick.metainfo.xml
+      - type: file
+        path: io.github.abulkosim.wick.desktop
+    build-commands:
+      - ar -x wick.deb
+      - tar -xf data.tar.gz
+      - install -Dm755 usr/bin/wick /app/bin/wick
+      - install -Dm644 usr/share/icons/hicolor/32x32/apps/wick.png /app/share/icons/hicolor/32x32/apps/io.github.abulkosim.wick.png
+      - install -Dm644 usr/share/icons/hicolor/128x128/apps/wick.png /app/share/icons/hicolor/128x128/apps/io.github.abulkosim.wick.png
+      - install -Dm644 usr/share/icons/hicolor/256x256@2/apps/wick.png /app/share/icons/hicolor/256x256/apps/io.github.abulkosim.wick.png
+      - install -Dm644 io.github.abulkosim.wick.desktop /app/share/applications/io.github.abulkosim.wick.desktop
+      - install -Dm644 io.github.abulkosim.wick.metainfo.xml /app/share/metainfo/io.github.abulkosim.wick.metainfo.xml
+      - install -dm755 /app/lib/wick
+      - printf Flatpak > /app/lib/wick/package-manager

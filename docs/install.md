@@ -58,6 +58,15 @@ A managed device may hide **Run anyway**. See [Microsoft Defender SmartScreen](h
 
 **What differs on Windows.** Wick keeps the PC awake with a standard power request (`powercfg /requests` lists it as Wick). It can't list other apps' requests without administrator rights, has no lid warning, and triggers are commands (`ffmpeg`, `claude`), power and monitors rather than apps.
 
+### Scoop
+
+```powershell
+scoop bucket add wick https://github.com/Abulkosim/wick
+scoop install wick/wick
+```
+
+Scoop unpacks the same MSI from GitHub Releases into its own folder, without running the installer, and adds Wick to the Start menu. Update with `scoop update wick`; from v0.9.0, Wick leaves updates to Scoop and **Settings → Updates** says so. `scoop uninstall wick` removes it; settings and history stay in `%APPDATA%\com.abulkosim.wick\`.
+
 ## Linux
 
 Pick one. The commands below are for x86_64; on arm64 the files end in `_aarch64.AppImage`, `_arm64.deb` and `.aarch64.rpm`.
@@ -130,7 +139,7 @@ First turn off **Launch at login** in Wick's Settings, then right-click the cand
 
 If Launch at login was left on, also delete `~/Library/LaunchAgents/Wick.plist`.
 
-**Windows.** Open **Settings → Apps → Installed apps**, choose **Wick → Uninstall**. To remove settings, triggers and history, delete `%APPDATA%\com.abulkosim.wick\`.
+**Windows.** Open **Settings → Apps → Installed apps**, choose **Wick → Uninstall** (or `scoop uninstall wick`). To remove settings, triggers and history, delete `%APPDATA%\com.abulkosim.wick\`.
 
 **Linux.** `sudo apt remove wick` or `sudo dnf remove wick`, or delete the AppImage. To remove settings, triggers and history, delete `~/.local/share/com.abulkosim.wick/`. If Launch at login was left on, also delete `~/.config/autostart/Wick.desktop`; an AppImage also leaves `~/.local/share/applications/wick-handler.desktop` for `wick://` links.
 

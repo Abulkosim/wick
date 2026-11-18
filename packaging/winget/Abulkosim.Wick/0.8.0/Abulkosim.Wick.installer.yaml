@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
+
+PackageIdentifier: Abulkosim.Wick
+PackageVersion: 0.8.0
+InstallerType: nullsoft
+Scope: user
+InstallerSwitches:
+  Silent: /S
+  SilentWithProgress: /S
+UpgradeBehavior: install
+Protocols:
+  - wick
+ReleaseDate: 2026-11-10
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/Abulkosim/wick/releases/download/v0.8.0/Wick_0.8.0_x64-setup.exe
+    InstallerSha256: 0EDC02C3442F041B824952DBCCDA7219123C89E985409F28B9B3C44D02839157
+ManifestType: installer
+ManifestVersion: 1.12.0

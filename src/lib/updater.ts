@@ -10,6 +10,7 @@ export const updateStateSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('downloading'), version: z.string().min(1).max(100), downloaded: counterSchema, total: counterSchema.nullable() }),
   z.object({ kind: z.literal('installing'), version: z.string().min(1).max(100) }),
   z.object({ kind: z.literal('error'), message: z.string().min(1).max(500) }),
+  z.object({ kind: z.literal('managed'), by: z.string().min(1).max(40) }),
 ])
 export const updateStatusSchema = z.object({ revision: counterSchema, state: updateStateSchema })
 export type UpdateState = z.infer<typeof updateStateSchema>

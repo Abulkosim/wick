@@ -21,6 +21,7 @@ const copy = computed(() => {
     case 'downloading': return `Downloading ${state.version}…`
     case 'installing': return 'Installing. Wick will restart.'
     case 'error': return state.message
+    case 'managed': return `Updates come from ${state.by}.`
     default: { const exhaustive: never = state; return exhaustive }
   }
 })
@@ -41,12 +42,12 @@ function activate(): void {
 <template>
   <section class="settings-section update-settings" aria-labelledby="updates-title">
     <h2 id="updates-title" class="updates-title">Updates<span v-if="available" class="update-dot" aria-hidden="true"/></h2>
-    <div class="setting-row update-auto"><span id="update-auto-label" class="setting-label">Check for updates daily</span><AppSwitch :model-value="autoCheck" aria-labelledby="update-auto-label" :disabled="settingsBusy" @update:model-value="emit('autoCheck', $event)"/></div>
+    <div v-if="state.kind !== 'managed'" class="setting-row update-auto"><span id="update-auto-label" class="setting-label">Check for updates daily</span><AppSwitch :model-value="autoCheck" aria-labelledby="update-auto-label" :disabled="settingsBusy" @update:model-value="emit('autoCheck', $event)"/></div>
     <div class="update-card">
       <div class="update-heading"><span class="update-mark"><AppIcon name="wick" :size="19"/></span><div><span class="setting-label">Wick</span><span class="update-version">Version {{ version }}</span></div><AppIcon v-if="state.kind === 'current' && !demo" class="update-current" name="check" :size="16"/></div>
       <p class="update-message" :class="{ 'update-error': state.kind === 'error' }" :role="state.kind === 'error' ? 'alert' : 'status'">{{ copy }}</p>
       <div v-if="state.kind === 'downloading'" class="update-progress" :class="{ indeterminate: progress === undefined }" role="progressbar" aria-label="Update download" :aria-valuenow="progress" :aria-valuemin="0" :aria-valuemax="100"><span :style="{ width: progress === undefined ? '35%' : `${progress}%` }"/></div>
-      <button class="button button-small update-action" :class="{ 'button-primary': state.kind === 'available' }" :aria-disabled="busy || demo" :aria-busy="busy" @click="activate">{{ action }}</button>
+      <button v-if="state.kind !== 'managed'" class="button button-small update-action" :class="{ 'button-primary': state.kind === 'available' }" :aria-disabled="busy || demo" :aria-busy="busy" @click="activate">{{ action }}</button>
     </div>
   </section>
 </template>
@@ -62,6 +63,7 @@ function activate(): void {
 .update-version { font-size: 13px; color: var(--tertiary); font-variant-numeric: tabular-nums; }
 .update-current { margin-left: auto; color: var(--accent); }
 .update-message { font-size: 14px; line-height: 1.5; margin: 12px 0; color: var(--secondary); overflow-wrap: anywhere; }
+.update-message:last-child { margin-bottom: 0; }
 .update-error { color: var(--danger); }
 .update-action { min-height: 30px; }
 .update-action[aria-disabled="true"] { opacity: .55; cursor: default; }
