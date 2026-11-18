@@ -54,4 +54,4 @@ jobs:
         run: pnpm audit --audit-level high
       - name: Audit the Raycast extension
         working-directory: raycast
-        run: npm audit --omit=dev --audit-level high
+        run: node ../scripts/npm-audit.mjs .
