@@ -13,6 +13,12 @@
 [Download](https://github.com/Abulkosim/wick/releases/latest) · [Install](#install) · [What it does](#what-it-does) · [Privacy](#privacy) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
 
 <p>
+  <a href="docs/images/demo.mp4"><img src="docs/images/demo.gif" alt="Wick in the menu bar: one click starts 15 minutes and the candle burns down; Claude Code starts working and keeps the Mac awake after the 15 minutes end; when it finishes, a notification says the Mac can sleep again" width="720" /></a>
+</p>
+
+The 15 minutes are sped up. [Watch it as MP4](docs/images/demo.mp4).
+
+<p>
   <img src="docs/images/popover-light.png" alt="Wick awake while the network is busy, with network and CPU triggers and 3h 12m awake today" width="300" />
   <img src="docs/images/others-dark.png" alt="Wick in dark mode listing caffeinate, Google Chrome and zoom.us as also keeping the Mac awake" width="300" />
   <img src="docs/images/linux-xfce.png" alt="Wick on Linux: the popover under the candle in an Xfce panel, awake for two hours" width="240" />
