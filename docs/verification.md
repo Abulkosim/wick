@@ -13,6 +13,7 @@ Agents and reach: PRs [#51](https://github.com/Abulkosim/wick/pull/51) (agent ho
 - Draft `Wick_0.9.0_amd64.AppImage` on this server (Xvfb, no tray, temp HOME): `scripts/linux-smoke.sh` passed, including the hold checks.
 - The tag build signed with the `release` environment's secrets, the first build to use them.
 - Published 2026-11-21 18:27 UTC and marked latest; the changelog and release notes were redated from the draft's 2026-11-18. `releases/latest/download/latest.json` (0.9.0, 13 platforms) and `SHA256SUMS.txt` resolve. Homebrew release run [44935632424](https://github.com/Abulkosim/wick/actions/runs/44935632424) passed; the tap's cask is 0.9.0 with the DMG's checksum above.
+- macOS updater install test on the published `Wick.app.tar.gz`, through the new Release check workflow, run [44938202515](https://github.com/Abulkosim/wick/actions/runs/44938202515): checksums OK, signed install passed, altered bytes and a wrong signed version rejected.
 - `node packaging/bump.mjs v0.9.0` moved Scoop, winget, AUR, Flatpak and the cask copy to 0.9.0; `node --test packaging/*.test.mjs` passed 8/8.
 - Pending 👤: update the installed app in-app, then Connect in Settings → Agents and run an agent; `scoop install wick` on Windows; submit winget, AUR and Flathub; Linux on real hardware (#22).
 
