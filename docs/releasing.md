@@ -46,7 +46,7 @@ Actions are pinned to commit SHAs (the repository requires it), runner images an
    gh attestation verify Wick_X.Y.Z_universal.dmg --repo Abulkosim/wick --predicate-type https://spdx.dev/Document/v2.3
    ```
 
-3. Run the updater install test against that exact archive (below). Both Linux jobs already ran its AppImage counterpart (`tests/updater_install_linux.rs`) on their signed AppImages; check their logs.
+3. Check the tag build's updater install tests in its logs: the macOS job ran `tests/updater_install.rs` on the signed `Wick.app.tar.gz`, and both Linux jobs ran `tests/updater_install_linux.rs` on their signed AppImages. To rerun the macOS one on a published release's archive, start the Release check workflow: `gh workflow run release-check.yml -f tag=vX.Y.Z`. On a Mac it also runs locally (below).
 4. Install the DMG's app, launch it, start and stop a session, and check `pmset -g assertions`. For Linux, run the draft AppImage in a desktop session (or the dev container in CONTRIBUTING.md) and check `systemd-inhibit --list`.
 5. Record what passed in [verification.md](verification.md), newest release first.
 6. Publish the draft and mark it latest: `gh release edit vX.Y.Z --draft=false --latest`. If publishing slipped to another day, fix the date in the changelog files and the release notes; `latest.json` keeps the planned date.
