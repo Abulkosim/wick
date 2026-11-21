@@ -78,11 +78,12 @@ test("Scoop gets the MSI and keeps checkver and autoupdate", () => {
   assert.deepEqual(after.autoupdate, before.autoupdate);
   assert.deepEqual(after.checkver, before.checkver);
   assert.match(before.post_install, /package-manager.*'Scoop'/);
-  assert.equal(after.bin, undefined);
 });
 
 test("Scoop shims wick to the console wick-cli.exe from the release that ships it", () => {
-  const sumsNext = new Map([...sums, ["Wick_0.9.1_x64_en-US.msi", hex("c")], ["Wick_0.10.0_x64_en-US.msi", hex("c")]]);
+  const sumsNext = new Map(["0.9.0", "0.9.1", "0.10.0"].map((version) => [`Wick_${version}_x64_en-US.msi`, hex("c")]));
+  const old = { ...JSON.parse(read(paths.scoop)), bin: undefined };
+  assert.equal(JSON.parse(updateScoop(JSON.stringify(old), "0.9.0", sumsNext)).bin, undefined);
   for (const version of ["0.9.1", "0.10.0"]) {
     const after = JSON.parse(updateScoop(read(paths.scoop), version, sumsNext));
     assert.deepEqual(after.bin, [["wick-cli.exe", "wick"]]);
