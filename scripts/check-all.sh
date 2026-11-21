@@ -9,6 +9,6 @@ node --test scripts/*.test.mjs packaging/*.test.mjs packaging/homebrew/*.test.mj
 (cd raycast && npm test && npm run check && npx ray build -e dist)
 cd src-tauri
 cargo fmt --check
-cargo clippy --all-targets --locked -- -D warnings
+cargo clippy --all-targets --all-features --locked -- -D warnings
 cargo test --locked --quiet
 echo "All checks passed."

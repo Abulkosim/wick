@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The `wick` command for the MSI: wick-cli.exe (a console program, which Tauri's template
+     installs as Bin_wick_cli) copied to wick.com, and the install folder on the system PATH.
+     PATHEXT lists .COM before .EXE, so `wick` in cmd and PowerShell runs wick.com, not the
+     GUI-subsystem wick.exe. Both go away on uninstall. -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <DirectoryRef Id="INSTALLDIR">
+      <Component Id="WickCommandLine" Guid="6F0B3C2E-5D8A-4E1B-9C47-2A9E7D51B3F4">
+        <CreateFolder />
+        <CopyFile Id="WickCom" FileId="Bin_wick_cli" DestinationName="wick.com" />
+        <Environment Id="WickPath" Name="PATH" Value="[INSTALLDIR]" Part="last" Action="set" System="yes" Permanent="no" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>

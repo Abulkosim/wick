@@ -34,7 +34,7 @@ scoop bucket add wick https://github.com/Abulkosim/wick
 scoop install wick/wick
 ```
 
-Scoop unpacks the MSI (`PFiles\Wick\wick.exe`) without running it, so nothing is written to the registry and no Start menu entry is made beyond Scoop's own shortcut. `checkver` and `autoupdate` follow GitHub's latest release, so `scoop update wick` works even before `bump.mjs` runs.
+Scoop unpacks the MSI (`PFiles\Wick\wick.exe`) without running it, so nothing is written to the registry and no Start menu entry is made beyond Scoop's own shortcut. For releases after v0.9.0, `bump.mjs` also adds `bin`, so Scoop's `wick` shim runs the console `wick-cli.exe` (`wick.exe` is GUI-subsystem, so cmd and PowerShell wouldn't wait for it). `checkver` and `autoupdate` follow GitHub's latest release, so `scoop update wick` works even before `bump.mjs` runs.
 
 👤 Before the first announcement, on Windows: run the two commands above, open Wick from the Start menu, start and stop a session, and check Settings → Updates. Then `scoop uninstall wick`.
 

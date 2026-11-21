@@ -6,6 +6,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   bump,
+  hasConsoleCli,
   parseSums,
   paths,
   releaseDate,
@@ -74,6 +75,20 @@ test("Scoop gets the MSI and keeps checkver and autoupdate", () => {
   assert.deepEqual(after.autoupdate, before.autoupdate);
   assert.deepEqual(after.checkver, before.checkver);
   assert.match(before.post_install, /package-manager.*'Scoop'/);
+  assert.equal(after.bin, undefined);
+});
+
+test("Scoop shims wick to the console wick-cli.exe from the release that ships it", () => {
+  const sumsNext = new Map([...sums, ["Wick_0.9.1_x64_en-US.msi", hex("c")], ["Wick_0.10.0_x64_en-US.msi", hex("c")]]);
+  for (const version of ["0.9.1", "0.10.0"]) {
+    const after = JSON.parse(updateScoop(read(paths.scoop), version, sumsNext));
+    assert.deepEqual(after.bin, [["wick-cli.exe", "wick"]]);
+    assert.equal(Object.keys(after).indexOf("bin") + 1, Object.keys(after).indexOf("shortcuts"));
+    assert.deepEqual(JSON.parse(updateScoop(JSON.stringify(after), version, sumsNext)), after);
+  }
+  assert.equal(hasConsoleCli("0.9.0"), false);
+  assert.equal(hasConsoleCli("0.8.3"), false);
+  assert.equal(hasConsoleCli("1.0.0"), true);
 });
 
 test("winget gets the setup EXE, release date and notes link", () => {

@@ -1,4 +1,7 @@
 {
+  "build": {
+    "features": ["console-cli"]
+  },
   "app": {
     "windows": [{
       "label": "main", "title": "Wick", "width": 360, "height": 640,
@@ -7,5 +10,16 @@
       "skipTaskbar": true, "center": true,
       "windowEffects": { "effects": ["mica", "acrylic"] }
     }]
+  },
+  "bundle": {
+    "windows": {
+      "nsis": {
+        "installerHooks": "windows/installer-hooks.nsh"
+      },
+      "wix": {
+        "fragmentPaths": ["windows/command-line.wxs"],
+        "componentRefs": ["WickCommandLine"]
+      }
+    }
   }
 }
