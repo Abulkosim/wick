@@ -1,7 +1,7 @@
 # Maintainer: abulkosim <abulkasimkattaev at gmail dot com>
 
 pkgname=wick-bin
-pkgver=0.8.0
+pkgver=0.9.0
 pkgrel=1
 pkgdesc='Keeps your computer awake, for a set time or while a command runs'
 arch=('x86_64' 'aarch64')
@@ -15,8 +15,8 @@ source=("LICENSE-$pkgver::https://raw.githubusercontent.com/Abulkosim/wick/v$pkg
 source_x86_64=("wick-$pkgver-x86_64.deb::$url/releases/download/v$pkgver/Wick_${pkgver}_amd64.deb")
 source_aarch64=("wick-$pkgver-aarch64.deb::$url/releases/download/v$pkgver/Wick_${pkgver}_arm64.deb")
 sha256sums=('3d2a7a89e6ef0754e4e0272eafef410e80ecddd2fc4ade9e2effb28bd86460a3')
-sha256sums_x86_64=('d117c0b0ca7936dccf650ce5a3f365f96bb4c2f7f2eb9b108e2cf592d8cb3f78')
-sha256sums_aarch64=('b4a3e2b64cf4cad962fd2ca57c4e902598d0ace99f5374e3c07575ead6658305')
+sha256sums_x86_64=('441955c7e5f1da8d7858732c64a420dc52806f7562e87765351f2c76df3a5a77')
+sha256sums_aarch64=('9f02d3152df928cc9b88cf4335b3b07b261769b8ce90555fbe836da53ae53a9a')
 
 package() {
   bsdtar -xf data.tar.gz -C "$pkgdir" --no-same-owner

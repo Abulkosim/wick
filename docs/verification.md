@@ -2,7 +2,7 @@
 
 What was checked for each release, newest first.
 
-## v0.9.0 — 2026-11-18
+## v0.9.0 — 2026-11-21
 
 Agents and reach: PRs [#51](https://github.com/Abulkosim/wick/pull/51) (agent holds, connect, CLI, macOS and Windows smoke tests), [#52](https://github.com/Abulkosim/wick/pull/52) (new advisories), [#54](https://github.com/Abulkosim/wick/pull/54) (rlib-only crate), [#55](https://github.com/Abulkosim/wick/pull/55) (packaging), [#56](https://github.com/Abulkosim/wick/pull/56) (release, demo, launch kit), each green before merging. `main` run [44254449459](https://github.com/Abulkosim/wick/actions/runs/44254449459) passed before tagging. Tag `v0.9.0`, CI run [44255535573](https://github.com/Abulkosim/wick/actions/runs/44255535573): every job passed first time, and the draft was created.
 
@@ -12,7 +12,9 @@ Agents and reach: PRs [#51](https://github.com/Abulkosim/wick/pull/51) (agent ho
 - Updater signatures, checked without a Mac: all 9 signed artifacts verify for 0.9.0 with the app's public key. For the Mac archive, version 0.9.1 and a flipped byte are both rejected, and `Info.plist` says 0.9.0. The `updater_install` test against it needs macOS.
 - Draft `Wick_0.9.0_amd64.AppImage` on this server (Xvfb, no tray, temp HOME): `scripts/linux-smoke.sh` passed, including the hold checks.
 - The tag build signed with the `release` environment's secrets, the first build to use them.
-- Pending 👤: publish; `updater_install` on a Mac against `Wick.app.tar.gz`; update the installed app in-app, then Connect in Settings → Agents and run an agent; `scoop install wick` on Windows; Linux on real hardware (#22).
+- Published 2026-11-21 18:27 UTC and marked latest; the changelog and release notes were redated from the draft's 2026-11-18. `releases/latest/download/latest.json` (0.9.0, 13 platforms) and `SHA256SUMS.txt` resolve. Homebrew release run [44935632424](https://github.com/Abulkosim/wick/actions/runs/44935632424) passed; the tap's cask is 0.9.0 with the DMG's checksum above.
+- `node packaging/bump.mjs v0.9.0` moved Scoop, winget, AUR, Flatpak and the cask copy to 0.9.0; `node --test packaging/*.test.mjs` passed 8/8.
+- Pending 👤: update the installed app in-app, then Connect in Settings → Agents and run an agent; `scoop install wick` on Windows; submit winget, AUR and Flathub; Linux on real hardware (#22).
 
 Checksums:
 
