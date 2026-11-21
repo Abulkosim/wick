@@ -270,8 +270,9 @@ Design in [agents.md](agents.md). Wick keeps the computer awake while coding age
 - [ ] **11.9 Console `wick` on Windows.** Release `wick.exe` is a GUI-subsystem program, so `cmd` and PowerShell neither wait for `wick run`/`hold`/`status` nor show their output (cold review, 2026-11-17). Ship a console-subsystem `wick-cli.exe` next to it for the CLI, or document `Start-Process -Wait`.
   Verify: the Windows smoke test runs `wick run -- cmd /c exit 7` through `cmd /c` without redirection and sees 7; output appears in the same console.
   - Not a one-line fix: an `externalBin` sidecar built from this crate trips `tauri-build`'s check for the file before the crate compiles. Documented in docs/agents.md meanwhile.
-- [ ] **11.8 Release v0.9.0.**
+- [x] **11.8 Release v0.9.0.**
   Verify: full release flow.
+  - Published 2026-11-21. Draft checks, publish and channel bumps in docs/verification.md.
 
 ## Later / maybe
 

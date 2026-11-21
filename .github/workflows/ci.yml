@@ -201,6 +201,12 @@ jobs:
         env:
           WICK_UPDATE_ARTIFACT_DIR: ${{ github.workspace }}/src-tauri/target/${{ matrix.target }}/release/bundle/appimage
         run: cargo test --manifest-path src-tauri/Cargo.toml --test updater_install_linux --locked -- --ignored --nocapture
+      - name: Verify the signed macOS archive installs through the updater
+        if: runner.os == 'macOS' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.repository == 'Abulkosim/wick'
+        env:
+          WICK_UPDATE_ARTIFACT_DIR: ${{ github.workspace }}/src-tauri/target/${{ matrix.target }}/release/bundle/macos
+          WICK_REQUIRE_UNIVERSAL: "1"
+        run: cargo test --manifest-path src-tauri/Cargo.toml --test updater_install --locked -- --ignored --nocapture
       - name: Smoke-test the Linux app
         if: runner.os == 'Linux'
         env:

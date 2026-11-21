@@ -1,13 +1,13 @@
 {
-    "version": "0.8.0",
+    "version": "0.9.0",
     "description": "Keeps your computer awake, for a set time or while a command runs.",
     "homepage": "https://abulkosim.github.io/wick/",
     "license": "MIT",
     "notes": "Update Wick with: scoop update wick",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/Abulkosim/wick/releases/download/v0.8.0/Wick_0.8.0_x64_en-US.msi",
-            "hash": "3d31da296428c3a4b25285cd06513814d910353a770292efd65603985ba3eaa2"
+            "url": "https://github.com/Abulkosim/wick/releases/download/v0.9.0/Wick_0.9.0_x64_en-US.msi",
+            "hash": "19b88102bf6575982ef2714c9ccb7c1acec56bd43287d579b91348e54356d633"
         }
     },
     "extract_dir": "PFiles\\Wick",
