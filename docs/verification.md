@@ -2,6 +2,40 @@
 
 What was checked for each release, newest first.
 
+## v0.9.1 — 2026-11-21
+
+Windows console `wick` ([#64](https://github.com/Abulkosim/wick/pull/64)), dependency updates ([#50](https://github.com/Abulkosim/wick/pull/50), [#58](https://github.com/Abulkosim/wick/pull/58)–[#61](https://github.com/Abulkosim/wick/pull/61)), the macOS updater check in tag builds ([#63](https://github.com/Abulkosim/wick/pull/63)); each green before merging. Release PR [#65](https://github.com/Abulkosim/wick/pull/65) green. Tag `v0.9.1`, CI run [44941706999](https://github.com/Abulkosim/wick/actions/runs/44941706999): every job passed first time, and the draft was created.
+
+- Tag build: the macOS job installed the signed `Wick.app.tar.gz` through the updater (`updater_install`, `WICK_REQUIRE_UNIVERSAL=1`), the first release checked on a Mac runner; both Linux jobs did the same with their AppImages. Altered bytes and a wrong signed version were rejected in each.
+- Windows job: smoke test passed, including holds and the console checks (`run`, `status`, `start`, `stop` through cmd); the install check put `wick` (`wick.com`) on PATH from both the setup and the MSI, returned 7 from `wick run -- cmd /c exit 7` in cmd and PowerShell, and uninstall removed it.
+- Smoke tests passed on macOS, Linux x64 and arm64.
+- Draft: 20/20 checksums OK. Provenance verified for all 12 files, and the SBOM attestation for the DMG. `latest.json` is 0.9.1 with 13 platform entries, every URL on the v0.9.1 tag. The release job verified all 9 updater signatures.
+- Published 2026-11-21 19:52 UTC and marked latest; `releases/latest/download/latest.json` serves 0.9.1. `node packaging/bump.mjs v0.9.1` moved every channel to 0.9.1 and gave Scoop its `wick` shim; packaging tests 9/9.
+- Pending 👤: update the installed app in-app; `wick` in a Windows terminal after installing; submit winget, AUR and Flathub; Linux on real hardware (#22).
+
+Checksums:
+
+    e4c50b87c4290acfa728322ea70b2ad0796eeb145d9bbb7451cd5dd6a9f4cbf1  latest.json
+    7fa69b4c90032ab99ae3951e55353e7e173a0d028761f045ccd22d53e431afa8  Wick_0.9.1_aarch64.AppImage
+    37c9bcf6da8f79d41ba28a8ebadc5c695f92690073eaefa738b6d88d8bedf386  Wick_0.9.1_aarch64.AppImage.sig
+    a65722db7dc5768a7291fe6211a4d64e0cce530bb09a795f14ada123062d9d86  Wick_0.9.1_amd64.AppImage
+    e63dfa2ed5a6b543d58d74f805009e5aefd25b2d8be00c083bfd9123617ca3b8  Wick_0.9.1_amd64.AppImage.sig
+    b3c9a733f7e1abee3d278397c82ade26675243e4d9a64c13ba6cf3174e15a953  Wick_0.9.1_amd64.deb
+    cf22f94a61635c049b120c26ebe59d1fe055f01a20089d7932edf3f2bcf1c0c1  Wick_0.9.1_amd64.deb.sig
+    45c316fb0c6303fdd2b2b2d1fdcd7bc03d97f14a9afbdf276fdda258442aa726  Wick_0.9.1_arm64.deb
+    ea8fa3cb40f63ad2cabbec303b43b1775f5599ff9cb886080ea2648d21cf5b6a  Wick_0.9.1_arm64.deb.sig
+    75c8e97f362781fcf86ca95701a069947bb8bff5d910a308b9e6cdb841960531  Wick_0.9.1_universal.dmg
+    e758c496bb663e93a3630abfec7e7b7fde2954d7a66cb6476effb18fa66bd057  Wick_0.9.1_x64_en-US.msi
+    5071681b1320e6214afa64fa89a5da309fd8bc6ba4c83bd8138e66e889da25b1  Wick_0.9.1_x64_en-US.msi.sig
+    6c120f99b46fed27c147b3a88a9aa71da4ee3f7ee6ffdf9532f7197e24828386  Wick_0.9.1_x64-setup.exe
+    449157f46a1a300ca1368c0791d05664395cc0304352950909ef923b05521c77  Wick_0.9.1_x64-setup.exe.sig
+    796afa90ca71d46c8667909adcbabd369a89ae1f2c3bf42088a09bcfac47fbaf  Wick-0.9.1-1.aarch64.rpm
+    5f14f506536e36212bd959e7dd4e4351ece9f14dc5c432dcc0b64f1fab2a3070  Wick-0.9.1-1.aarch64.rpm.sig
+    bc99538b988bfb93c01667e4f9eb06b20ab3ccdca170f43bd9c8111e3dbfd4ca  Wick-0.9.1-1.x86_64.rpm
+    0ff09ca938a888e64d4b7719d674ba45db874b1d361e01b19a702306b6c12275  Wick-0.9.1-1.x86_64.rpm.sig
+    167eeb7445b96ce6296b444d9826fc3ce011abd339d1a15a1bcb2453c01e9acf  Wick.app.tar.gz
+    39ed0ae1438836f5d972b609865ed1033609a5879a6aeed1b56d15eaf90e44d1  Wick.app.tar.gz.sig
+
 ## v0.9.0 — 2026-11-21
 
 Agents and reach: PRs [#51](https://github.com/Abulkosim/wick/pull/51) (agent holds, connect, CLI, macOS and Windows smoke tests), [#52](https://github.com/Abulkosim/wick/pull/52) (new advisories), [#54](https://github.com/Abulkosim/wick/pull/54) (rlib-only crate), [#55](https://github.com/Abulkosim/wick/pull/55) (packaging), [#56](https://github.com/Abulkosim/wick/pull/56) (release, demo, launch kit), each green before merging. `main` run [44254449459](https://github.com/Abulkosim/wick/actions/runs/44254449459) passed before tagging. Tag `v0.9.0`, CI run [44255535573](https://github.com/Abulkosim/wick/actions/runs/44255535573): every job passed first time, and the draft was created.
