@@ -53,20 +53,79 @@ fn platform_script() -> tauri::plugin::TauriPlugin<tauri::Wry> {
         .build()
 }
 
-pub fn run() {
-    // Hooks run on every agent event: no app, no plugins, no windowing, and no panic on an
-    // argument that isn't UTF-8.
-    let raw: Vec<String> = std::env::args_os()
+fn raw_args() -> Vec<String> {
+    std::env::args_os()
         .map(|arg| arg.to_string_lossy().into_owned())
-        .collect();
-    if let Some(command) = cli::command(&raw) {
-        std::process::exit(match command {
-            Ok(command) => cli::execute(command),
-            Err(error) => {
-                eprintln!("wick: {error}");
-                2
-            }
-        });
+        .collect()
+}
+
+/// Runs `wick hook|hold|release|run …`; `None` for anything else. Hooks run on every agent
+/// event: no app, no plugins, no windowing, and no panic on an argument that isn't UTF-8.
+fn run_command(args: &[String]) -> Option<i32> {
+    Some(match cli::command(args)? {
+        Ok(command) => cli::execute(command),
+        Err(error) => {
+            eprintln!("wick: {error}");
+            2
+        }
+    })
+}
+
+fn print_status() {
+    let value = status::default_directory()
+        .map(|directory| status::read(&directory))
+        .unwrap_or_else(|| serde_json::json!({ "running": false, "awake": false }));
+    println!("{value}");
+}
+
+/// The console `wick` on Windows (`wick-cli.exe`, which the installers also copy to
+/// `wick.com`). `wick.exe` is a GUI-subsystem program, so cmd and PowerShell neither wait for
+/// it nor show its output. Commands and status run here; the rest goes to the `wick.exe` beside
+/// this file.
+pub fn console() -> i32 {
+    let args = raw_args();
+    if let Some(code) = run_command(&args) {
+        return code;
+    }
+    match cli::parse(&args) {
+        Ok(Some(cli::Intent::Status)) => {
+            print_status();
+            0
+        }
+        Err(error) => {
+            eprintln!("wick: {error}");
+            2
+        }
+        Ok(_) => open_app(&args[1..]),
+    }
+}
+
+fn open_app(args: &[String]) -> i32 {
+    let opened = std::env::current_exe().and_then(|exe| {
+        let app = exe.with_file_name(format!("wick{}", std::env::consts::EXE_SUFFIX));
+        if app == exe {
+            return Err(std::io::ErrorKind::InvalidInput.into());
+        }
+        // No handles: the app can outlive the terminal and must not hold a pipe open.
+        std::process::Command::new(app)
+            .args(args)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+    });
+    match opened {
+        Ok(_) => 0,
+        Err(error) => {
+            eprintln!("wick: Could not open Wick: {error}");
+            1
+        }
+    }
+}
+
+pub fn run() {
+    if let Some(code) = run_command(&raw_args()) {
+        std::process::exit(code);
     }
     // WebKitGTK's DMA-BUF renderer draws blank windows on some GPU drivers (NVIDIA, older
     // Mesa); the popover is small enough that the shared-memory path costs nothing.
@@ -77,10 +136,7 @@ pub fn run() {
     let args: Vec<String> = std::env::args().collect();
     match cli::parse(&args) {
         Ok(Some(cli::Intent::Status)) => {
-            let value = status::default_directory()
-                .map(|directory| status::read(&directory))
-                .unwrap_or_else(|| serde_json::json!({ "running": false, "awake": false }));
-            println!("{value}");
+            print_status();
             return;
         }
         Err(error) => {

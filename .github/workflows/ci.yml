@@ -168,7 +168,7 @@ jobs:
       - name: Prepare frontend assets for native checks
         run: pnpm build
       - name: Check Rust
-        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features --locked -- -D warnings
       - name: Test providers and core
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
@@ -230,6 +230,15 @@ jobs:
           BUILD_TARGET: ${{ matrix.target }}
         # powercfg /requests needs an elevated shell, which GitHub's Windows runners provide.
         run: pwsh -NoProfile -File scripts/windows-smoke.ps1 -Bin "src-tauri/target/$env:BUILD_TARGET/release/wick.exe"
+      - name: Check the wick command the Windows installers set up
+        if: runner.os == 'Windows'
+        timeout-minutes: 15
+        shell: pwsh
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: |
+          $bundle = "src-tauri/target/$env:BUILD_TARGET/release/bundle"
+          pwsh -NoProfile -File scripts/windows-install-check.ps1 -Setup (Get-Item "$bundle/nsis/*-setup.exe").FullName -Msi (Get-Item "$bundle/msi/*.msi").FullName
       - name: Collect installers
         env:
           BUILD_TARGET: ${{ matrix.target }}

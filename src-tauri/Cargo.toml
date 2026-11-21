@@ -7,10 +7,22 @@ edition = "2021"
 rust-version = "1.90"
 license = "MIT"
 repository = "https://github.com/Abulkosim/wick"
+default-run = "wick"
 
 [lib]
 name = "wick_lib"
 crate-type = ["rlib"]
+
+# The console `wick` beside the GUI-subsystem wick.exe on Windows. A second binary of this crate
+# rather than an externalBin, which tauri-build wants on disk before the crate compiles. The
+# Tauri bundler ships every enabled binary, so the feature is on only in tauri.windows.conf.json.
+[[bin]]
+name = "wick-cli"
+path = "src/bin/wick-cli.rs"
+required-features = ["console-cli"]
+
+[features]
+console-cli = []
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

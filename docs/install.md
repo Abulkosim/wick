@@ -56,6 +56,8 @@ A managed device may hide **Run anyway**. See [Microsoft Defender SmartScreen](h
 
 **Smart App Control.** On Windows 11 with Smart App Control on, unsigned apps are blocked with no Run anyway option, and Microsoft offers [no per-app exception](https://support.microsoft.com/en-us/topic/what-is-smart-app-control-285ea03d-fa88-4d56-882e-6698afdb7003).
 
+**Command line.** The installer puts `wick` on your `PATH`, so a new cmd or PowerShell window runs `wick status`, `wick start 45` or `wick run -- npm test`. It waits for the command and returns its exit code.
+
 **What differs on Windows.** Wick keeps the PC awake with a standard power request (`powercfg /requests` lists it as Wick). It can't list other apps' requests without administrator rights, has no lid warning, and triggers are commands (`ffmpeg`, `claude`), power and monitors rather than apps.
 
 ### Scoop
@@ -65,7 +67,7 @@ scoop bucket add wick https://github.com/Abulkosim/wick
 scoop install wick/wick
 ```
 
-Scoop unpacks the same MSI from GitHub Releases into its own folder, without running the installer, and adds Wick to the Start menu. Update with `scoop update wick`; from v0.9.0, Wick leaves updates to Scoop and **Settings → Updates** says so. `scoop uninstall wick` removes it; settings and history stay in `%APPDATA%\com.abulkosim.wick\`.
+Scoop unpacks the same MSI from GitHub Releases into its own folder, without running the installer, and adds Wick to the Start menu. It also adds the `wick` command. Update with `scoop update wick`; from v0.9.0, Wick leaves updates to Scoop and **Settings → Updates** says so. `scoop uninstall wick` removes it; settings and history stay in `%APPDATA%\com.abulkosim.wick\`.
 
 ## Linux
 

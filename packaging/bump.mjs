@@ -68,7 +68,22 @@ export function updateScoop(source, version, sums) {
   manifest.version = version;
   arch.url = `${DOWNLOADS}/v${version}/${name}`;
   arch.hash = sumOf(sums, name);
-  return `${JSON.stringify(manifest, null, 4)}\n`;
+  if (!hasConsoleCli(version)) return `${JSON.stringify(manifest, null, 4)}\n`;
+  // Scoop's `wick` shim runs the console wick-cli.exe, which waits and returns the exit code.
+  const { bin: _, ...rest } = manifest;
+  const withBin = {};
+  for (const [key, value] of Object.entries(rest)) {
+    if (key === "shortcuts") withBin.bin = [["wick-cli.exe", "wick"]];
+    withBin[key] = value;
+  }
+  withBin.bin ??= [["wick-cli.exe", "wick"]];
+  return `${JSON.stringify(withBin, null, 4)}\n`;
+}
+
+/** Releases after v0.9.0 ship wick-cli.exe beside wick.exe; earlier MSIs don't have it. */
+export function hasConsoleCli(version) {
+  const [major, minor, patch] = version.split(".").map(Number);
+  return major > 0 || minor > 9 || (minor === 9 && patch > 0);
 }
 
 export function updateWinget(files, version, sums, date) {

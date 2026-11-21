@@ -2,7 +2,8 @@
 # Runs a built Wick on Windows: it must start, hold a power request that powercfg lists under
 # wick.exe while awake, report status, and let go on stop and on a forced kill.
 # powercfg /requests needs an elevated shell; GitHub's Windows runners are elevated.
-# Also checks wick hold, wick release and wick run; WICK_SMOKE_HOLDS=0 skips them.
+# Also checks wick hold, wick release and wick run; WICK_SMOKE_HOLDS=0 skips them. Then the
+# console wick-cli.exe beside wick.exe: cmd waits for it, shows its output and gets its exit code.
 param([Parameter(Mandatory)][string]$Bin)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -15,6 +16,7 @@ $script:launched = $null
 $script:appPid = $null
 $script:runner = $null
 $script:status = $null
+$script:Cli = $null
 
 # Starts a Wick command with its output captured; Complete-Wick waits for it.
 function Start-Wick([string[]]$Arguments) {
@@ -142,6 +144,96 @@ function Test-Holds {
     Write-Host 'holds: hold, release and run pass.'
 }
 
+# The Subsystem field of a Windows program's PE header: 2 is GUI, 3 is console.
+function Get-Subsystem([string]$Path) {
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $pe = [BitConverter]::ToInt32($bytes, 0x3C)
+    if ($pe -lt 0 -or $pe + 94 -gt $bytes.Length -or [Text.Encoding]::ASCII.GetString($bytes, $pe, 4) -cne "PE`0`0") {
+        throw "$Path is not a Windows program"
+    }
+    [BitConverter]::ToUInt16($bytes, $pe + 24 + 68)
+}
+
+# wick.exe must stay GUI (no console window from the Start menu or autostart) and wick-cli.exe
+# must be a real console build of Wick, never a placeholder.
+function Assert-Programs([string]$App, [string]$Cli) {
+    if ((Get-Subsystem $App) -ne 2) { throw "$App is not a GUI-subsystem program" }
+    if (-not (Test-Path -LiteralPath $Cli -PathType Leaf)) { throw "no wick-cli.exe beside $App" }
+    if ((Get-Subsystem $Cli) -ne 3) { throw "$Cli is not a console program" }
+    $size = (Get-Item -LiteralPath $Cli).Length
+    if ($size -lt 200KB) { throw "$Cli is only $size bytes" }
+}
+
+# Runs a line through cmd /c as someone would type it, without redirecting Wick: Wick shares
+# cmd's output, which this script reads. A GUI-subsystem wick neither waits nor prints here.
+function Invoke-Cmd([string]$Line, [int]$Seconds = 30) {
+    $info = [Diagnostics.ProcessStartInfo]::new("$env:SystemRoot\System32\cmd.exe")
+    $info.Arguments = "/d /s /c `"$Line`""
+    $info.UseShellExecute = $false
+    $info.CreateNoWindow = $true
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $process = [Diagnostics.Process]::Start($info)
+    $out = $process.StandardOutput.ReadToEndAsync()
+    $err = $process.StandardError.ReadToEndAsync()
+    if (-not $process.WaitForExit($Seconds * 1000)) {
+        $process.Kill($true)
+        throw "cmd /c $Line did not finish within ${Seconds}s"
+    }
+    $process.WaitForExit()
+    [pscustomobject]@{ Code = $process.ExitCode; Out = $out.Result; Err = $err.Result }
+}
+
+# The same in a console of its own, the way a terminal runs it; only the exit code comes back.
+function Invoke-Console([string]$Line, [int]$Seconds = 30) {
+    $process = Start-Process -FilePath "$env:SystemRoot\System32\cmd.exe" -ArgumentList "/d /s /c `"$Line`"" `
+        -WindowStyle Hidden -PassThru
+    if (-not $process.WaitForExit($Seconds * 1000)) {
+        $process.Kill($true)
+        throw "cmd /c $Line in a new console did not finish within ${Seconds}s"
+    }
+    $process.WaitForExit()
+    $process.ExitCode
+}
+
+function Test-Console {
+    $cli = "`"$script:Cli`""
+    $code = Invoke-Console "$cli run -- cmd /c exit 7"
+    if ($code -ne 7) { throw "wick-cli run in a console exited with $code, expected the command's 7" }
+    $result = Invoke-Cmd "$cli run -- cmd /c exit 7"
+    if ($result.Code -ne 7) { throw "cmd /c wick-cli run exited with $($result.Code), expected 7" }
+    # For the record: cmd /c waits for the GUI wick.exe too, and pipes carry its output. Only an
+    # interactive prompt, which doesn't wait, and output to the console itself tell them apart.
+    $gui = Invoke-Console "`"$script:Bin`" run -- cmd /c exit 7"
+    $guiOut = (Invoke-Cmd "`"$script:Bin`" status").Out.Trim()
+    Write-Host "console: wick-cli run returns 7 through cmd /c; the GUI wick.exe returns $gui and prints $(if ($guiOut) { $guiOut.Length } else { 'no' }) characters for status."
+
+    $result = Invoke-Cmd "$cli run -- cmd /c echo wick-console-check"
+    if ($result.Code -ne 0 -or $result.Out -notmatch 'wick-console-check') {
+        throw "wick-cli run printed nothing to cmd's console (exit $($result.Code)): $($result.Out) $($result.Err)"
+    }
+    $result = Invoke-Cmd "$cli status"
+    $value = if ($result.Out.Trim()) { $result.Out | ConvertFrom-Json } else { $null }
+    if ($result.Code -ne 0 -or -not $value -or $value.running -ne $true -or $value.pid -ne $script:appPid) {
+        throw "wick-cli status printed $($result.Out) (exit $($result.Code))"
+    }
+    $result = Invoke-Cmd "$cli start 0"
+    if ($result.Code -ne 2 -or $result.Err -notmatch 'Expected minutes') {
+        throw "wick-cli start 0 exited with $($result.Code): $($result.Err)"
+    }
+
+    # Commands for the app go to the wick.exe beside wick-cli.exe.
+    $result = Invoke-Cmd "$cli start 1"
+    if ($result.Code -ne 0) { throw "wick-cli start 1 exited with $($result.Code): $($result.Err)" }
+    Wait-Mode 'for' 'wick-cli start 1 is not a timed session'
+    Assert-Requests 'wick-cli start 1'
+    $result = Invoke-Cmd "$cli stop"
+    if ($result.Code -ne 0) { throw "wick-cli stop exited with $($result.Code): $($result.Err)" }
+    Wait-Until 'request left after wick-cli stop' { Test-Released }
+    Wait-Mode 'off' 'session still on after wick-cli stop'
+    Write-Host 'console: run, status, start and stop pass through cmd.'
+}
+
 function Test-Wick {
     $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -149,6 +241,8 @@ function Test-Wick {
     }
     if (-not (Test-Path -LiteralPath $Bin -PathType Leaf)) { throw "no Wick binary at $Bin" }
     $script:Bin = (Resolve-Path -LiteralPath $Bin).Path
+    $script:Cli = Join-Path (Split-Path -Parent $script:Bin) 'wick-cli.exe'
+    Assert-Programs $script:Bin $script:Cli
 
     $script:launched = Start-Process -FilePath $Bin -ArgumentList '--background' -PassThru `
         -RedirectStandardOutput $log -RedirectStandardError $errorLog
@@ -169,6 +263,7 @@ function Test-Wick {
     Wait-Status 'awake' $false 'still awake after stop'
 
     if ($env:WICK_SMOKE_HOLDS -ne '0') { Test-Holds }
+    Test-Console
 
     Invoke-Wick 'start' | Out-Null
     Wait-Mode 'indefinite' 'start is not open-ended'

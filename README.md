@@ -110,7 +110,7 @@ Wick has no closed-lid mode on purpose. Keeping a closed Mac awake without an ex
 
 ## Shortcuts, Raycast and scripts
 
-The app's binary doubles as a command line tool. Homebrew, the `.deb` and the `.rpm` put `wick` on your `PATH`; otherwise:
+The app's binary doubles as a command line tool. Homebrew, the `.deb`, the `.rpm`, the Windows installers and Scoop put `wick` on your `PATH`; otherwise:
 
 ```sh
 alias wick=/Applications/Wick.app/Contents/MacOS/wick
