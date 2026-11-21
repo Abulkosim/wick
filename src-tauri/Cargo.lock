@@ -5129,7 +5129,7 @@ dependencies = [
 
 [[package]]
 name = "wick"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "chrono",
  "chrono-tz",

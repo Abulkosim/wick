@@ -277,6 +277,8 @@ Design in [agents.md](agents.md). Wick keeps the computer awake while coding age
 - [x] **11.8 Release v0.9.0.**
   Verify: full release flow.
   - Published 2026-11-21. Draft checks, publish and channel bumps in docs/verification.md.
+- [ ] **11.10 Release v0.9.1.** The Windows console `wick` (11.9) and the dependency updates.
+  Verify: full release flow; the tag build's macOS job runs `updater_install` on the signed archive.
 
 ## Later / maybe
 
