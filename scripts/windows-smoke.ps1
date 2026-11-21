@@ -202,7 +202,8 @@ function Test-Console {
     if ($code -ne 7) { throw "wick-cli run in a console exited with $code, expected the command's 7" }
     $result = Invoke-Cmd "$cli run -- cmd /c exit 7"
     if ($result.Code -ne 7) { throw "cmd /c wick-cli run exited with $($result.Code), expected 7" }
-    # cmd /c waits for GUI programs too, only an interactive prompt doesn't; output tells them apart.
+    # For the record: cmd /c waits for the GUI wick.exe too, and pipes carry its output. Only an
+    # interactive prompt or a console without pipes shows the difference, which the runner can't.
     $gui = Invoke-Console "`"$script:Bin`" run -- cmd /c exit 7"
     $guiOut = (Invoke-Cmd "`"$script:Bin`" status").Out.Trim()
     Write-Host "console: wick-cli run returns 7 through cmd /c; the GUI wick.exe returns $gui and prints $(if ($guiOut) { $guiOut.Length } else { 'no' }) characters for status."
