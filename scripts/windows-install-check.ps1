@@ -112,8 +112,9 @@ try {
     Assert-Removed $folder 'User' 'NSIS'
     Remove-Item -LiteralPath $folder -Recurse -Force -ErrorAction SilentlyContinue
 
+    # The MSI would reuse the folder the NSIS setup recorded under HKCU\Software\abulkosim\Wick.
     $folder = Join-Path $env:ProgramFiles 'Wick'
-    Wait-Program 'msiexec.exe' "/i `"$Msi`" /qn /norestart /l*v `"$work\install.log`"" 'MSI install'
+    Wait-Program 'msiexec.exe' "/i `"$Msi`" /qn /norestart INSTALLDIR=`"$folder\`" /l*v `"$work\install.log`"" 'MSI install'
     Assert-Installed $folder 'Machine' 'MSI'
     Wait-Program 'msiexec.exe' "/x `"$Msi`" /qn /norestart /l*v `"$work\uninstall.log`"" 'MSI uninstall'
     Assert-Removed $folder 'Machine' 'MSI'
@@ -128,8 +129,8 @@ try {
     $failed = $true
     Write-Host "Windows install check failed: $_"
     Get-ChildItem -LiteralPath $work -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object {
-        Write-Host "--- $($_.Name) (errors)"
-        Select-String -LiteralPath $_.FullName -Pattern 'return value 3|error' | Select-Object -First 40 | ForEach-Object { Write-Host $_.Line }
+        Write-Host "--- $($_.Name) (failed actions)"
+        Select-String -LiteralPath $_.FullName -Pattern 'return value 3' -Context 20, 0 | Select-Object -First 40 | ForEach-Object { $_.Context.PreContext + $_.Line | Write-Host }
     }
 } finally {
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
