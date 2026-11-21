@@ -21,18 +21,21 @@ import {
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const read = (path) => readFileSync(join(root, path), "utf8");
+const cur = Object.values(versions(root))[0];
+const next = "9.9.0";
+const esc = (v) => v.replaceAll(".", "\\.");
 const hex = (c) => c.repeat(64);
 const names = [
-  "Wick_0.9.0_universal.dmg",
-  "Wick_0.9.0_x64-setup.exe",
-  "Wick_0.9.0_x64_en-US.msi",
-  "Wick_0.9.0_amd64.deb",
-  "Wick_0.9.0_arm64.deb",
+  `Wick_${next}_universal.dmg`,
+  `Wick_${next}_x64-setup.exe`,
+  `Wick_${next}_x64_en-US.msi`,
+  `Wick_${next}_amd64.deb`,
+  `Wick_${next}_arm64.deb`,
 ];
 const sumsText = names.map((name, i) => `${hex("abcde"[i])}  ${name}`).join("\n");
 const sums = parseSums(sumsText);
 const winget = () => {
-  const dir = join(paths.winget, "0.8.0");
+  const dir = join(paths.winget, cur);
   return Object.fromEntries(readdirSync(join(root, dir)).map((name) => [name, read(join(dir, name))]));
 };
 
@@ -54,8 +57,8 @@ function srcinfoFields(source) {
 }
 
 test("reads checksums and the release date", () => {
-  assert.equal(sumOf(sums, "Wick_0.9.0_arm64.deb"), hex("e"));
-  assert.throws(() => sumOf(sums, "Wick_0.9.0_x64.zip"), /not found/);
+  assert.equal(sumOf(sums, `Wick_${next}_arm64.deb`), hex("e"));
+  assert.throws(() => sumOf(sums, `Wick_${next}_x64.zip`), /not found/);
   assert.equal(releaseDate("# v0.9.0\n\n2026-12-01 · [Download](https://example.com)\n"), "2026-12-01");
   assert.throws(() => releaseDate("# v0.9.0\n"), /no release date/);
 });
@@ -67,9 +70,9 @@ test("every channel points at the same published version", () => {
 
 test("Scoop gets the MSI and keeps checkver and autoupdate", () => {
   const before = JSON.parse(read(paths.scoop));
-  const after = JSON.parse(updateScoop(read(paths.scoop), "0.9.0", sums));
-  assert.equal(after.version, "0.9.0");
-  assert.equal(after.architecture["64bit"].url, "https://github.com/Abulkosim/wick/releases/download/v0.9.0/Wick_0.9.0_x64_en-US.msi");
+  const after = JSON.parse(updateScoop(read(paths.scoop), next, sums));
+  assert.equal(after.version, next);
+  assert.equal(after.architecture["64bit"].url, `https://github.com/Abulkosim/wick/releases/download/v${next}/Wick_${next}_x64_en-US.msi`);
   assert.equal(after.architecture["64bit"].hash, hex("c"));
   assert.deepEqual(after.autoupdate, before.autoupdate);
   assert.deepEqual(after.checkver, before.checkver);
@@ -78,25 +81,25 @@ test("Scoop gets the MSI and keeps checkver and autoupdate", () => {
 
 test("winget gets the setup EXE, release date and notes link", () => {
   const before = winget();
-  const after = updateWinget(before, "0.9.0", sums, "2026-12-01");
+  const after = updateWinget(before, next, sums, "2026-12-01");
   assert.deepEqual(Object.keys(after), Object.keys(before));
   for (const [name, text] of Object.entries(after)) {
-    assert.match(text, /^PackageVersion: 0\.9\.0$/m);
-    assert.doesNotMatch(text, /0\.8\.0/, name);
+    assert.match(text, new RegExp(`^PackageVersion: ${esc(next)}$`, "m"));
+    assert.doesNotMatch(text, new RegExp(esc(cur)), name);
     assert.equal(text.split("\n").length, before[name].split("\n").length);
   }
   const installer = after["Abulkosim.Wick.installer.yaml"];
   assert.match(installer, /^ReleaseDate: 2026-12-01$/m);
-  assert.match(installer, /InstallerUrl: .*\/v0\.9\.0\/Wick_0\.9\.0_x64-setup\.exe$/m);
+  assert.match(installer, new RegExp(`InstallerUrl: .*/v${esc(next)}/Wick_${esc(next)}_x64-setup\\.exe$`, "m"));
   assert.match(installer, new RegExp(`InstallerSha256: ${hex("B")}$`, "m"));
-  assert.throws(() => updateWinget(before, "0.9.0", sums, "1 Dec"), /Invalid date/);
+  assert.throws(() => updateWinget(before, next, sums, "1 Dec"), /Invalid date/);
 });
 
 test(".SRCINFO matches the PKGBUILD, before and after a bump", () => {
   const license = hex("f");
   for (const [pkgbuild, srcinfo, version] of [
-    [read(paths.pkgbuild), read(paths.srcinfo), "0.8.0"],
-    [updatePkgbuild(read(paths.pkgbuild), "0.9.0", sums, license), updateSrcinfo(read(paths.srcinfo), "0.9.0", sums, license), "0.9.0"],
+    [read(paths.pkgbuild), read(paths.srcinfo), cur],
+    [updatePkgbuild(read(paths.pkgbuild), next, sums, license), updateSrcinfo(read(paths.srcinfo), next, sums, license), next],
   ]) {
     const p = pkgbuildFields(pkgbuild, version);
     const s = srcinfoFields(srcinfo);
@@ -106,39 +109,41 @@ test(".SRCINFO matches the PKGBUILD, before and after a bump", () => {
     assert.match(srcinfo, /^pkgbase = wick-bin$/m);
     assert.match(srcinfo, /^pkgname = wick-bin$/m);
   }
-  const bumped = srcinfoFields(updateSrcinfo(read(paths.srcinfo), "0.9.0", sums, license));
+  const bumped = srcinfoFields(updateSrcinfo(read(paths.srcinfo), next, sums, license));
   assert.deepEqual(bumped.sha256sums_x86_64, [hex("d")]);
   assert.deepEqual(bumped.sha256sums_aarch64, [hex("e")]);
   assert.match(read(paths.pkgbuild), /usr\/lib\/wick\/package-manager/);
 });
 
 test("Flatpak gets both .deb files", () => {
-  const out = updateFlatpak(read(paths.flatpak), "0.9.0", sums);
-  assert.match(out, new RegExp(`/v0\\.9\\.0/Wick_0\\.9\\.0_amd64\\.deb\\n\\s+sha256: ${hex("d")}`));
-  assert.match(out, new RegExp(`/v0\\.9\\.0/Wick_0\\.9\\.0_arm64\\.deb\\n\\s+sha256: ${hex("e")}`));
-  assert.doesNotMatch(out, /0\.8\.0/);
-  assert.throws(() => updateFlatpak("modules: []\n", "0.9.0", sums), /Expected 2/);
+  const out = updateFlatpak(read(paths.flatpak), next, sums);
+  assert.match(out, new RegExp(`/v${esc(next)}/Wick_${esc(next)}_amd64\\.deb\\n\\s+sha256: ${hex("d")}`));
+  assert.match(out, new RegExp(`/v${esc(next)}/Wick_${esc(next)}_arm64\\.deb\\n\\s+sha256: ${hex("e")}`));
+  assert.doesNotMatch(out, new RegExp(esc(cur)));
+  assert.throws(() => updateFlatpak("modules: []\n", next, sums), /Expected 2/);
 });
 
 test("metainfo gets the new release on top, once, and screenshots from its tag", () => {
-  const once = updateMetainfo(read(paths.metainfo), "0.9.0", "2026-12-01");
-  assert.equal(updateMetainfo(once, "0.9.0", "2026-12-01"), once);
-  const releases = [...once.matchAll(/<release version="([^"]+)" date="([^"]+)"/g)].map((m) => `${m[1]} ${m[2]}`);
-  assert.deepEqual(releases, ["0.9.0 2026-12-01", "0.8.0 2026-11-10"]);
-  assert.doesNotMatch(once, /wick\/v0\.8\.0\/docs/);
-  assert.match(once, /wick\/v0\.9\.0\/docs\/images\//);
+  const list = (xml) => [...xml.matchAll(/<release version="([^"]+)" date="([^"]+)"/g)].map((m) => `${m[1]} ${m[2]}`);
+  const before = list(read(paths.metainfo));
+  assert.equal(before[0].split(" ")[0], cur);
+  const once = updateMetainfo(read(paths.metainfo), next, "2026-12-01");
+  assert.equal(updateMetainfo(once, next, "2026-12-01"), once);
+  assert.deepEqual(list(once), [`${next} 2026-12-01`, ...before]);
+  assert.doesNotMatch(once, new RegExp(`wick/v${esc(cur)}/docs`));
+  assert.match(once, new RegExp(`wick/v${esc(next)}/docs/images/`));
 });
 
 test("one bump rewrites every channel", () => {
   const dir = mkdtempSync(join(tmpdir(), "wick-bump-"));
   try {
     for (const path of ["LICENSE", "packaging", "bucket"]) cpSync(join(root, path), join(dir, path), { recursive: true });
-    bump(dir, "0.9.0", sumsText, "2026-12-01");
+    bump(dir, next, sumsText, "2026-12-01");
     const found = versions(dir);
-    assert.deepEqual(new Set(Object.values(found)), new Set(["0.9.0"]), JSON.stringify(found));
-    assert.equal(existsSync(join(dir, paths.winget, "0.8.0")), false);
+    assert.deepEqual(new Set(Object.values(found)), new Set([next]), JSON.stringify(found));
+    assert.equal(existsSync(join(dir, paths.winget, cur)), false);
     assert.match(readFileSync(join(dir, paths.cask), "utf8"), new RegExp(`sha256 "${hex("a")}"`));
-    assert.throws(() => bump(dir, "0.9.1", sumsText, "2026-12-02"), /not found/);
+    assert.throws(() => bump(dir, "9.9.1", sumsText, "2026-12-02"), /not found/);
     assert.deepEqual(versions(dir), found);
   } finally {
     rmSync(dir, { recursive: true, force: true });
