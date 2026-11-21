@@ -1,0 +1,55 @@
+name: Release check
+
+# Runs the macOS updater install test against a release's published archive.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, for example v0.9.0
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  updater-install-macos:
+    name: Updater install · macOS
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Validate tag
+        env:
+          TAG: ${{ inputs.tag }}
+        run: '[[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Not a release tag: $TAG"; exit 1; }'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          cache: false
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Prepare frontend assets
+        run: pnpm build
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+        with:
+          toolchain: "1.99.1"
+      - name: Download the release archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          mkdir -p .cache/release
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir .cache/release \
+            --pattern 'Wick.app.tar.gz' --pattern 'Wick.app.tar.gz.sig' --pattern 'SHA256SUMS.txt'
+          cd .cache/release && grep -E '  Wick\.app\.tar\.gz(\.sig)?$' SHA256SUMS.txt | shasum -a 256 -c -
+      - name: Install through the updater
+        env:
+          WICK_REQUIRE_UNIVERSAL: "1"
+        run: WICK_UPDATE_ARTIFACT_DIR="$PWD/.cache/release" cargo test --manifest-path src-tauri/Cargo.toml --test updater_install --locked -- --ignored --nocapture
